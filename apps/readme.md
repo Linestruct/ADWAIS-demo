@@ -1,26 +1,23 @@
-# Applications (`/apps`)
+# Applications
 
-This directory houses the primary application codebases for the KPI Dashboard.
+This directory holds the applications in the workspace.
 
-## Applications List
+## apps/web
 
-### 1. [`/apps/web`](/apps/web)
-The frontend web dashboard.
-* **Stack**: React 19, TypeScript, Vite, Tailwind CSS v3, TanStack Router (file-based routing), TanStack Query, Chart.js.
-* **Purpose**: User interface displaying Daily KPI rollups, financial graphs, UptimeRobot monitoring statistics, and internal office events.
+The frontend dashboard.
 
-### 2. [`/apps/server`](/apps/server)
-The API backend runtime.
-* **Stack**: .NET 10 Web API, Entity Framework Core, PostgreSQL, Hangfire.
-* **Purpose**: Data ingestion pipelines (syncing order statistics and uptime latency status) and client endpoints serving the web dashboard.
-* **Source Location**: [`/apps/server/ADWAIS`](/apps/server/ADWAIS)
+- Stack: React 19, TypeScript, Vite, Tailwind CSS v3, TanStack Router, TanStack Query, Chart.js.
+- Purpose: daily KPIs, financial graphs, monitor statistics, office events.
 
----
+## apps/server
 
-## Workspace Rules
+The backend runtime.
 
-* **Dependency Installation**: Do **not** run npm or pnpm commands inside these app subdirectories. Always use `pnpm` from the root workspace folder to keep the dependency tree clean and prevent local lockfile corruption.
-* **Filtering Tasks**: You can run tasks targeting specific apps from the root directory using pnpm filters:
-  ```bash
-  pnpm --filter web <command>
-  ```
+- Stack: .NET 10 Web API, Entity Framework Core, PostgreSQL, Hangfire.
+- Purpose: data ingestion pipelines and client endpoints.
+- Source: `/apps/server/ADWAIS`
+
+## Workspace rules
+
+- Do not run npm or pnpm inside these directories. Use `pnpm` from the root.
+- Run tasks for one app with `pnpm --filter web <command>`.

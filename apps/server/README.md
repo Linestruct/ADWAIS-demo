@@ -1,44 +1,23 @@
-# Server Runner Environment
+# Server
 
-This directory contains the ADWAIS backend solution (`/apps/server/ADWAIS`) and the local development runtime for the PostgreSQL database container.
+This directory holds the ADWAIS backend solution and the local PostgreSQL setup.
 
-## Local Services
+## PostgreSQL
 
-### 1. PostgreSQL Database
-The backend API requires a running PostgreSQL database. A local development container is configured via the [`docker-compose.yml`](/apps/server/docker-compose.yml) file.
+The API needs a running PostgreSQL. The local container is defined in [docker-compose.yml](/apps/server/docker-compose.yml).
 
-*   **Database Engine**: PostgreSQL 15 (Alpine)
-*   **Default Connection Details** (defined in Compose):
-    *   **Host**: `localhost:5432`
-    *   **Username**: `postgres`
-    *   **Password**: `development_password`
-    *   **Database**: `analyticsdb`
+- Engine: PostgreSQL 15 (Alpine)
+- Host: `localhost:5432`
+- User: `postgres`
+- Password: `development_password`
+- Database: `analyticsdb`
 
----
+Commands:
 
-## Operating Commands
+```bash
+pnpm db:up            # start
+docker compose down   # stop, keep data
+docker compose down -v # stop, delete data
+```
 
-Ensure Docker is running before executing these commands:
-
-*   **Spin up services (detached mode)**:
-    ```bash
-    pnpm db:up
-    ```
-    *(Run from repository root, or run `docker compose up -d` in this directory)*
-
-*   **Stop services and preserve data**:
-    ```bash
-    docker compose down
-    ```
-
-*   **Destroy services and volume data**:
-    ```bash
-    docker compose down -v
-    ```
-
----
-
-## Database Initialization Notes
-
-*   A volume called `postgres_data` is created automatically to persist data.
-
+Data persists in the `postgres_data` volume.

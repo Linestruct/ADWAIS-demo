@@ -1,34 +1,10 @@
-# Web Application (Frontend)
+# Web app
 
-The user-facing dashboard displaying daily order rollups, financial stats, site latency monitors, and internal office events.
+The frontend dashboard. Built with React 19, TypeScript, Vite, Tailwind CSS v3, TanStack Router, TanStack Query, Chart.js, and Zod.
 
-## Tech Stack
+## Environment
 
-*   **Runtime & Builder**: Node.js, Vite, TypeScript.
-*   **UI Framework**: React 19.
-*   **Routing**: `@tanstack/react-router` (File-based, type-safe routing).
-*   **Data Fetching**: `@tanstack/react-query` (Caching, auto-refreshing).
-*   **Styling**: Tailwind CSS v3.
-*   **Visualizations**: Chart.js.
-*   **Schemas**: Zod.
-
----
-
-## Directory Structure
-
-*   [`/src/routes`](/apps/web/src/routes) - File-based routes (compiled by TanStack Router).
-    *   `/settings` - User configuration, tenant settings, and background jobs dashboard.
-*   [`/src/components`](/apps/web/src/components) - Reusable components (e.g., Layouts, Charts, Status Cards).
-*   [`/src/hooks`](/apps/web/src/hooks) - React hooks for state and queries.
-*   [`/src/apiClient.ts`](/apps/web/src/apiClient.ts) - Global fetch wrapper communicating with the .NET backend.
-
----
-
-## Configuration
-
-Create `apps/web/.env.local` manually or copy `apps/web/.env-example` and edit it.
-Vite only reads environment files from this directory. The Vite config checks
-the file encoding and fails early with a clear error if it contains a UTF-8 BOM.
+Copy `apps/web/.env-example` to `apps/web/.env.local` and edit it.
 
 ```env
 VITE_OIDC_AUTHORITY=https://your-idp.example.com
@@ -39,53 +15,32 @@ VITE_SSO_BUTTON_LABEL=Sign in with SSO
 VITE_SSO_BUTTON_LOGO_URL=
 ```
 
-`VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` are required unless `VITE_DEMO_MODE=true`.
-Demo mode adds an explicit “Continue as demo user” option on `/login`; selecting it
-requests a read-only Viewer token from `/api/demo/token`.
+`VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` are required unless `VITE_DEMO_MODE=true`. Demo mode adds a login option that requests a Viewer token from `/api/demo/token`.
 
----
+The Vite project is scoped to this directory. Vite fails early when an env file has a UTF-8 BOM.
 
-## API Codegen (Orval)
+## Code generation
 
-Frontend API hooks and TypeScript types are **generated** from the backend OpenAPI spec — do not hand-edit them.
+Frontend API code is generated. Do not edit it by hand.
 
-### What gets generated
-
-| Output | Contains |
+| Output | Contents |
 |---|---|
-| `packages/types/generated/` | TypeScript interfaces for all backend DTOs |
-| `src/api/generated/endpoints.ts` | React Query hooks (`useXxxQuery`, `useXxxMutation`) |
+| `packages/types/generated/` | TypeScript interfaces for API DTOs |
+| `src/api/generated/endpoints.ts` | React Query hooks |
 
-Both are committed. Re-run codegen whenever the backend API changes.
+Both are committed. Re-run codegen when the API changes.
 
-### Pipeline
+Pipeline: `dotnet build` writes `docs/openapi/v1.json`, then `pnpm codegen` generates the files.
 
-```
-dotnet build (API)  →  docs/openapi/v1.json  →  pnpm codegen  →  generated files
-```
-
-1. The .NET build emits an updated `docs/openapi/v1.json` automatically on each build.
-2. Run codegen from the repo root:
-   ```bash
-   pnpm --filter web codegen
-   ```
-
-> The backend must have been **built** (not necessarily running) before codegen so the spec reflects the latest controllers and DTOs.
-
----
-
-## Local Development
-
-All commands should ideally be run from the repository root:
-
-*   **Start dev server**: `pnpm dev:web` (from root) or `pnpm dev` (from this directory)
-*   **Regenerate API types**: `pnpm --filter web codegen`
-*   **Build production bundle**: `pnpm --filter web build`
-*   **Lint codebase**: `pnpm --filter web lint`
-
-If running directly in this directory (not recommended unless testing locally):
 ```bash
-pnpm dev
-pnpm build
+pnpm --filter web codegen
 ```
-*(Ensure `corepack enable` has been run on your system)*
+
+## Local development
+
+Run from the repository root:
+
+- Start: `pnpm dev:web`
+- Codegen: `pnpm --filter web codegen`
+- Build: `pnpm --filter web build`
+- Lint: `pnpm --filter web lint`

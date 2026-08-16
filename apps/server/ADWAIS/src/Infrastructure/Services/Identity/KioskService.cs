@@ -64,7 +64,7 @@ public class KioskService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> ActivateDeviceAsync(string activationCode, CancellationToken ct = default)
+    public async Task<bool> ActivateDeviceAsync(string activationCode, Guid organizationId, CancellationToken ct = default)
     {
         var device = await _dbContext.KioskDevices.SingleOrDefaultAsync(kd => 
             kd.ActivationCode == activationCode && 
@@ -78,6 +78,7 @@ public class KioskService(
         
         device.IsAuthorized = true;
         device.AuthorizedAt = DateTimeOffset.UtcNow;
+        device.OrganizationId = organizationId;
 
         await _dbContext.SaveChangesAsync(ct);
         return true;
@@ -93,6 +94,6 @@ public class KioskService(
             return null;
         }
 
-        return _tokenService.GenerateKioskToken(deviceId);
+        return _tokenService.GenerateKioskToken(deviceId, organizationId: device.OrganizationId);
     }
 }

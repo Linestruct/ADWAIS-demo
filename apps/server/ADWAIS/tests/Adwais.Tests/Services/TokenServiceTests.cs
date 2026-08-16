@@ -57,6 +57,29 @@ public class TokenServiceTests
         Assert.True(diff.TotalDays >= 29 && diff.TotalDays <= 31);
     }
 
+    [Fact]
+    public void GenerateKioskToken_WithOrganization_EmbedsOrgClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+        var orgId = Guid.NewGuid();
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("kiosk-org-device", organizationId: orgId));
+
+        Assert.Equal(orgId.ToString(), jwtToken.Claims.FirstOrDefault(c => c.Type == "org_id")?.Value);
+    }
+
+    [Fact]
+    public void GenerateKioskToken_WithoutOrganization_HasNoOrgClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("kiosk-plain-device"));
+
+        Assert.Null(jwtToken.Claims.FirstOrDefault(c => c.Type == "org_id"));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

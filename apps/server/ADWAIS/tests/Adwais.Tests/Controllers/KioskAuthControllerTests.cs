@@ -8,19 +8,27 @@ using Moq;
 using Xunit;
 using Adwais.Api.Controllers.Authentication;
 using Adwais.Api.DTOs.Kiosk;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
+using Adwais.Infrastructure.Persistence;
+using Adwais.Domain.Enums;
 
 namespace Adwais.Tests.Controllers;
 
 public class KioskAuthControllerTests
 {
     private readonly Mock<IKioskService> _kioskServiceMock;
+    private readonly Mock<ICurrentAccess> _currentAccessMock;
+    private readonly Guid _organizationId = Guid.NewGuid();
     private readonly KioskAuthController _controller;
 
     public KioskAuthControllerTests()
     {
         _kioskServiceMock = new Mock<IKioskService>();
-        _controller = new KioskAuthController(_kioskServiceMock.Object);
+        _currentAccessMock = new Mock<ICurrentAccess>();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_organizationId, null, [UserRole.Employee]));
+        _controller = new KioskAuthController(_kioskServiceMock.Object, _currentAccessMock.Object);
     }
 
     [Fact]
@@ -49,7 +57,7 @@ public class KioskAuthControllerTests
     {
         // Arrange
         var code = "XY98ZA";
-        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code))
+        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code, _organizationId))
             .ReturnsAsync(true);
 
         var request = new ActivateKioskRequestDto { ActivationCode = code };
@@ -59,7 +67,35 @@ public class KioskAuthControllerTests
 
         // Assert
         Assert.IsType<OkResult>(result);
-        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code), Times.Once);
+        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code, _organizationId), Times.Once);
+    }
+
+    [Fact]
+    public async Task Activate_ShouldReturnBadRequest_WhenActivatorHasNoOrganization()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(null, null, [UserRole.Admin]));
+
+        var result = await _controller.Activate(new ActivateKioskRequestDto { ActivationCode = "XY98ZA" });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        _kioskServiceMock.Verify(
+            s => s.ActivateDeviceAsync(It.IsAny<string>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Activate_ShouldReturnBadRequest_WhenScopeIsMissing()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns((AccessScope?)null);
+
+        var result = await _controller.Activate(new ActivateKioskRequestDto { ActivationCode = "XY98ZA" });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        _kioskServiceMock.Verify(
+            s => s.ActivateDeviceAsync(It.IsAny<string>(), It.IsAny<Guid>()),
+            Times.Never);
     }
 
     [Fact]
@@ -67,7 +103,7 @@ public class KioskAuthControllerTests
     {
         // Arrange
         var code = "EX1234";
-        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code))
+        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code, _organizationId))
             .ReturnsAsync(false);
 
         var request = new ActivateKioskRequestDto { ActivationCode = code };
@@ -78,7 +114,7 @@ public class KioskAuthControllerTests
         // Assert
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("Activation code has expired or is invalid.", badRequest.Value);
-        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code), Times.Once);
+        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code, _organizationId), Times.Once);
     }
 
     [Fact]
@@ -126,7 +162,7 @@ public class KioskAuthControllerTests
         mockConfig.Setup(c => c["Authentication:KioskJwtSecret"]).Returns("SuperSecretKeyForTestingKioskTokens32CharsMinimum!");
         
         var mockTokenService = new Mock<ITokenService>();
-        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "Admin")).Returns("generated-token");
+        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "Admin", AnalyticsDbContext.DefaultOrganizationGuid)).Returns("generated-token");
 
         var mockEnv = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
         mockEnv.Setup(e => e.EnvironmentName).Returns("Development");

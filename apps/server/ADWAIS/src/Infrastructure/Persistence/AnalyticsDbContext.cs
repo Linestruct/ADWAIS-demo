@@ -421,7 +421,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .IsRequired();
             
             entity.Property(kd => kd.OrganizationId)
-                .IsRequired();
+                .IsRequired(false);
             entity.HasOne<Organization>()
                 .WithMany()
                 .HasForeignKey(kd => kd.OrganizationId)

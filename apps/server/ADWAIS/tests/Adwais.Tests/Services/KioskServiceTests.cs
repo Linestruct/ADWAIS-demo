@@ -76,7 +76,8 @@ public class KioskServiceTests
         }
 
         // Act
-        var result = await _kioskService.ActivateDeviceAsync(code);
+        var organizationId = Guid.NewGuid();
+        var result = await _kioskService.ActivateDeviceAsync(code, organizationId);
 
         // Assert
         Assert.True(result);
@@ -87,6 +88,7 @@ public class KioskServiceTests
         Assert.NotNull(device);
         Assert.True(device.IsAuthorized);
         Assert.NotNull(device.AuthorizedAt);
+        Assert.Equal(organizationId, device.OrganizationId);
     }
 
     [Fact]
@@ -110,7 +112,7 @@ public class KioskServiceTests
         }
 
         // Act
-        var result = await _kioskService.ActivateDeviceAsync(code);
+        var result = await _kioskService.ActivateDeviceAsync(code, Guid.NewGuid());
 
         // Assert
         Assert.False(result);
@@ -127,6 +129,7 @@ public class KioskServiceTests
     {
         // Arrange
         var deviceId = "kiosk-device-4";
+        var organizationId = Guid.NewGuid();
         var expectedToken = "mock-jwt-token-30-days";
         await using (var db = new AnalyticsDbContext(_dbOptions))
         {
@@ -134,6 +137,7 @@ public class KioskServiceTests
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
+                OrganizationId = organizationId,
                 ActivationCode = "CODE12",
                 ActivationCodeExpires = DateTimeOffset.UtcNow.AddMinutes(10),
                 IsAuthorized = true,
@@ -143,7 +147,7 @@ public class KioskServiceTests
             await db.SaveChangesAsync();
         }
 
-        _tokenServiceMock.Setup(s => s.GenerateKioskToken(deviceId))
+        _tokenServiceMock.Setup(s => s.GenerateKioskToken(deviceId, "Viewer", organizationId))
             .Returns(expectedToken);
 
         // Act
@@ -151,7 +155,7 @@ public class KioskServiceTests
 
         // Assert
         Assert.Equal(expectedToken, token);
-        _tokenServiceMock.Verify(s => s.GenerateKioskToken(deviceId), Times.Once);
+        _tokenServiceMock.Verify(s => s.GenerateKioskToken(deviceId, "Viewer", organizationId), Times.Once);
     }
 
     [Fact]
@@ -178,6 +182,6 @@ public class KioskServiceTests
 
         // Assert
         Assert.Null(token);
-        _tokenServiceMock.Verify(s => s.GenerateKioskToken(It.IsAny<string>()), Times.Never);
+        _tokenServiceMock.Verify(s => s.GenerateKioskToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>()), Times.Never);
     }
 }

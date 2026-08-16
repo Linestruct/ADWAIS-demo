@@ -5,6 +5,7 @@
 using Adwais.Api.Controllers.Authentication;
 using Adwais.Api.DTOs.Kiosk;
 using Adwais.Application.Interfaces;
+using Adwais.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Moq;
@@ -30,7 +31,7 @@ public class DemoControllerTests
     public void GetDemoToken_ReturnsViewerToken_WhenDemoAccessIsEnabled()
     {
         var tokenService = new Mock<ITokenService>();
-        tokenService.Setup(service => service.GenerateKioskToken("demo-visitor", "Viewer"))
+        tokenService.Setup(service => service.GenerateKioskToken("demo-visitor", "Viewer", AnalyticsDbContext.DefaultOrganizationGuid))
             .Returns("demo-token");
         var controller = new DemoController(tokenService.Object, CreateConfiguration(true));
 

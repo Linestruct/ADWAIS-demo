@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Api.DTOs.Kiosk;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
+using Adwais.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +17,7 @@ namespace Adwais.Api.Controllers.Authentication;
 /// </summary>
 [ApiController]
 [Route("api/kiosk")]
-public class KioskAuthController(IKioskService kioskService) : ControllerBase
+public class KioskAuthController(IKioskService kioskService, ICurrentAccess currentAccess) : ControllerBase
 {
     /// <summary>
     /// Registers a new kiosk device and generates a temporary case-insensitive activation code.
@@ -40,7 +42,13 @@ public class KioskAuthController(IKioskService kioskService) : ControllerBase
     [Authorize(Policy = "StaffAccess")]
     public async Task<IActionResult> Activate([FromBody] ActivateKioskRequestDto request)
     {
-        var activated = await kioskService.ActivateDeviceAsync(request.ActivationCode);
+        var organizationId = currentAccess.Scope?.OrganizationId;
+        if (organizationId is null)
+        {
+            return BadRequest("Kiosk activation requires organization access.");
+        }
+
+        var activated = await kioskService.ActivateDeviceAsync(request.ActivationCode, organizationId.Value);
         if (!activated)
         {
             return BadRequest("Activation code has expired or is invalid.");
@@ -83,7 +91,7 @@ public class KioskAuthController(IKioskService kioskService) : ControllerBase
             return Unauthorized("Invalid secret.");
         }
         
-        var token = tokenService.GenerateKioskToken("swagger-admin", "Admin");
+        var token = tokenService.GenerateKioskToken("swagger-admin", "Admin", AnalyticsDbContext.DefaultOrganizationGuid);
         return Ok(new KioskTokenResponseDto { Token = token, ExpiresInDays = 30 });
     }
 }

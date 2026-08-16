@@ -13,7 +13,8 @@ public interface ITokenService
     /// Generates a locally signed 30-day JWT token for a kiosk display device with the "Viewer" role.
     /// </summary>
     /// <param name="deviceId">The unique identifier of the kiosk device.</param>
-    /// <returns>A signed JWT token string.</returns>
     /// <param name="role">The role claim to assign to the token.</param>
-    string GenerateKioskToken(string deviceId, string role = "Viewer");
+    /// <param name="organizationId">The organization claim to embed in the token, when known.</param>
+    /// <returns>A signed JWT token string.</returns>
+    string GenerateKioskToken(string deviceId, string role = "Viewer", Guid? organizationId = null);
 }

@@ -23,11 +23,13 @@ public interface IKioskService
 
     /// <summary>
     /// Activates a registered kiosk device by verifying and matching a valid, non-expired activation code.
+    /// The device joins the given organization.
     /// </summary>
     /// <param name="activationCode">The case-insensitive code displayed on the kiosk screen.</param>
+    /// <param name="organizationId">The organization the activating staff member belongs to.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>True if the activation was successful, otherwise false.</returns>
-    Task<bool> ActivateDeviceAsync(string activationCode, CancellationToken ct = default);
+    Task<bool> ActivateDeviceAsync(string activationCode, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves a valid 30-day JWT bearer token for the kiosk device if it is authorized.

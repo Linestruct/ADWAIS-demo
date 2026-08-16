@@ -4,6 +4,7 @@
 
 using Adwais.Api.DTOs.Kiosk;
 using Adwais.Application.Interfaces;
+using Adwais.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,7 +35,7 @@ public class DemoController(ITokenService tokenService, IConfiguration configura
             return NotFound();
         }
 
-        var token = tokenService.GenerateKioskToken("demo-visitor", "Viewer");
+        var token = tokenService.GenerateKioskToken("demo-visitor", "Viewer", AnalyticsDbContext.DefaultOrganizationGuid);
         return Ok(new KioskTokenResponseDto { Token = token, ExpiresInDays = 30 });
     }
 }

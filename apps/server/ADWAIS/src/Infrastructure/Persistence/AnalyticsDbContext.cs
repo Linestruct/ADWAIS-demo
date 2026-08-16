@@ -22,6 +22,8 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     public DbSet<GlobalConfig> GlobalConfigs => Set<GlobalConfig>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<UserAccess> UserAccesses => Set<UserAccess>();
     public DbSet<KioskDevice> KioskDevices => Set<KioskDevice>();
     public static readonly Guid SystemTenantGuid = new Guid("00000000-0000-0000-0000-000000000001");
     public static readonly Guid SystemUserGuid = new Guid("00000000-0000-0000-0000-000000000002");
@@ -324,6 +326,49 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 Role = UserRole.Employee,
                 Email = "system@adwais.local"
             });
+        });
+
+        modelBuilder.Entity<Organization>(entity =>
+        {
+            entity.ToTable("organization");
+            entity.HasKey(org => org.Id);
+            entity.Property(org => org.Id)
+                .HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(org => org.Name)
+                .HasMaxLength(255)
+                .IsRequired();
+            entity.Property(org => org.CreatedAt)
+                .IsRequired();
+        });
+
+        modelBuilder.Entity<UserAccess>(entity =>
+        {
+            entity.ToTable("user_access");
+            entity.HasKey(access => access.Id);
+            entity.Property(access => access.Id)
+                .HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(access => access.Role)
+                .HasConversion<string>()
+                .HasMaxLength(50)
+                .IsRequired();
+            entity.Property(access => access.CreatedAt)
+                .IsRequired();
+
+            entity.HasOne(access => access.User)
+                .WithMany()
+                .HasForeignKey(access => access.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(access => access.Organization)
+                .WithMany(org => org.UserAccesses)
+                .HasForeignKey(access => access.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(access => access.Tenant)
+                .WithMany()
+                .HasForeignKey(access => access.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(access => access.UserId);
+            entity.HasIndex(access => access.OrganizationId);
         });
         
         modelBuilder.Entity<KioskDevice>(entity =>

@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
@@ -103,7 +104,7 @@ public class LocalUserClaimsTransformation(
             }
         }
 
-        // Append role claim using a cloned principal to ensure thread-safety/immutability
+        // Append role and scope claims using a cloned principal to ensure thread-safety/immutability
         var clone = principal.Clone();
         
         if (clone.Identity is ClaimsIdentity primaryIdentity)
@@ -115,8 +116,34 @@ public class LocalUserClaimsTransformation(
             }
         }
 
+        var memberships = await db.UserAccesses
+            .AsNoTracking()
+            .Where(access => access.UserId == user.Id)
+            .ToListAsync();
+
         var localIdentity = new ClaimsIdentity("LocalDatabaseRoles");
-        localIdentity.AddClaim(new Claim(ClaimTypes.Role, user.Role.ToString()));
+        if (memberships.Count > 0)
+        {
+            foreach (var role in memberships.Select(membership => membership.Role).Distinct())
+            {
+                localIdentity.AddClaim(new Claim(ClaimTypes.Role, role.ToString()));
+            }
+
+            var scope = AccessScopeResolver.Resolve(memberships);
+            if (scope?.OrganizationId is { } organizationId)
+            {
+                localIdentity.AddClaim(new Claim(AccessClaimTypes.OrganizationId, organizationId.ToString()));
+            }
+            if (scope?.TenantId is { } tenantId)
+            {
+                localIdentity.AddClaim(new Claim(AccessClaimTypes.TenantId, tenantId.ToString()));
+            }
+        }
+        else
+        {
+            localIdentity.AddClaim(new Claim(ClaimTypes.Role, user.Role.ToString()));
+        }
+
         localIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
         clone.AddIdentity(localIdentity);
 

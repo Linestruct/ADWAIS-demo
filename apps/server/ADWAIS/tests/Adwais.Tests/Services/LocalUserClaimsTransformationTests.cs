@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
+using Adwais.Application.Common.Access;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
@@ -247,6 +248,137 @@ public class LocalUserClaimsTransformationTests
         _dbContextFactoryMock.Verify(
             factory => factory.CreateDbContextAsync(It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task TransformAsync_OrgMembership_AddsOrgClaimAndMembershipRole()
+    {
+        var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "membership-org-user",
+                Name = "Org User",
+                Email = "org@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = orgId,
+                TenantId = null,
+                Role = UserRole.Admin
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("membership-org-user", "org@example.com", "Org User"));
+
+        Assert.True(result.IsInRole("Admin"));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == orgId.ToString()));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.TenantId));
+    }
+
+    [Fact]
+    public async Task TransformAsync_TenantViewerMembership_AddsOrgAndTenantClaims()
+    {
+        var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "membership-tenant-user",
+                Name = "Tenant User",
+                Email = "tenant@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = orgId,
+                TenantId = tenantId,
+                Role = UserRole.TenantViewer
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("membership-tenant-user", "tenant@example.com", "Tenant User"));
+
+        Assert.True(result.IsInRole("TenantViewer"));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == orgId.ToString()));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.TenantId && c.Value == tenantId.ToString()));
+    }
+
+    [Fact]
+    public async Task TransformAsync_PlatformAdminMembership_AddsNoOrgClaim()
+    {
+        var userId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "membership-platform-user",
+                Name = "Platform User",
+                Email = "platform@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = null,
+                TenantId = null,
+                Role = UserRole.Admin
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("membership-platform-user", "platform@example.com", "Platform User"));
+
+        Assert.True(result.IsInRole("Admin"));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.TenantId));
+    }
+
+    [Fact]
+    public async Task TransformAsync_MembershipRolesReplaceLegacyRole()
+    {
+        var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "membership-role-user",
+                Name = "Role User",
+                Email = "role@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = orgId,
+                TenantId = null,
+                Role = UserRole.Admin
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("membership-role-user", "role@example.com", "Role User"));
+
+        Assert.True(result.IsInRole("Admin"));
+        Assert.False(result.IsInRole("Employee"));
     }
 
     private static ClaimsPrincipal CreatePrincipal(string subjectId, string email, string name)

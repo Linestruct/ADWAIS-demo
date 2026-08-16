@@ -6185,7 +6185,8 @@
         "enum": [
           "Admin",
           "Viewer",
-          "Employee"
+          "Employee",
+          "TenantViewer"
         ],
         "type": "string"
       },

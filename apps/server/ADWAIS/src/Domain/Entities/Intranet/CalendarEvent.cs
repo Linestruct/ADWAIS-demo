@@ -9,6 +9,7 @@ namespace Adwais.Domain.Entities.Intranet;
 public class CalendarEvent
 {
     public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
     public required string Title { get; set; }
     public string? Description { get; set; }
     public string? Location { get; set; }
@@ -22,4 +23,5 @@ public class CalendarEvent
     public string? ExternalUid { get; set; }
     public Guid? CalendarSubscriptionId { get; set; }
     public CalendarSubscription? CalendarSubscription { get; set; }
+    public Organization? Organization { get; set; }
 }

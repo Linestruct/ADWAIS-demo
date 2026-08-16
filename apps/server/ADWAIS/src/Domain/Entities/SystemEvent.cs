@@ -22,5 +22,7 @@ public class SystemEvent
     public string? Details { get; set; }
     public Guid? TenantId { get; set; }
     public Tenant? Tenant { get; set; }
+    public Guid? OrganizationId { get; set; }
+    public Organization? Organization { get; set; }
 }
 

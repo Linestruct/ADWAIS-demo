@@ -10,6 +10,7 @@ namespace Adwais.Domain.Entities.Intranet;
 public class CalendarSubscription
 {
     public Guid Id { get; set; }
+    public Guid OrganizationId { get; set; }
     public required string Name { get; set; }
     public required string Url { get; set; }
     public bool IsActive { get; set; }
@@ -17,4 +18,5 @@ public class CalendarSubscription
     public DateTimeOffset? LastSuccessAt { get; set; }
     public string? LastSyncError { get; set; }
     public ICollection<CalendarEvent> Events { get; set; } = new List<CalendarEvent>();
+    public Organization? Organization { get; set; }
 }

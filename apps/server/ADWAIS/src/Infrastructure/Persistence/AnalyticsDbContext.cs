@@ -27,6 +27,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     public DbSet<KioskDevice> KioskDevices => Set<KioskDevice>();
     public static readonly Guid SystemTenantGuid = new Guid("00000000-0000-0000-0000-000000000001");
     public static readonly Guid SystemUserGuid = new Guid("00000000-0000-0000-0000-000000000002");
+    public static readonly Guid DefaultOrganizationGuid = new Guid("00000000-0000-0000-0000-00000000000A");
     
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<DailyFinancialTenantRollup> DailyTenantRollups => Set<DailyFinancialTenantRollup>();
@@ -102,6 +103,10 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => e.Timestamp);
         });
 
@@ -111,6 +116,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.ToTable("tenant");
             entity.HasKey(t => t.Id);
             entity.Property(t => t.Id).HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(t => t.OrganizationId).IsRequired();
             entity.Property(t => t.Name).HasMaxLength(255);
             entity.Property(t => t.Type)
                 .HasConversion<string>()
@@ -129,11 +135,17 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             }
             entity.Property(t => t.CurrentlyFetching).HasDefaultValue(false);
 
+            entity.HasOne(t => t.Organization)
+                .WithMany(org => org.Tenants)
+                .HasForeignKey(t => t.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // to catch unassigned monitors since TenantId is not nullable and a foreign key
             entity.HasData(
                 new Tenant
                 {
                     Id = SystemTenantGuid,
+                    OrganizationId = DefaultOrganizationGuid,
                     Name = "System (unassigned monitors)",
                     Type = TenantType.Mixed,
                     OrderProviderSettings = null,
@@ -339,6 +351,15 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .IsRequired();
             entity.Property(org => org.CreatedAt)
                 .IsRequired();
+
+            entity.HasData(
+                new Organization
+                {
+                    Id = DefaultOrganizationGuid,
+                    Name = "Default Organization",
+                    CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                }
+            );
         });
 
         modelBuilder.Entity<UserAccess>(entity =>
@@ -399,6 +420,13 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(kd => kd.CreatedDate)
                 .IsRequired();
             
+            entity.Property(kd => kd.OrganizationId)
+                .IsRequired();
+            entity.HasOne<Organization>()
+                .WithMany()
+                .HasForeignKey(kd => kd.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasIndex(kd => kd.DeviceId).IsUnique();
             entity.HasIndex(kd => kd.ActivationCode);
         });
@@ -474,7 +502,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .WithMany()
                 .HasForeignKey(cp => cp.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(cp => cp.Organization)
+                .WithMany()
+                .HasForeignKey(cp => cp.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(cp => cp.UserId);
+            entity.HasIndex(cp => cp.OrganizationId);
             entity.HasIndex(cp => cp.CreatedAt);
         });
 
@@ -514,6 +547,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .WithMany(cs => cs.Events)
                 .HasForeignKey(oe => oe.CalendarSubscriptionId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(oe => oe.Organization)
+                .WithMany()
+                .HasForeignKey(oe => oe.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(oe => oe.OrganizationId);
             entity.HasIndex(oe => oe.StartTime);
             entity.HasIndex(oe => oe.EndTime);
             entity.HasIndex(oe => oe.ExternalUid);
@@ -529,6 +567,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(cs => cs.Url).HasMaxLength(2048).IsRequired();
             entity.Property(cs => cs.IsActive).HasDefaultValue(true);
             entity.Property(cs => cs.LastSyncError).HasMaxLength(4000);
+            entity.HasOne(cs => cs.Organization)
+                .WithMany()
+                .HasForeignKey(cs => cs.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(cs => cs.OrganizationId);
         });
 
         // FeedSource
@@ -539,7 +582,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(fs => fs.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(fs => fs.Name).HasMaxLength(255).IsRequired();
             entity.Property(fs => fs.Url).HasMaxLength(2048).IsRequired();
-            entity.HasIndex(fs => fs.Url).IsUnique();
+            entity.HasOne(fs => fs.Organization)
+                .WithMany()
+                .HasForeignKey(fs => fs.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(fs => new { fs.OrganizationId, fs.Url }).IsUnique();
             entity.Property(fs => fs.LastSuccessAt);
             entity.Property(fs => fs.LastSyncError).HasMaxLength(4000);
         });

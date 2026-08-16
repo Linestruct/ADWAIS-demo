@@ -4,6 +4,7 @@
 
 using System.Security.Claims;
 using Adwais.Application.Common.Access;
+using Adwais.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 
 namespace Adwais.Api.Services;
@@ -19,15 +20,25 @@ public sealed class CurrentAccessService(IHttpContextAccessor httpContextAccesso
             return null;
         }
 
-        var organizationId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.OrganizationId));
-        var tenantId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.TenantId));
+        var roles = principal.FindAll(ClaimTypes.Role)
+            .Select(claim => claim.Value)
+            .Where(value => Enum.TryParse<UserRole>(value, out _))
+            .Select(Enum.Parse<UserRole>)
+            .ToList();
 
-        if (organizationId is null)
+        if (principal.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"))
         {
-            return principal.IsInRole("Admin") ? new AccessScope(null, null) : null;
+            return new AccessScope(null, null, roles);
         }
 
-        return new AccessScope(organizationId, tenantId);
+        var organizationId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.OrganizationId));
+        if (organizationId is null)
+        {
+            return null;
+        }
+
+        var tenantId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.TenantId));
+        return new AccessScope(organizationId, tenantId, roles);
     }
 
     private static Guid? TryParseGuid(string? value)

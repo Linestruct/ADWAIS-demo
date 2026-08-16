@@ -6,6 +6,7 @@ namespace Adwais.Application.Common.Access;
 
 public static class AccessClaimTypes
 {
+    public const string IsPlatformAdmin = "is_platform_admin";
     public const string OrganizationId = "org_id";
     public const string TenantId = "tenant_id";
 }

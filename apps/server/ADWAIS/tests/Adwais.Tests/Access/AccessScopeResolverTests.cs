@@ -37,6 +37,7 @@ public class AccessScopeResolverTests
         Assert.True(scope.IsPlatformAdmin);
         Assert.Null(scope.OrganizationId);
         Assert.Null(scope.TenantId);
+        Assert.Equal([UserRole.Admin], scope.Roles);
     }
 
     [Fact]
@@ -52,6 +53,7 @@ public class AccessScopeResolverTests
         Assert.Equal(orgId, scope.OrganizationId);
         Assert.Null(scope.TenantId);
         Assert.False(scope.IsTenantRestricted);
+        Assert.Equal([UserRole.Employee], scope.Roles);
     }
 
     [Fact]
@@ -67,6 +69,7 @@ public class AccessScopeResolverTests
         Assert.Equal(orgId, scope.OrganizationId);
         Assert.Equal(tenantId, scope.TenantId);
         Assert.True(scope.IsTenantRestricted);
+        Assert.Equal([UserRole.TenantViewer], scope.Roles);
     }
 
     [Fact]
@@ -85,6 +88,44 @@ public class AccessScopeResolverTests
         Assert.NotNull(scope);
         Assert.Equal(orgId, scope.OrganizationId);
         Assert.Null(scope.TenantId);
+        Assert.Equal([UserRole.Admin], scope.Roles);
+    }
+
+    [Fact]
+    public void Resolve_RolesStayWithinResolvedScope()
+    {
+        var firstOrgId = Guid.NewGuid();
+        var otherOrgId = Guid.NewGuid();
+        var memberships = new[]
+        {
+            Access(firstOrgId, null, UserRole.Viewer),
+            Access(otherOrgId, null, UserRole.Admin)
+        };
+
+        var scope = AccessScopeResolver.Resolve(memberships);
+
+        Assert.NotNull(scope);
+        Assert.Equal(firstOrgId, scope.OrganizationId);
+        Assert.Equal([UserRole.Viewer], scope.Roles);
+    }
+
+    [Fact]
+    public void Resolve_TenantViewerWithAnotherOrgRole_KeepsTenantRestriction()
+    {
+        var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var memberships = new[]
+        {
+            Access(orgId, tenantId, UserRole.TenantViewer),
+            Access(Guid.NewGuid(), null, UserRole.Admin)
+        };
+
+        var scope = AccessScopeResolver.Resolve(memberships);
+
+        Assert.NotNull(scope);
+        Assert.Equal(orgId, scope.OrganizationId);
+        Assert.Equal(tenantId, scope.TenantId);
+        Assert.Equal([UserRole.TenantViewer], scope.Roles);
     }
 
     [Fact]

@@ -45,9 +45,8 @@ public class LocalUserClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_ShouldAddRoleClaim_WhenUserExistsInDatabase()
+    public async Task TransformAsync_ProvisionedUserWithoutMembership_AddsNoClaims()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var subjectId = "auth0|alice";
         var name = "Alice Smith";
@@ -68,41 +67,28 @@ public class LocalUserClaimsTransformationTests
 
         var principal = CreatePrincipal(subjectId, email, name);
 
-        // Act
         var result = await _transformation.TransformAsync(principal);
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.IsInRole("Admin"));
-        Assert.True(result.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == "Admin"));
-        Assert.Contains(result.Identities, identity =>
-            identity.AuthenticationType == "LocalDatabaseRoles" && identity.IsAuthenticated);
+        Assert.False(result.HasClaim(c => c.Type == ClaimTypes.Role));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin));
     }
 
     [Fact]
-    public async Task TransformAsync_ShouldAutoProvisionAndAddEmployeeRole_WhenUserDoesNotExist()
+    public async Task TransformAsync_UnknownUser_IsDeniedAndNotProvisioned()
     {
-        // Arrange
         var subjectId = "google-oauth2|bob";
         var name = "Bob Jones";
         var email = "bob@example.com";
         var principal = CreatePrincipal(subjectId, email, name);
 
-        // Act
         var result = await _transformation.TransformAsync(principal);
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.IsInRole("Employee"));
-        Assert.True(result.HasClaim(c => c.Type == ClaimTypes.Role && c.Value == "Employee"));
+        Assert.Same(principal, result);
+        Assert.False(result.HasClaim(c => c.Type == ClaimTypes.Role));
 
-        // Verify user is auto-provisioned in database
         await using var db = new AnalyticsDbContext(_dbOptions);
-        var user = await db.Users.SingleOrDefaultAsync(u => u.ExternalSubjectId == subjectId);
-        Assert.NotNull(user);
-        Assert.Equal(name, user.Name);
-        Assert.Equal(email, user.Email);
-        Assert.Equal(UserRole.Employee, user.Role);
+        Assert.False(await db.Users.AnyAsync(u => u.ExternalSubjectId == subjectId));
     }
 
     [Fact]
@@ -148,9 +134,8 @@ public class LocalUserClaimsTransformationTests
         // Act
         var result = await _transformation.TransformAsync(principal);
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.IsInRole("Admin"));
+        // Assert: linking happens, but a user without membership gets no claims.
+        Assert.False(result.HasClaim(c => c.Type == ClaimTypes.Role));
 
         // Verify linked fields in DB
         await using var dbVerify = new AnalyticsDbContext(_dbOptions);
@@ -183,7 +168,7 @@ public class LocalUserClaimsTransformationTests
         var result = await _transformation.TransformAsync(
             CreatePrincipal("new-oidc-subject", email, "Updated User"));
 
-        Assert.True(result.IsInRole("Admin"));
+        Assert.False(result.HasClaim(c => c.Type == ClaimTypes.Role));
 
         await using var dbVerify = new AnalyticsDbContext(_dbOptions);
         var users = await dbVerify.Users.ToListAsync();
@@ -345,6 +330,7 @@ public class LocalUserClaimsTransformationTests
         var result = await _transformation.TransformAsync(CreatePrincipal("membership-platform-user", "platform@example.com", "Platform User"));
 
         Assert.True(result.IsInRole("Admin"));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin && c.Value == "true"));
         Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId));
         Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.TenantId));
     }

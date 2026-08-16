@@ -20,9 +20,10 @@ public static class AccessScopeResolver
             return null;
         }
 
-        if (rows.Any(row => row.OrganizationId is null && row.Role == UserRole.Admin))
+        var platformRows = rows.Where(row => row.OrganizationId is null).ToList();
+        if (platformRows.Any(row => row.Role == UserRole.Admin))
         {
-            return new AccessScope(null, null);
+            return new AccessScope(null, null, DistinctRoles(platformRows));
         }
 
         var organizationId = rows
@@ -34,16 +35,32 @@ public static class AccessScopeResolver
             return null;
         }
 
-        var hasOrgLevelAccess = rows.Any(row =>
-            row.OrganizationId == organizationId && row.TenantId is null);
+        var orgLevelRows = rows
+            .Where(row => row.OrganizationId == organizationId && row.TenantId is null)
+            .ToList();
 
-        var tenantId = hasOrgLevelAccess
-            ? null
-            : rows
-                .Where(row => row.OrganizationId == organizationId)
-                .Select(row => row.TenantId)
-                .FirstOrDefault(id => id is not null);
+        if (orgLevelRows.Count > 0)
+        {
+            return new AccessScope(organizationId, null, DistinctRoles(orgLevelRows));
+        }
 
-        return new AccessScope(organizationId, tenantId);
+        var tenantId = rows
+            .Where(row => row.OrganizationId == organizationId)
+            .Select(row => row.TenantId)
+            .FirstOrDefault(id => id is not null);
+
+        if (tenantId is null)
+        {
+            return null;
+        }
+
+        var tenantRows = rows
+            .Where(row => row.OrganizationId == organizationId && row.TenantId == tenantId)
+            .ToList();
+
+        return new AccessScope(organizationId, tenantId, DistinctRoles(tenantRows));
     }
+
+    private static IReadOnlyCollection<UserRole> DistinctRoles(IEnumerable<UserAccess> rows)
+        => rows.Select(row => row.Role).Distinct().ToList();
 }

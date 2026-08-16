@@ -8,7 +8,6 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
 using Adwais.Domain.Entities;
-using Adwais.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Adwais.Infrastructure.Persistence;
@@ -51,7 +50,7 @@ public class LocalUserClaimsTransformation(
         var name = principal.FindFirst("name")?.Value 
                    ?? "New User";
         var email = principal.FindFirst("email")?.Value
-                    ?? principal.FindFirst("preferred_username")?.Value;
+                     ?? principal.FindFirst("preferred_username")?.Value;
 
         if (user != null)
         {
@@ -76,7 +75,7 @@ public class LocalUserClaimsTransformation(
             if (!string.IsNullOrEmpty(email))
             {
                 var lowerEmail = email.ToLowerInvariant();
-                // Reconcile accounts provisioned by a previous identity format/provider by email.
+                // Link accounts provisioned ahead of time by email.
                 user = await db.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == lowerEmail);
 
                 if (user != null)
@@ -89,19 +88,21 @@ public class LocalUserClaimsTransformation(
 
             if (user == null)
             {
-                // Auto-provision user with default Employee role
-                user = new User
-                {
-                    Id = Guid.NewGuid(),
-                    ExternalSubjectId = subjectId,
-                    Name = name,
-                    Email = email,
-                    Role = UserRole.Employee
-                };
-
-                db.Users.Add(user);
-                await db.SaveChangesAsync();
+                // Users are provisioned by an admin. Unknown subjects get no claims.
+                return principal;
             }
+        }
+
+        var memberships = await db.UserAccesses
+            .AsNoTracking()
+            .Where(access => access.UserId == user.Id)
+            .ToListAsync();
+
+        var scope = AccessScopeResolver.Resolve(memberships);
+        if (scope is null)
+        {
+            // A provisioned user without membership rows gets no claims.
+            return principal;
         }
 
         // Append role and scope claims using a cloned principal to ensure thread-safety/immutability
@@ -116,32 +117,23 @@ public class LocalUserClaimsTransformation(
             }
         }
 
-        var memberships = await db.UserAccesses
-            .AsNoTracking()
-            .Where(access => access.UserId == user.Id)
-            .ToListAsync();
-
         var localIdentity = new ClaimsIdentity("LocalDatabaseRoles");
-        if (memberships.Count > 0)
+        foreach (var role in scope.Roles)
         {
-            foreach (var role in memberships.Select(membership => membership.Role).Distinct())
-            {
-                localIdentity.AddClaim(new Claim(ClaimTypes.Role, role.ToString()));
-            }
+            localIdentity.AddClaim(new Claim(ClaimTypes.Role, role.ToString()));
+        }
 
-            var scope = AccessScopeResolver.Resolve(memberships);
-            if (scope?.OrganizationId is { } organizationId)
-            {
-                localIdentity.AddClaim(new Claim(AccessClaimTypes.OrganizationId, organizationId.ToString()));
-            }
-            if (scope?.TenantId is { } tenantId)
-            {
-                localIdentity.AddClaim(new Claim(AccessClaimTypes.TenantId, tenantId.ToString()));
-            }
+        if (scope.IsPlatformAdmin)
+        {
+            localIdentity.AddClaim(new Claim(AccessClaimTypes.IsPlatformAdmin, "true"));
         }
         else
         {
-            localIdentity.AddClaim(new Claim(ClaimTypes.Role, user.Role.ToString()));
+            localIdentity.AddClaim(new Claim(AccessClaimTypes.OrganizationId, scope.OrganizationId!.Value.ToString()));
+            if (scope.TenantId is { } tenantId)
+            {
+                localIdentity.AddClaim(new Claim(AccessClaimTypes.TenantId, tenantId.ToString()));
+            }
         }
 
         localIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));

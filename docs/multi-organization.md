@@ -73,7 +73,7 @@ All tenant-scoped queries apply the scope through one helper. No service filters
 ### Statistics
 
 - `FinancialService` every method: Kpis, AccumulatedRevenue, RevenueEfficiency, CrossSegmentDistribution, PortfolioImpact, NetGrowthAddition, OrderDistribution, TransactionDensity, CumulativeGrowthDelta, Orders. Each merge path and tenant dictionary gains org filtering through the scope helper. The system-tenant exclusion becomes per-org.
-- Materialized views (`MaterializedViewOrchestrator`): add `organization_id` to the financial tenant rollup and the monitoring rollups. The date-only global rollups become per-org or gain an org key. All views stop reading `global_config WHERE id = 1` for the timezone. They read the org config instead. Views are created on startup when missing. Deployments with existing views must drop and recreate them.
+- Materialized views (`MaterializedViewOrchestrator`): add `organization_id` to the financial tenant rollup and the monitoring rollups. The date-only global rollups gain an org key instead of splitting per org. One view per domain serves org dashboards (filter by organization_id) and the platform total (group by date over the same view). Per-org views are ruled out: they break the EF view mappings, add DDL per org, and give nothing at this scale. All views stop reading `global_config WHERE id = 1` for the timezone. They read the org config instead. Views are created on startup when missing. Deployments with existing views must drop and recreate them.
 - `FinancialRequestDto` tenantTypes filter: org-scoped tenant type cohorts.
 - `GetOrdersAsync`: unscoped today. It becomes org-scoped, and tenant-scoped for tenant viewers.
 

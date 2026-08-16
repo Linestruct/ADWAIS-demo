@@ -15,6 +15,7 @@ public interface ITokenService
     /// <param name="deviceId">The unique identifier of the kiosk device.</param>
     /// <param name="role">The role claim to assign to the token.</param>
     /// <param name="organizationId">The organization claim to embed in the token, when known.</param>
+    /// <param name="isPlatformAdmin">Adds the platform admin claim. Used for development tooling only.</param>
     /// <returns>A signed JWT token string.</returns>
-    string GenerateKioskToken(string deviceId, string role = "Viewer", Guid? organizationId = null);
+    string GenerateKioskToken(string deviceId, string role = "Viewer", Guid? organizationId = null, bool isPlatformAdmin = false);
 }

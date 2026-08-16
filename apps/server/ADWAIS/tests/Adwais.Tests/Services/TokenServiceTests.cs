@@ -80,6 +80,29 @@ public class TokenServiceTests
         Assert.Null(jwtToken.Claims.FirstOrDefault(c => c.Type == "org_id"));
     }
 
+    [Fact]
+    public void GenerateKioskToken_WithPlatformFlag_EmbedsPlatformClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("dev-admin", "Admin", isPlatformAdmin: true));
+
+        Assert.Equal("true", jwtToken.Claims.FirstOrDefault(c => c.Type == "is_platform_admin")?.Value);
+        Assert.Null(jwtToken.Claims.FirstOrDefault(c => c.Type == "org_id"));
+    }
+
+    [Fact]
+    public void GenerateKioskToken_WithoutPlatformFlag_HasNoPlatformClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("kiosk-plain-device"));
+
+        Assert.Null(jwtToken.Claims.FirstOrDefault(c => c.Type == "is_platform_admin"));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

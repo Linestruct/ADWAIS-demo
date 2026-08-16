@@ -21,7 +21,7 @@ public class TokenService(IConfiguration configuration) : ITokenService
     private readonly IConfiguration _configuration = configuration;
 
     /// <inheritdoc />
-    public string GenerateKioskToken(string deviceId, string role = "Viewer", Guid? organizationId = null)
+    public string GenerateKioskToken(string deviceId, string role = "Viewer", Guid? organizationId = null, bool isPlatformAdmin = false)
     {
         var secret = _configuration["Authentication:KioskJwtSecret"];
         if (string.IsNullOrEmpty(secret) || secret.Length < 32)
@@ -46,6 +46,10 @@ public class TokenService(IConfiguration configuration) : ITokenService
             if (organizationId is { } orgId)
             {
                 claims.Add(new Claim(AccessClaimTypes.OrganizationId, orgId.ToString()));
+            }
+            if (isPlatformAdmin)
+            {
+                claims.Add(new Claim(AccessClaimTypes.IsPlatformAdmin, "true"));
             }
 
             var tokenDescriptor = new SecurityTokenDescriptor

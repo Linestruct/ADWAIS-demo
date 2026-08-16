@@ -21,7 +21,7 @@ public class DevMockAuthMiddleware(RequestDelegate next, IWebHostEnvironment env
         if (_env.IsDevelopment() && !context.Request.Headers.ContainsKey("Authorization"))
         {
             var tokenService = context.RequestServices.GetRequiredService<ITokenService>();
-            var token = tokenService.GenerateKioskToken("00000000-0000-0000-0000-000000000002", "Admin");
+            var token = tokenService.GenerateKioskToken("00000000-0000-0000-0000-000000000002", "Admin", isPlatformAdmin: true);
             context.Request.Headers.Authorization = $"Bearer {token}";
         }
 

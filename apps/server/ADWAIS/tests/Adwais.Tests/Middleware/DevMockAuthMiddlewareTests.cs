@@ -36,7 +36,7 @@ public class DevMockAuthMiddlewareTests
         _envMock.Setup(e => e.EnvironmentName).Returns("Development");
         
         var mockTokenService = new Mock<ITokenService>();
-        mockTokenService.Setup(s => s.GenerateKioskToken("00000000-0000-0000-0000-000000000002", "Admin")).Returns("mock-jwt-token");
+        mockTokenService.Setup(s => s.GenerateKioskToken("00000000-0000-0000-0000-000000000002", "Admin", null, true)).Returns("mock-jwt-token");
 
         var serviceProviderMock = new Mock<IServiceProvider>();
         serviceProviderMock.Setup(s => s.GetService(typeof(ITokenService))).Returns(mockTokenService.Object);

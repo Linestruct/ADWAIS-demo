@@ -4221,6 +4221,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "name": {
             "type": "string",
             "nullable": true
@@ -4245,6 +4249,9 @@
           "lastSyncError": {
             "type": "string",
             "nullable": true
+          },
+          "organization": {
+            "$ref": "#/components/schemas/Organization"
           }
         },
         "additionalProperties": false
@@ -4950,6 +4957,41 @@
         ],
         "type": "string"
       },
+      "Organization": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userAccesses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserAccess"
+            },
+            "nullable": true
+          },
+          "tenants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tenant"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PortfolioImpactResponseDto": {
         "type": "object",
         "properties": {
@@ -5277,6 +5319,14 @@
           },
           "tenant": {
             "$ref": "#/components/schemas/Tenant"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "organization": {
+            "$ref": "#/components/schemas/Organization"
           }
         },
         "additionalProperties": false
@@ -5341,6 +5391,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "name": {
             "type": "string",
             "nullable": true
@@ -5398,6 +5452,9 @@
               "$ref": "#/components/schemas/UptimeMonitor"
             },
             "nullable": true
+          },
+          "organization": {
+            "$ref": "#/components/schemas/Organization"
           }
         },
         "additionalProperties": false
@@ -6156,6 +6213,82 @@
           "externalId": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "User": {
+        "required": [
+          "name",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalSubjectId": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "calendarFeedToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserAccess": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/Organization"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/Tenant"
           }
         },
         "additionalProperties": false

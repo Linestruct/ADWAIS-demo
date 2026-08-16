@@ -12,6 +12,8 @@ using Hangfire.PostgreSql;
 using Hangfire.Storage;
 using Adwais.Application.Interfaces;
 using Adwais.Application.Services;
+using Adwais.Application.Common.Access;
+using Adwais.Api.Services;
 using Adwais.Infrastructure;
 using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Helpers;
@@ -45,6 +47,8 @@ builder.Services.AddAppAuthentication(builder.Configuration);
 
 builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IMonitorOrchestrationService, MonitorOrchestrationService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentAccess, CurrentAccessService>();
 
 builder.Services.AddDataProtection()
     .SetApplicationName("ADWAIS")

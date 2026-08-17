@@ -134,6 +134,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                     .HasConversion(new EncryptedStringConverter(dataProtectionProvider));
             }
             entity.Property(t => t.CurrentlyFetching).HasDefaultValue(false);
+            entity.Property(t => t.OrderFetchingEnabled).HasDefaultValue(false);
 
             entity.HasOne(t => t.Organization)
                 .WithMany(org => org.Tenants)

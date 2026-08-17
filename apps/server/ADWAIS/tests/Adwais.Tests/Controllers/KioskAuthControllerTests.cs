@@ -10,7 +10,6 @@ using Adwais.Api.Controllers.Authentication;
 using Adwais.Api.DTOs.Kiosk;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
-using Adwais.Infrastructure.Persistence;
 using Adwais.Domain.Enums;
 
 namespace Adwais.Tests.Controllers;

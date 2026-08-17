@@ -5,7 +5,6 @@
 using Adwais.Api.DTOs.Kiosk;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
-using Adwais.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

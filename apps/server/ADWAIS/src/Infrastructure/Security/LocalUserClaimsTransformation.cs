@@ -117,26 +117,7 @@ public class LocalUserClaimsTransformation(
             }
         }
 
-        var localIdentity = new ClaimsIdentity("LocalDatabaseRoles");
-        foreach (var role in scope.Roles)
-        {
-            localIdentity.AddClaim(new Claim(ClaimTypes.Role, role.ToString()));
-        }
-
-        if (scope.IsPlatformAdmin)
-        {
-            localIdentity.AddClaim(new Claim(AccessClaimTypes.IsPlatformAdmin, "true"));
-        }
-        else
-        {
-            localIdentity.AddClaim(new Claim(AccessClaimTypes.OrganizationId, scope.OrganizationId!.Value.ToString()));
-            if (scope.TenantId is { } tenantId)
-            {
-                localIdentity.AddClaim(new Claim(AccessClaimTypes.TenantId, tenantId.ToString()));
-            }
-        }
-
-        localIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+        var localIdentity = AccessClaimsBuilder.Build(user.Id, scope);
         clone.AddIdentity(localIdentity);
 
         return clone;

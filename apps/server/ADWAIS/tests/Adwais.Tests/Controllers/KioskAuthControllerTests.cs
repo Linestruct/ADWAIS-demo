@@ -162,7 +162,7 @@ public class KioskAuthControllerTests
         mockConfig.Setup(c => c["Authentication:KioskJwtSecret"]).Returns("SuperSecretKeyForTestingKioskTokens32CharsMinimum!");
         
         var mockTokenService = new Mock<ITokenService>();
-        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "Admin", AnalyticsDbContext.DefaultOrganizationGuid)).Returns("generated-token");
+        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "Admin", null, true)).Returns("generated-token");
 
         var mockEnv = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
         mockEnv.Setup(e => e.EnvironmentName).Returns("Development");

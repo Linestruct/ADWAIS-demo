@@ -91,7 +91,7 @@ public class KioskAuthController(IKioskService kioskService, ICurrentAccess curr
             return Unauthorized("Invalid secret.");
         }
         
-        var token = tokenService.GenerateKioskToken("swagger-admin", "Admin", AnalyticsDbContext.DefaultOrganizationGuid);
+        var token = tokenService.GenerateKioskToken("swagger-admin", "Admin", isPlatformAdmin: true);
         return Ok(new KioskTokenResponseDto { Token = token, ExpiresInDays = 30 });
     }
 }

@@ -2,10 +2,11 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
-using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Adwais.Api.Middleware;
-using Adwais.Application.Interfaces;
+using Adwais.Application.Common.Access;
+using Adwais.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Moq;
@@ -30,17 +31,10 @@ public class DevMockAuthMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_InDevelopment_NoAuthHeader_InjectsBearerHeader()
+    public async Task InvokeAsync_InDevelopment_NoAuthHeader_SetsPlatformAdminPrincipal()
     {
         // Arrange
         _envMock.Setup(e => e.EnvironmentName).Returns("Development");
-        
-        var mockTokenService = new Mock<ITokenService>();
-        mockTokenService.Setup(s => s.GenerateKioskToken("00000000-0000-0000-0000-000000000002", "Admin", null, true)).Returns("mock-jwt-token");
-
-        var serviceProviderMock = new Mock<IServiceProvider>();
-        serviceProviderMock.Setup(s => s.GetService(typeof(ITokenService))).Returns(mockTokenService.Object);
-        _context.RequestServices = serviceProviderMock.Object;
 
         var nextCalled = false;
         var middleware = CreateMiddleware(ctx => { nextCalled = true; return Task.CompletedTask; });
@@ -50,12 +44,29 @@ public class DevMockAuthMiddlewareTests
 
         // Assert
         Assert.True(nextCalled);
-        Assert.True(_context.Request.Headers.ContainsKey("Authorization"));
-        Assert.Equal("Bearer mock-jwt-token", _context.Request.Headers.Authorization.ToString());
+        Assert.NotNull(_context.User);
+        Assert.True(_context.User.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"));
+        Assert.True(_context.User.IsInRole("Admin"));
+        Assert.False(_context.User.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId));
+        Assert.True(_context.User.HasClaim(
+            c => c.Type == ClaimTypes.NameIdentifier && c.Value == AnalyticsDbContext.SystemUserGuid.ToString()));
     }
 
     [Fact]
-    public async Task InvokeAsync_InProduction_NoAuthHeader_DoesNotInjectHeader()
+    public async Task InvokeAsync_InDevelopment_ScopeResolvesToPlatform()
+    {
+        _envMock.Setup(e => e.EnvironmentName).Returns("Development");
+
+        var middleware = CreateMiddleware(_ => Task.CompletedTask);
+        await middleware.InvokeAsync(_context);
+
+        var scope = Adwais.Api.Services.CurrentAccessService.Resolve(_context.User);
+        Assert.NotNull(scope);
+        Assert.True(scope.IsPlatformAdmin);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_InProduction_NoAuthHeader_DoesNotSetPrincipal()
     {
         // Arrange
         _envMock.Setup(e => e.EnvironmentName).Returns("Production");
@@ -67,7 +78,7 @@ public class DevMockAuthMiddlewareTests
 
         // Assert
         Assert.True(nextCalled);
-        Assert.False(_context.Request.Headers.ContainsKey("Authorization"));
+        Assert.False(_context.User.Identities.Any(identity => identity.IsAuthenticated));
     }
 
     [Fact]
@@ -76,7 +87,7 @@ public class DevMockAuthMiddlewareTests
         // Arrange
         _envMock.Setup(e => e.EnvironmentName).Returns("Development");
         _context.Request.Headers.Authorization = "Bearer existing-token";
-        
+
         var nextCalled = false;
         var middleware = CreateMiddleware(ctx => { nextCalled = true; return Task.CompletedTask; });
 
@@ -86,5 +97,6 @@ public class DevMockAuthMiddlewareTests
         // Assert
         Assert.True(nextCalled);
         Assert.Equal("Bearer existing-token", _context.Request.Headers.Authorization.ToString());
+        Assert.False(_context.User.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin));
     }
 }

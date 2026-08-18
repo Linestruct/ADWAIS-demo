@@ -27,7 +27,7 @@ public class OrderFetchDispatcherJobTests
         var tenantId = Guid.NewGuid();
         await using (var db = new AnalyticsDbContext(options))
         {
-            db.GlobalConfigs.Add(new GlobalConfig { Id = 1, OrderFetchEnabled = true, OrderFetchIntervalMinutes = 60 });
+            db.GlobalConfigs.Add(new GlobalConfig { Id = 1, OrderFetchEnabled = true });
             db.Tenants.Add(new Tenant
             {
                 Id = tenantId,

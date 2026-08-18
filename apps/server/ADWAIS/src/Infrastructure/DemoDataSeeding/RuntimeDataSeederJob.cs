@@ -26,7 +26,8 @@ public class RuntimeDataSeederJob(
     public async Task ExecuteAsync()
     {
         await using var db = await dbContextFactory.CreateDbContextAsync();
-        var reportingTimeZoneId = await db.GlobalConfigs
+        var reportingTimeZoneId = await db.OrganizationConfigs
+            .Where(config => config.OrganizationId == AnalyticsDbContext.DefaultOrganizationGuid)
             .Select(config => config.ReportingTimeZoneId)
             .SingleAsync();
         var reportingTimeZone = TimeZoneInfo.FindSystemTimeZoneById(reportingTimeZoneId);

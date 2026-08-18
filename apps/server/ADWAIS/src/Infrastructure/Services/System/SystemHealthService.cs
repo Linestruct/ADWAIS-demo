@@ -40,7 +40,10 @@ public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealt
         {
             var config = await db.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
             lastLitiumSync = config?.LastPolled;
-            globalSyncError = config?.LastSyncError;
+            globalSyncError = await db.OrganizationConfigs
+                .Where(c => c.LastSyncError != null)
+                .Select(c => c.LastSyncError)
+                .FirstOrDefaultAsync(ct);
 
             // Safe checks in case of empty sequences
             if (await db.Monitors.AnyAsync(ct))
@@ -162,15 +165,15 @@ public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealt
             foreach (var t in tenants) t.LastSyncError = null;
             var monitors = await db.Monitors.ToListAsync(ct);
             foreach (var m in monitors) m.LastSyncError = null;
-            var configs = await db.GlobalConfigs.ToListAsync(ct);
-            foreach (var c in configs) c.LastSyncError = null;
+            var orgConfigs = await db.OrganizationConfigs.ToListAsync(ct);
+            foreach (var c in orgConfigs) c.LastSyncError = null;
             await db.SaveChangesAsync(ct);
         }
         else
         {
             await db.Tenants.ExecuteUpdateAsync(s => s.SetProperty(t => t.LastSyncError, (string?)null), ct);
             await db.Monitors.ExecuteUpdateAsync(s => s.SetProperty(m => m.LastSyncError, (string?)null), ct);
-            await db.GlobalConfigs.ExecuteUpdateAsync(s => s.SetProperty(c => c.LastSyncError, (string?)null), ct);
+            await db.OrganizationConfigs.ExecuteUpdateAsync(s => s.SetProperty(c => c.LastSyncError, (string?)null), ct);
             await db.FeedSources.ExecuteUpdateAsync(s => s.SetProperty(fs => fs.LastSyncError, (string?)null), ct);
         }
     }

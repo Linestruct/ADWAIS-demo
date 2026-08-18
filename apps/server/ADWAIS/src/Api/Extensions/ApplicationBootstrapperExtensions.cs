@@ -111,13 +111,16 @@ public static class ApplicationBootstrapperExtensions
             {
                 var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AnalyticsDbContext>>();
                 await using var context = await dbFactory.CreateDbContextAsync();
-                var config = await context.GlobalConfigs.SingleOrDefaultAsync();
-                
-                var uptimeInterval = config?.UptimeFetchIntervalMinutes ?? 60;
-                var latencyInterval = config?.LatencyFetchIntervalMinutes ?? 10;
-                var orderFetchInterval = Math.Max(1, config?.OrderFetchIntervalMinutes ?? 10);
-                var userStatsInterval = config?.UserStatsFetchIntervalMinutes ?? 60;
-                var feedInterval = Math.Max(1, config?.FeedFetchIntervalHours ?? 2);
+                var orgConfig = await context.OrganizationConfigs
+                    .Where(c => c.MonitoringProviderSettings != null)
+                    .OrderBy(c => c.OrganizationId)
+                    .FirstOrDefaultAsync();
+
+                var uptimeInterval = orgConfig?.UptimeFetchIntervalMinutes ?? 60;
+                var latencyInterval = orgConfig?.LatencyFetchIntervalMinutes ?? 10;
+                var orderFetchInterval = Math.Max(1, orgConfig?.OrderFetchIntervalMinutes ?? 10);
+                var userStatsInterval = orgConfig?.UserStatsFetchIntervalMinutes ?? 60;
+                var feedInterval = Math.Max(1, orgConfig?.FeedFetchIntervalHours ?? 2);
                 
                 recurringJobManager.AddOrUpdate<UptimeDispatcherJob>(
                         "dispatch-monitoring-uptime",

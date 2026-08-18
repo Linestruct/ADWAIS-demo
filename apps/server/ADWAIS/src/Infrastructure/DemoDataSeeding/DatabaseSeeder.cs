@@ -21,7 +21,8 @@ public static class DatabaseSeeder
         progress.StartStep(2, "Demo metadata and monitor definitions");
         var random = new Random(42);
         var forceReSeed = Environment.GetEnvironmentVariable("RESEED") == "true";
-        var reportingTimeZoneId = await context.GlobalConfigs
+        var reportingTimeZoneId = await context.OrganizationConfigs
+            .Where(config => config.OrganizationId == AnalyticsDbContext.DefaultOrganizationGuid)
             .Select(config => config.ReportingTimeZoneId)
             .SingleAsync();
         var reportingTimeZone = TimeZoneInfo.FindSystemTimeZoneById(reportingTimeZoneId);

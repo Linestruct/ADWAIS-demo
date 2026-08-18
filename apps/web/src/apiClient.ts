@@ -50,7 +50,7 @@ export async function checkSessionValidity() {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch('/api/users/me', { headers });
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       await handleSessionInvalidation();
     }
   } catch (e) {
@@ -75,7 +75,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
 
   if (!response.ok) {
     const isProfileUrl = url.includes('/api/users/me');
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       if (isProfileUrl) {
         const bypass = headers.get('X-Bypass-Global-401');
         if (bypass !== 'true') {
@@ -140,7 +140,7 @@ export async function customClient<T>(
 
     if (!response.ok) {
       const isProfileUrl = url.includes('/api/users/me');
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         if (isProfileUrl) {
           const bypass = headers.get('X-Bypass-Global-401');
           if (bypass !== 'true') {

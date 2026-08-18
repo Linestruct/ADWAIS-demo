@@ -102,7 +102,7 @@ test('apiFetch redirects to /kiosk on 401 when on non-bypass route', async () =>
   expect(mockLocation.href).toBe('/kiosk');
 });
 
-test('apiFetch redirects to /kiosk on 403 for /api/users/me when no OIDC user exists', async () => {
+test('apiFetch does not redirect on 403 for /api/users/me when no OIDC user exists', async () => {
   const mockLocation = {
     pathname: '/financial',
     href: 'http://localhost/financial',
@@ -117,7 +117,7 @@ test('apiFetch redirects to /kiosk on 403 for /api/users/me when no OIDC user ex
 
   await expect(apiFetch('http://test.local/api/users/me')).rejects.toThrow();
 
-  expect(mockLocation.href).toBe('/kiosk');
+  expect(mockLocation.href).toBe('http://localhost/financial');
 });
 
 test('OIDC token takes precedence over a stale kiosk token', async () => {
@@ -155,13 +155,13 @@ test('apiFetch reloads demo mode when its token is invalid', async () => {
   expect(reload).toHaveBeenCalledOnce();
 });
 
-test('apiFetch redirects to /login on 403 for /api/users/me when an OIDC user exists', async () => {
+test('apiFetch does not log out on 403 for /api/users/me when an OIDC user exists', async () => {
   const mockLocation = {
     pathname: '/financial',
     href: 'http://localhost/financial',
   };
   vi.stubGlobal('window', { location: mockLocation });
-  
+
   vi.mocked(userManager!.getUser).mockResolvedValue({
     access_token: 'stale-token',
     expired: false,
@@ -180,62 +180,22 @@ test('apiFetch redirects to /login on 403 for /api/users/me when an OIDC user ex
 
   await expect(apiFetch('http://test.local/api/users/me')).rejects.toThrow();
 
-  expect(mockSessionStorage.clear).toHaveBeenCalled();
-  expect(userManager!.removeUser).toHaveBeenCalled();
-  expect(mockLocation.href).toBe('/login');
-});
-
-test('apiFetch does not redirect on 403 for non-profile routes if session is still valid', async () => {
-  const mockLocation = {
-    pathname: '/financial',
-    href: 'http://localhost/financial',
-  };
-  vi.stubGlobal('window', { location: mockLocation });
-
-  const fetchMock = vi.fn().mockImplementation((url: string) => {
-    if (url.includes('/api/users/me')) {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify({ role: 'Employee' }),
-      });
-    }
-    return Promise.resolve({
-      ok: false,
-      status: 403,
-      text: async () => 'Forbidden',
-    });
-  });
-  vi.stubGlobal('fetch', fetchMock);
-
-  await expect(apiFetch('http://test.local/api/financial/summary')).rejects.toThrow();
-
-  await new Promise((resolve) => setTimeout(resolve, 10));
-
-  expect(fetchMock).toHaveBeenCalledWith('/api/users/me', expect.any(Object));
+  expect(mockSessionStorage.clear).not.toHaveBeenCalled();
+  expect(userManager!.removeUser).not.toHaveBeenCalled();
   expect(mockLocation.href).toBe('http://localhost/financial');
 });
 
-test('apiFetch redirects on 403 for non-profile routes if session is stale/unauthorized', async () => {
+test('apiFetch does not check session validity on 403 for non-profile routes', async () => {
   const mockLocation = {
     pathname: '/financial',
     href: 'http://localhost/financial',
   };
   vi.stubGlobal('window', { location: mockLocation });
 
-  const fetchMock = vi.fn().mockImplementation((url: string) => {
-    if (url.includes('/api/users/me')) {
-      return Promise.resolve({
-        ok: false,
-        status: 403,
-        text: async () => 'Forbidden',
-      });
-    }
-    return Promise.resolve({
-      ok: false,
-      status: 403,
-      text: async () => 'Forbidden',
-    });
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 403,
+    text: async () => 'Forbidden',
   });
   vi.stubGlobal('fetch', fetchMock);
 
@@ -243,8 +203,30 @@ test('apiFetch redirects on 403 for non-profile routes if session is stale/unaut
 
   await new Promise((resolve) => setTimeout(resolve, 10));
 
-  expect(fetchMock).toHaveBeenCalledWith('/api/users/me', expect.any(Object));
-  expect(mockLocation.href).toBe('/kiosk');
+  expect(fetchMock).not.toHaveBeenCalledWith('/api/users/me', expect.any(Object));
+  expect(mockLocation.href).toBe('http://localhost/financial');
+});
+
+test('apiFetch does not redirect on 403 for non-profile routes even if session is stale', async () => {
+  const mockLocation = {
+    pathname: '/financial',
+    href: 'http://localhost/financial',
+  };
+  vi.stubGlobal('window', { location: mockLocation });
+
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 403,
+    text: async () => 'Forbidden',
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  await expect(apiFetch('http://test.local/api/financial/summary')).rejects.toThrow();
+
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  expect(fetchMock).not.toHaveBeenCalledWith('/api/users/me', expect.any(Object));
+  expect(mockLocation.href).toBe('http://localhost/financial');
 });
 
 

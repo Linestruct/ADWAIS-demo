@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
@@ -16,15 +17,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Services;
 
-public class CalendarEventService(IApplicationDbContext dbContext) : ICalendarEventService
+public class CalendarEventService(IApplicationDbContext dbContext, ICurrentAccess currentAccess) : ICalendarEventService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+
+    private OrganizationFilter OrganizationFilter => OrganizationFilter.From(_currentAccess.Scope);
 
     public async Task<CalendarEventDto?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var calendarEvent = await _dbContext.CalendarEvents
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarEvents
             .Include(oe => oe.User)
-            .SingleOrDefaultAsync(oe => oe.Id == id, ct);
+            .Where(oe => oe.Id == id);
+        if (filter.Denied) return null;
+        if (filter.OrganizationId is { } orgId) query = query.Where(oe => oe.OrganizationId == orgId);
+
+        var calendarEvent = await query.SingleOrDefaultAsync(ct);
 
         if (calendarEvent == null) return null;
         return MapToDto(calendarEvent);
@@ -32,6 +41,9 @@ public class CalendarEventService(IApplicationDbContext dbContext) : ICalendarEv
 
     public async Task<IEnumerable<CalendarEventDto>> GetEventsAsync(DateTimeOffset? start, DateTimeOffset? end, CancellationToken ct = default)
     {
+        var filter = OrganizationFilter;
+        if (filter.Denied) return [];
+
         var startUtc = start?.ToUniversalTime() ?? DateTimeOffset.MinValue;
         var endUtc = end?.ToUniversalTime() ?? DateTimeOffset.MaxValue;
         var expansionCap = DateTimeOffset.UtcNow.AddYears(1);
@@ -39,12 +51,14 @@ public class CalendarEventService(IApplicationDbContext dbContext) : ICalendarEv
 
         // Fetch non-recurring events that overlap the window, plus all recurring events
         // whose base start time is before the window ends (they may have occurrences inside).
-        var dbEvents = await _dbContext.CalendarEvents
+        var query = _dbContext.CalendarEvents
             .Include(oe => oe.User)
             .Where(oe =>
                 (!oe.IsRecurring && oe.EndTime >= startUtc && oe.StartTime <= endUtc) ||
-                (oe.IsRecurring && oe.StartTime <= endUtc))
-            .ToListAsync(ct);
+                (oe.IsRecurring && oe.StartTime <= endUtc));
+        if (filter.OrganizationId is { } orgId) query = query.Where(oe => oe.OrganizationId == orgId);
+
+        var dbEvents = await query.ToListAsync(ct);
 
         var results = new List<CalendarEventDto>();
 
@@ -101,9 +115,14 @@ public class CalendarEventService(IApplicationDbContext dbContext) : ICalendarEv
 
     public async Task<CalendarEventDto> CreateEventAsync(Guid? userId, CreateCalendarEventDto dto, CancellationToken ct = default)
     {
+        var filter = OrganizationFilter;
+        if (filter.Denied) throw new InvalidOperationException("The current scope cannot create calendar events.");
+        if (filter.OrganizationId is null) throw new InvalidOperationException("Calendar events require an organization scope.");
+
         var calendarEvent = new CalendarEvent
         {
             Id = Guid.NewGuid(),
+            OrganizationId = filter.OrganizationId.Value,
             Title = dto.Title,
             Description = dto.Description,
             Location = dto.Location,
@@ -129,9 +148,14 @@ public class CalendarEventService(IApplicationDbContext dbContext) : ICalendarEv
 
     public async Task<CalendarEventDto?> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, CancellationToken ct = default)
     {
-        var calendarEvent = await _dbContext.CalendarEvents
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarEvents
             .Include(oe => oe.User)
-            .SingleOrDefaultAsync(oe => oe.Id == id, ct);
+            .Where(oe => oe.Id == id);
+        if (filter.Denied) return null;
+        if (filter.OrganizationId is { } orgId) query = query.Where(oe => oe.OrganizationId == orgId);
+
+        var calendarEvent = await query.SingleOrDefaultAsync(ct);
 
         if (calendarEvent == null) return null;
 
@@ -155,7 +179,12 @@ public class CalendarEventService(IApplicationDbContext dbContext) : ICalendarEv
 
     public async Task<bool> DeleteEventAsync(Guid id, CancellationToken ct = default)
     {
-        var calendarEvent = await _dbContext.CalendarEvents.FindAsync(new object[] { id }, ct);
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarEvents.Where(oe => oe.Id == id);
+        if (filter.Denied) return false;
+        if (filter.OrganizationId is { } orgId) query = query.Where(oe => oe.OrganizationId == orgId);
+
+        var calendarEvent = await query.SingleOrDefaultAsync(ct);
         if (calendarEvent == null) return false;
 
         _dbContext.CalendarEvents.Remove(calendarEvent);

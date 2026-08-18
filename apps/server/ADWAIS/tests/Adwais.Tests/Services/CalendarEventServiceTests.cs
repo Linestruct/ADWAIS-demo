@@ -10,6 +10,8 @@ using Adwais.Application.DTOs.Intranet;
 using Adwais.Domain.Entities.Intranet;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
+using Adwais.Application.Common.Access;
+using Moq;
 using Adwais.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -43,7 +45,7 @@ public class CalendarEventServiceTests
         dbContext.CalendarEvents.Add(calendarEvent);
         await dbContext.SaveChangesAsync();
 
-        var result = (await new CalendarEventService(dbContext).GetEventsAsync(
+        var result = (await new CalendarEventService(dbContext, PlatformAccess()).GetEventsAsync(
             new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2025, 3, 31, 23, 59, 59, TimeSpan.Zero))).ToArray();
 
@@ -69,7 +71,7 @@ public class CalendarEventServiceTests
             dbContext.CalendarEvents.Add(calendarEvent);
             await dbContext.SaveChangesAsync();
 
-            var service = new CalendarEventService(dbContext);
+            var service = new CalendarEventService(dbContext, PlatformAccess());
             var updatedStartTime = DateTimeOffset.UtcNow.AddHours(2);
             var updatedEndTime = DateTimeOffset.UtcNow.AddHours(3);
             var dto = new UpdateCalendarEventDto(
@@ -112,7 +114,7 @@ public class CalendarEventServiceTests
             dbContext.CalendarEvents.Add(calendarEvent);
             await dbContext.SaveChangesAsync();
 
-            var service = new CalendarEventService(dbContext);
+            var service = new CalendarEventService(dbContext, PlatformAccess());
             var updatedStartTime = DateTimeOffset.UtcNow.AddHours(2);
             var updatedEndTime = DateTimeOffset.UtcNow.AddHours(1); // Less than StartTime
             var dto = new UpdateCalendarEventDto(
@@ -132,5 +134,52 @@ public class CalendarEventServiceTests
 
             Assert.Equal("End time must be greater than or equal to start time.", exception.Message);
         }
+    }
+
+    [Fact]
+    public async Task GetEventsAsync_ReturnsOnlyOrganizationEvents()
+    {
+        var options = CreateNewContextOptions();
+        using var dbContext = new AnalyticsDbContext(options);
+        var ownOrgId = Guid.NewGuid();
+        var otherOrgId = Guid.NewGuid();
+
+        var ownEvent = new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            Title = "Own event",
+            StartTime = DateTimeOffset.UtcNow,
+            EndTime = DateTimeOffset.UtcNow.AddHours(1),
+            EventType = EventType.Meeting,
+            OrganizationId = ownOrgId
+        };
+        var otherEvent = new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            Title = "Other event",
+            StartTime = DateTimeOffset.UtcNow,
+            EndTime = DateTimeOffset.UtcNow.AddHours(1),
+            EventType = EventType.Meeting,
+            OrganizationId = otherOrgId
+        };
+        dbContext.CalendarEvents.AddRange(ownEvent, otherEvent);
+        await dbContext.SaveChangesAsync();
+
+        var orgMock = new Mock<ICurrentAccess>();
+        orgMock.Setup(access => access.Scope).Returns(new AccessScope(ownOrgId, null, [UserRole.Admin]));
+
+        var result = (await new CalendarEventService(dbContext, orgMock.Object).GetEventsAsync(
+            DateTimeOffset.UtcNow.AddHours(-1),
+            DateTimeOffset.UtcNow.AddHours(2))).ToArray();
+
+        Assert.Single(result);
+        Assert.Equal("Own event", result[0].Title);
+    }
+
+    private static ICurrentAccess PlatformAccess()
+    {
+        var mock = new Mock<ICurrentAccess>();
+        mock.Setup(access => access.Scope).Returns(new AccessScope(null, null, [UserRole.Admin]));
+        return mock.Object;
     }
 }

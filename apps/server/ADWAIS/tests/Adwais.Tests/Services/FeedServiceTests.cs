@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Domain.Entities.Intranet;
 using Adwais.Infrastructure.Persistence;
+using Adwais.Application.Common.Access;
+using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -38,7 +40,7 @@ public class FeedServiceTests
         dbContext.FeedItems.AddRange(item1, item2, item3);
         await dbContext.SaveChangesAsync();
 
-        var service = new FeedService(dbContext);
+        var service = new FeedService(dbContext, PlatformAccess());
 
         // Act & Assert 1: No filters, sorting descending by date
         var allItems = (await service.GetFeedsAsync(new GetFeedsRequest { FeedSourceId = null, Page = 1, PageSize = 10 }, CancellationToken.None)).ToList();
@@ -65,5 +67,12 @@ public class FeedServiceTests
         var motilloItems = (await service.GetFeedsAsync(new GetFeedsRequest { AuthorName = "MOTILLO", Page = 1, PageSize = 10 }, CancellationToken.None)).ToList();
         Assert.Single(motilloItems);
         Assert.Equal("Motillo Aktuellt", motilloItems[0].Author);
+    }
+
+    private static ICurrentAccess PlatformAccess()
+    {
+        var mock = new Mock<ICurrentAccess>();
+        mock.Setup(access => access.Scope).Returns(new AccessScope(null, null, [UserRole.Admin]));
+        return mock.Object;
     }
 }

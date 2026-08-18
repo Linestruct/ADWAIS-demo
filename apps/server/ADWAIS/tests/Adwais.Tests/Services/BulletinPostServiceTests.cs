@@ -11,6 +11,7 @@ using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Intranet;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
+using Adwais.Application.Common.Access;
 using Adwais.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -28,7 +29,7 @@ public class BulletinPostServiceTests
         var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
         var dbContext = new AnalyticsDbContext(options);
 
-        var service = new BulletinPostService(dbContext);
+        var service = new BulletinPostService(dbContext, OrgAccess(Guid.NewGuid()));
         var userId = Guid.NewGuid();
 
         // Act
@@ -57,7 +58,7 @@ public class BulletinPostServiceTests
         dbContext.BulletinPosts.Add(post);
         await dbContext.SaveChangesAsync();
 
-        var service = new BulletinPostService(dbContext);
+        var service = new BulletinPostService(dbContext, PlatformAccess());
 
         // Act
         var result = await service.GetPostByIdAsync(post.Id, CancellationToken.None);
@@ -85,7 +86,7 @@ public class BulletinPostServiceTests
         dbContext.BulletinPosts.AddRange(post1, post2);
         await dbContext.SaveChangesAsync();
 
-        var service = new BulletinPostService(dbContext);
+        var service = new BulletinPostService(dbContext, PlatformAccess());
 
         // Act
         var result = (await service.GetPostsAsync(CancellationToken.None)).ToList();
@@ -115,10 +116,62 @@ public class BulletinPostServiceTests
         dbContext.BulletinPosts.Add(post);
         await dbContext.SaveChangesAsync();
 
-        var service = new BulletinPostService(dbContext);
+        var service = new BulletinPostService(dbContext, PlatformAccess());
 
         Assert.True(await service.DeletePostAsync(post.Id, CancellationToken.None));
         Assert.False(await service.DeletePostAsync(post.Id, CancellationToken.None));
         Assert.Null(await dbContext.BulletinPosts.FindAsync(post.Id));
+    }
+
+    [Fact]
+    public async Task CreatePostAsync_WithoutOrganizationScope_Throws()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
+        var dbContext = new AnalyticsDbContext(options);
+
+        var service = new BulletinPostService(dbContext, PlatformAccess());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreatePostAsync(Guid.NewGuid(), "Title", "Body", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetPostsAsync_ReturnsOnlyOrganizationPosts()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
+        var dbContext = new AnalyticsDbContext(options);
+        var ownOrgId = Guid.NewGuid();
+        var otherOrgId = Guid.NewGuid();
+
+        var ownUser = new User { Id = Guid.NewGuid(), Name = "Own", Email = "own@example.com", Role = UserRole.Employee };
+        var otherUser = new User { Id = Guid.NewGuid(), Name = "Other", Email = "other@example.com", Role = UserRole.Employee };
+        var ownPost = new BulletinPost { Id = Guid.NewGuid(), UserId = ownUser.Id, Title = "Own", Body = "Body", CreatedAt = DateTime.UtcNow, OrganizationId = ownOrgId };
+        var otherPost = new BulletinPost { Id = Guid.NewGuid(), UserId = otherUser.Id, Title = "Other", Body = "Body", CreatedAt = DateTime.UtcNow, OrganizationId = otherOrgId };
+        dbContext.Users.AddRange(ownUser, otherUser);
+        dbContext.BulletinPosts.AddRange(ownPost, otherPost);
+        await dbContext.SaveChangesAsync();
+
+        var service = new BulletinPostService(dbContext, OrgAccess(ownOrgId));
+
+        var result = (await service.GetPostsAsync(CancellationToken.None)).ToList();
+
+        Assert.Single(result);
+        Assert.Equal("Own", result[0].Title);
+    }
+
+    private static ICurrentAccess PlatformAccess()
+    {
+        var mock = new Mock<ICurrentAccess>();
+        mock.Setup(access => access.Scope).Returns(new AccessScope(null, null, [UserRole.Admin]));
+        return mock.Object;
+    }
+
+    private static ICurrentAccess OrgAccess(Guid orgId)
+    {
+        var mock = new Mock<ICurrentAccess>();
+        mock.Setup(access => access.Scope).Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+        return mock.Object;
     }
 }

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
@@ -23,32 +24,52 @@ public class CalendarSubscriptionService(
     IApplicationDbContext dbContext,
     HttpClient httpClient,
     ILogger<CalendarSubscriptionService> logger,
-    ISystemEventService eventService)
+    ISystemEventService eventService,
+    ICurrentAccess currentAccess)
     : ICalendarSubscriptionService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly HttpClient _httpClient = httpClient;
     private readonly ILogger<CalendarSubscriptionService> _logger = logger;
     private readonly ISystemEventService _eventService = eventService;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+
+    private OrganizationFilter OrganizationFilter => OrganizationFilter.From(_currentAccess.Scope);
 
     public async Task<CalendarSubscriptionDto?> GetSubscriptionByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var sub = await _dbContext.CalendarSubscriptions.FindAsync(new object[] { id }, ct);
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
+        if (filter.Denied) return null;
+        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
+
+        var sub = await query.SingleOrDefaultAsync(ct);
         if (sub == null) return null;
         return MapToDto(sub);
     }
 
     public async Task<IEnumerable<CalendarSubscriptionDto>> GetSubscriptionsAsync(CancellationToken ct = default)
     {
-        var subs = await _dbContext.CalendarSubscriptions.OrderBy(s => s.Name).ToListAsync(ct);
+        var filter = OrganizationFilter;
+        if (filter.Denied) return [];
+
+        var query = _dbContext.CalendarSubscriptions.OrderBy(s => s.Name).AsQueryable();
+        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
+
+        var subs = await query.ToListAsync(ct);
         return subs.Select(MapToDto);
     }
 
     public async Task<CalendarSubscriptionDto> CreateSubscriptionAsync(CreateCalendarSubscriptionDto dto, CancellationToken ct = default)
     {
+        var filter = OrganizationFilter;
+        if (filter.Denied) throw new InvalidOperationException("The current scope cannot create calendar subscriptions.");
+        if (filter.OrganizationId is null) throw new InvalidOperationException("Calendar subscriptions require an organization scope.");
+
         var sub = new CalendarSubscription
         {
             Id = Guid.NewGuid(),
+            OrganizationId = filter.OrganizationId.Value,
             Name = dto.Name,
             Url = dto.Url,
             IsActive = dto.IsActive
@@ -61,7 +82,12 @@ public class CalendarSubscriptionService(
 
     public async Task<CalendarSubscriptionDto?> UpdateSubscriptionAsync(Guid id, UpdateCalendarSubscriptionDto dto, CancellationToken ct = default)
     {
-        var sub = await _dbContext.CalendarSubscriptions.FindAsync(new object[] { id }, ct);
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
+        if (filter.Denied) return null;
+        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
+
+        var sub = await query.SingleOrDefaultAsync(ct);
         if (sub == null) return null;
 
         if (dto.Name != null) sub.Name = dto.Name;
@@ -74,7 +100,12 @@ public class CalendarSubscriptionService(
 
     public async Task<bool> DeleteSubscriptionAsync(Guid id, CancellationToken ct = default)
     {
-        var sub = await _dbContext.CalendarSubscriptions.FindAsync(new object[] { id }, ct);
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
+        if (filter.Denied) return false;
+        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
+
+        var sub = await query.SingleOrDefaultAsync(ct);
         if (sub == null) return false;
 
         _dbContext.CalendarSubscriptions.Remove(sub);

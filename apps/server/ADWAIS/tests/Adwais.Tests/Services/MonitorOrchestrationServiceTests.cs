@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 using Adwais.Application.Common.Interfaces;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
@@ -28,7 +29,9 @@ public class MonitorOrchestrationServiceTests
     private readonly AnalyticsDbContext _dbContext;
     private readonly Mock<IMonitoringProvider> _uptimeRobotServiceMock;
     private readonly Mock<ICacheService> _cacheServiceMock;
+    private readonly Mock<ICurrentAccess> _currentAccessMock;
     private readonly MonitorOrchestrationService _service;
+    private readonly Guid _defaultOrgId = Guid.NewGuid();
 
     public MonitorOrchestrationServiceTests()
     {
@@ -40,13 +43,17 @@ public class MonitorOrchestrationServiceTests
         _uptimeRobotServiceMock = new Mock<IMonitoringProvider>();
         _uptimeRobotServiceMock.SetupGet(provider => provider.Provider).Returns("uptimerobot");
         _cacheServiceMock = new Mock<ICacheService>();
+        _currentAccessMock = new Mock<ICurrentAccess>();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(null, null, [UserRole.Admin]));
         _dbContext.GlobalConfigs.Add(new GlobalConfig { Id = 1, OrderFetchIntervalMinutes = 60 });
         _dbContext.SaveChanges();
 
         _service = new MonitorOrchestrationService(
             _dbContext,
             new[] { _uptimeRobotServiceMock.Object },
-            _cacheServiceMock.Object
+            _cacheServiceMock.Object,
+            _currentAccessMock.Object
         );
     }
 
@@ -595,5 +602,96 @@ public class MonitorOrchestrationServiceTests
         _uptimeRobotServiceMock.Verify(service => service.PauseMonitorAsync(It.IsAny<string>()), Times.Never);
         _uptimeRobotServiceMock.Verify(service => service.StartMonitorAsync(It.IsAny<string>()), Times.Never);
         _uptimeRobotServiceMock.Verify(service => service.DeleteMonitorAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetMonitorsAsync_OrgScope_OnlyReturnsOrgTenantMonitors()
+    {
+        var orgTenantId = Guid.NewGuid();
+        var otherOrgId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.AddRange(
+            new Tenant { Id = orgTenantId, OrganizationId = _defaultOrgId, Name = "Org Store" },
+            new Tenant { Id = otherTenantId, OrganizationId = otherOrgId, Name = "Other Org Store" });
+        _dbContext.Monitors.AddRange(
+            new UptimeMonitor { Id = -11, TenantId = orgTenantId, Name = "Own", Url = "https://own.example", UptimeMonitorEnabled = true },
+            new UptimeMonitor { Id = -12, TenantId = otherTenantId, Name = "Other", Url = "https://other.example", UptimeMonitorEnabled = true });
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        var monitors = await _service.GetMonitorsAsync(CreateDefaultPeriod(), ct: CancellationToken.None);
+
+        Assert.Single(monitors);
+        Assert.Equal(-11, monitors[0].Id);
+    }
+
+    [Fact]
+    public async Task GetMonitorsAsync_RequestedTenantOutsideScope_ThrowsKeyNotFound()
+    {
+        var orgTenantId = Guid.NewGuid();
+        var otherOrgId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.AddRange(
+            new Tenant { Id = orgTenantId, OrganizationId = _defaultOrgId, Name = "Org Store" },
+            new Tenant { Id = otherTenantId, OrganizationId = otherOrgId, Name = "Other Org Store" });
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            _service.GetMonitorsAsync(CreateDefaultPeriod(), otherTenantId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AssignMonitorAsync_TargetTenantOutsideScope_ThrowsKeyNotFound()
+    {
+        var otherOrgId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = otherTenantId, OrganizationId = otherOrgId, Name = "Other Org Store" });
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            _service.AssignMonitorAsync(-1, otherTenantId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetMonitorsAsync_TenantScope_RestrictsToThatTenant()
+    {
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        _dbContext.Tenants.AddRange(
+            new Tenant { Id = tenantA, OrganizationId = _defaultOrgId, Name = "Store A" },
+            new Tenant { Id = tenantB, OrganizationId = _defaultOrgId, Name = "Store B" });
+        _dbContext.Monitors.AddRange(
+            new UptimeMonitor { Id = -21, TenantId = tenantA, Name = "A", Url = "https://a.example", UptimeMonitorEnabled = true },
+            new UptimeMonitor { Id = -22, TenantId = tenantB, Name = "B", Url = "https://b.example", UptimeMonitorEnabled = true });
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, tenantA, [UserRole.TenantViewer]));
+
+        var monitors = await _service.GetMonitorsAsync(CreateDefaultPeriod(), ct: CancellationToken.None);
+
+        Assert.Single(monitors);
+        Assert.Equal(-21, monitors[0].Id);
+    }
+
+    private static Adwais.Application.Common.Models.ResolvedPeriod CreateDefaultPeriod()
+    {
+        var start = DateTimeOffset.UtcNow.AddHours(-2);
+        return new Adwais.Application.Common.Models.ResolvedPeriod(
+            start,
+            start.AddHours(2),
+            start.AddHours(-2),
+            start,
+            2,
+            isHourly: true,
+            includeActualTime: true);
     }
 }

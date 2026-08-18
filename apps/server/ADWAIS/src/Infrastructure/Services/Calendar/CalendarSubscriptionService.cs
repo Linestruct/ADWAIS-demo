@@ -63,7 +63,7 @@ public class CalendarSubscriptionService(
     public async Task<CalendarSubscriptionDto> CreateSubscriptionAsync(CreateCalendarSubscriptionDto dto, CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
-        if (filter.Denied) throw new InvalidOperationException("The current scope cannot create calendar subscriptions.");
+        if (filter.Denied) throw new UnauthorizedAccessException("The current scope cannot create calendar subscriptions.");
         if (filter.OrganizationId is null) throw new InvalidOperationException("Calendar subscriptions require an organization scope.");
 
         var sub = new CalendarSubscription

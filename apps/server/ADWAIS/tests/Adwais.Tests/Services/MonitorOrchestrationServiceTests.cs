@@ -654,7 +654,7 @@ public class MonitorOrchestrationServiceTests
     }
 
     [Fact]
-    public async Task GetMonitorsAsync_RequestedTenantOutsideScope_ThrowsKeyNotFound()
+    public async Task GetMonitorsAsync_RequestedTenantOutsideScope_ThrowsUnauthorizedAccess()
     {
         var orgTenantId = Guid.NewGuid();
         var otherOrgId = Guid.NewGuid();
@@ -667,12 +667,12 @@ public class MonitorOrchestrationServiceTests
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             _service.GetMonitorsAsync(CreateDefaultPeriod(), otherTenantId, CancellationToken.None));
     }
 
     [Fact]
-    public async Task AssignMonitorAsync_TargetTenantOutsideScope_ThrowsKeyNotFound()
+    public async Task AssignMonitorAsync_TargetTenantOutsideScope_ThrowsUnauthorizedAccess()
     {
         var otherOrgId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
@@ -682,7 +682,7 @@ public class MonitorOrchestrationServiceTests
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             _service.AssignMonitorAsync(-1, otherTenantId, CancellationToken.None));
     }
 

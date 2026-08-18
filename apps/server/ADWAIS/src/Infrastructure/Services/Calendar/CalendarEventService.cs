@@ -116,7 +116,7 @@ public class CalendarEventService(IApplicationDbContext dbContext, ICurrentAcces
     public async Task<CalendarEventDto> CreateEventAsync(Guid? userId, CreateCalendarEventDto dto, CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
-        if (filter.Denied) throw new InvalidOperationException("The current scope cannot create calendar events.");
+        if (filter.Denied) throw new UnauthorizedAccessException("The current scope cannot create calendar events.");
         if (filter.OrganizationId is null) throw new InvalidOperationException("Calendar events require an organization scope.");
 
         var calendarEvent = new CalendarEvent

@@ -4,6 +4,7 @@
 
 using Adwais.Domain.Entities;
 using Adwais.Application.Common.Models;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Application.DTOs.Monitoring;
 using Adwais.Domain.Enums;
@@ -27,32 +28,14 @@ public class MonitorOrchestrationService(
 
     private async Task<Guid[]?> GetVisibleTenantIdsAsync(CancellationToken ct)
     {
-        var scope = currentAccess.Scope;
-        if (scope is null)
-        {
-            return [];
-        }
-
-        if (scope.IsPlatformAdmin)
-        {
-            return null;
-        }
-
-        if (scope.TenantId is { } tenantId)
-        {
-            return [tenantId];
-        }
-
-        return await dbContext.Tenants
-            .Where(tenant => tenant.OrganizationId == scope.OrganizationId)
-            .Select(tenant => tenant.Id)
-            .ToArrayAsync(ct);
+        var filter = OrganizationFilter.From(currentAccess.Scope);
+        return await TenantVisibility.ResolveAsync(filter, dbContext.Tenants, ct);
     }
 
     private static void ValidateTenantInScope(Guid tenantId, Guid[]? visibleTenantIds)
     {
         if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
-            throw new KeyNotFoundException($"Tenant {tenantId} is outside the current scope.");
+            throw new UnauthorizedAccessException($"Tenant {tenantId} is outside the current scope.");
     }
 
     private async Task ValidateMonitorInScopeAsync(int monitorId, CancellationToken ct)
@@ -550,7 +533,7 @@ public class MonitorOrchestrationService(
         var tenant = await dbContext.Tenants.SingleOrDefaultAsync(t => t.Id == tenantId, ct)
             ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
         var orgConfig = await organizationConfigService.GetConfigAsync(tenant.OrganizationId, ct)
-            ?? throw new InvalidOperationException($"Organization configuration not found for tenant {tenantId}.");
+            ?? throw new ConfigurationException($"Organization configuration not found for tenant {tenantId}.");
         var monitoringProvider = monitoringProviders.ForProvider(orgConfig.MonitoringProvider);
         var remoteMonitor = await monitoringProvider.CreateMonitorAsync(tenant.OrganizationId, name, url, normalizedType);
         

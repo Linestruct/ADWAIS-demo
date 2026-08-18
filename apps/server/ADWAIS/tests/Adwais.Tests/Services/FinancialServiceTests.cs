@@ -192,7 +192,7 @@ public class FinancialServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetKpisAsync_RequestedTenantOutsideScope_ThrowsKeyNotFound()
+    public async Task GetKpisAsync_RequestedTenantOutsideScope_ThrowsUnauthorizedAccess()
     {
         var otherOrgId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
@@ -202,7 +202,7 @@ public class FinancialServiceTests : IDisposable
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             _service.GetKpisAsync(_period, tenantId: otherTenantId, ct: CancellationToken.None));
     }
 

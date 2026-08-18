@@ -41,7 +41,7 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
     public async Task<BulletinPost> CreatePostAsync(Guid userId, string title, string body, CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
-        if (filter.Denied) throw new InvalidOperationException("The current scope cannot create bulletin posts.");
+        if (filter.Denied) throw new UnauthorizedAccessException("The current scope cannot create bulletin posts.");
         if (filter.OrganizationId is null) throw new InvalidOperationException("Bulletin posts require an organization scope.");
 
         var post = new BulletinPost

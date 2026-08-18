@@ -44,26 +44,8 @@ public class FinancialService(
     /// </summary>
     private async Task<Guid[]?> GetVisibleTenantIdsAsync(IApplicationDbContext context, CancellationToken ct)
     {
-        var scope = _currentAccess.Scope;
-        if (scope is null)
-        {
-            return [];
-        }
-
-        if (scope.IsPlatformAdmin)
-        {
-            return null;
-        }
-
-        if (scope.TenantId is { } tenantId)
-        {
-            return [tenantId];
-        }
-
-        return await context.Tenants
-            .Where(tenant => tenant.OrganizationId == scope.OrganizationId)
-            .Select(tenant => tenant.Id)
-            .ToArrayAsync(ct);
+        var filter = OrganizationFilter.From(_currentAccess.Scope);
+        return await TenantVisibility.ResolveAsync(filter, context.Tenants, ct);
     }
 
     #region Historical + Fresh Data Merge
@@ -79,7 +61,7 @@ public class FinancialService(
         if (tenantId.HasValue)
         {
             if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
-                throw new KeyNotFoundException($"Tenant {tenantId.Value} is outside the current scope.");
+                throw new UnauthorizedAccessException($"Tenant {tenantId.Value} is outside the current scope.");
             var tenantExists = await context.Tenants.AnyAsync(t => t.Id == tenantId.Value, ct);
             if (!tenantExists) throw new KeyNotFoundException($"Tenant {tenantId.Value} not found.");
         }
@@ -706,7 +688,7 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
         if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
-            throw new KeyNotFoundException($"Tenant {tenantId} is outside the current scope.");
+            throw new UnauthorizedAccessException($"Tenant {tenantId} is outside the current scope.");
 
         var orderValues = await context.Orders
             .AsNoTracking()
@@ -809,7 +791,7 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
         if (tenantId.HasValue && visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
-            throw new KeyNotFoundException($"Tenant {tenantId.Value} is outside the current scope.");
+            throw new UnauthorizedAccessException($"Tenant {tenantId.Value} is outside the current scope.");
 
         var query = context.Orders
             .AsNoTracking()

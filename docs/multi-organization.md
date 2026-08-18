@@ -1,6 +1,10 @@
 # Multi-organization plan
 
-Status: plan. Not implemented.
+Status: partially implemented. Phases 1 and 2 are in progress.
+
+Implemented: access model (membership, scopes, headers), per-org intranet ids, scope enforcement in statistics, fleet, intranet, weather, and jobs. `OrganizationConfig` with backfill migration. Per-org weather, reporting timezone, and monitoring provider settings.
+
+Remaining: org-keyed materialized views, per-org unassigned monitor bucket, webhook tenant-org verification, kiosk org claim, Hangfire dashboard policy, frontend scope.
 
 ## Goal
 

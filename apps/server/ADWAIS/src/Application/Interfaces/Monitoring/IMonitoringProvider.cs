@@ -2,6 +2,9 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Adwais.Application.DTOs.Monitoring.Upstream;
 using Adwais.Application.DTOs.Integrations;
 
@@ -16,13 +19,13 @@ public interface IMonitoringProvider
     IReadOnlyCollection<string> GetConfiguredSecretKeys(string? settings);
     string MergeSettings(string? currentSettings, IReadOnlyDictionary<string, string?> updates);
 
-    Task<MonitoringProviderMonitor> CreateMonitorAsync(string name, string url, string? type);
-    Task UpdateMonitorAsync(string externalId, string? name, string? url, string? type, List<string>? tags);
-    Task<List<MonitoringProviderMonitor>> GetMonitorsAsync(IReadOnlyCollection<string>? externalIds = null);
-    Task<double> GetUptimeAsync(string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null);
-    Task<(int? Average, int? Lowest, int? Highest)> GetResponseTimeAsync(string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null);
-    Task DeleteMonitorAsync(string externalId);
-    Task PauseMonitorAsync(string externalId);
-    Task StartMonitorAsync(string externalId);
-    Task<MonitoringProviderAccount> GetAccountDetailsAsync();
+    Task<MonitoringProviderMonitor> CreateMonitorAsync(Guid organizationId, string name, string url, string? type);
+    Task UpdateMonitorAsync(Guid organizationId, string externalId, string? name, string? url, string? type, List<string>? tags);
+    Task<List<MonitoringProviderMonitor>> GetMonitorsAsync(Guid organizationId, IReadOnlyCollection<string>? externalIds = null);
+    Task<double> GetUptimeAsync(Guid organizationId, string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null);
+    Task<(int? Average, int? Lowest, int? Highest)> GetResponseTimeAsync(Guid organizationId, string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null);
+    Task DeleteMonitorAsync(Guid organizationId, string externalId);
+    Task PauseMonitorAsync(Guid organizationId, string externalId);
+    Task StartMonitorAsync(Guid organizationId, string externalId);
+    Task<MonitoringProviderAccount> GetAccountDetailsAsync(Guid organizationId);
 }

@@ -25,7 +25,9 @@ public class UpdateMonitorUptimeJob(
             await using var dbContext = await dbContextFactory.CreateDbContextAsync();
             
             currentStep = $"Fetching Monitor metadata for MonitorId {monitorId}";
-            var monitor = await dbContext.Monitors.FirstOrDefaultAsync(m => m.Id == monitorId);
+            var monitor = await dbContext.Monitors
+                .Include(m => m.Tenant)
+                .FirstOrDefaultAsync(m => m.Id == monitorId);
 
             if (monitor == null || !monitor.UptimeMonitorEnabled) return;
 
@@ -33,7 +35,7 @@ public class UpdateMonitorUptimeJob(
             var monitoringProvider = monitoringProviders.ForProvider(monitor.Provider);
             currentStep = "Fetching uptime status from monitoring provider";
             var uptime = await monitoringProvider.GetUptimeAsync(
-                monitor.ExternalId, startDate, endDate, monitor.Name);
+                monitor.Tenant!.OrganizationId, monitor.ExternalId, startDate, endDate, monitor.Name);
 
             currentStep = "Updating Monitor uptime percentage and timestamps";
             monitor.CurrentUptimePercentage = uptime;

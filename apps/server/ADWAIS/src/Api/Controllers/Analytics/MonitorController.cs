@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Api.DTOs.Monitoring;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Monitoring;
@@ -22,20 +23,25 @@ public class MonitorController(
     IApplicationDbContext dbContext,
     IMonitorOrchestrationService monitorService,
     IReportingCalendar reportingCalendar,
-    IEnumerable<IMonitoringProvider> monitoringProviders,
-    IEnumerable<IOrderSource> orderSources) : ControllerBase
+    IEnumerable<IOrderSource> orderSources,
+    ICurrentAccess currentAccess) : ControllerBase
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly IMonitorOrchestrationService _monitorService = monitorService;
-    private readonly IEnumerable<IMonitoringProvider> _monitoringProviders = monitoringProviders;
     private readonly IEnumerable<IOrderSource> _orderSources = orderSources;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
 
     private async Task<bool> IsMonitoringProviderConfiguredAsync(CancellationToken ct)
     {
-        var db = _dbContext;
-        var config = await db.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
-        return config != null
-            && _monitoringProviders.ForProvider(config.MonitoringProvider).IsConfigured(config.MonitoringProviderSettings);
+        var orgId = _currentAccess.Scope.OrganizationId;
+        if (orgId is null)
+        {
+            return await _dbContext.OrganizationConfigs
+                .AnyAsync(c => c.MonitoringProviderSettings != null, ct);
+        }
+
+        return await _dbContext.OrganizationConfigs
+            .AnyAsync(c => c.OrganizationId == orgId.Value && c.MonitoringProviderSettings != null, ct);
     }
 
     /// <summary>

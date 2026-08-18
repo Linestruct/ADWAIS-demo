@@ -19,7 +19,8 @@ public class MonitorOrchestrationService(
     IApplicationDbContext dbContext,
     IEnumerable<IMonitoringProvider> monitoringProviders,
     ICacheService cache,
-    ICurrentAccess currentAccess) : IMonitorOrchestrationService
+    ICurrentAccess currentAccess,
+    IOrganizationConfigService organizationConfigService) : IMonitorOrchestrationService
 {
     private record LatencyRow(DateTimeOffset Timestamp, double? Average, double? P10, double? P90);
     private record AvailabilityRow(int MonitorId, DateTimeOffset Timestamp, double? UptimePercentage);
@@ -548,9 +549,10 @@ public class MonitorOrchestrationService(
         var normalizedType = UptimeMonitorTypes.Normalize(type);
         var tenant = await dbContext.Tenants.SingleOrDefaultAsync(t => t.Id == tenantId, ct)
             ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
-        var config = await dbContext.GlobalConfigs.SingleAsync(ct);
-        var monitoringProvider = monitoringProviders.ForProvider(config.MonitoringProvider);
-        var remoteMonitor = await monitoringProvider.CreateMonitorAsync(name, url, normalizedType);
+        var orgConfig = await organizationConfigService.GetConfigAsync(tenant.OrganizationId, ct)
+            ?? throw new InvalidOperationException($"Organization configuration not found for tenant {tenantId}.");
+        var monitoringProvider = monitoringProviders.ForProvider(orgConfig.MonitoringProvider);
+        var remoteMonitor = await monitoringProvider.CreateMonitorAsync(tenant.OrganizationId, name, url, normalizedType);
         
         var monitor = new UptimeMonitor
         {
@@ -721,7 +723,7 @@ public class MonitorOrchestrationService(
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).DeleteMonitorAsync(monitor.ExternalId);
+            await monitoringProviders.ForProvider(monitor.Provider).DeleteMonitorAsync(monitor.Tenant!.OrganizationId, monitor.ExternalId);
         }
 
         dbContext.Monitors.Remove(monitor);
@@ -737,7 +739,7 @@ public class MonitorOrchestrationService(
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).PauseMonitorAsync(monitor.ExternalId);
+            await monitoringProviders.ForProvider(monitor.Provider).PauseMonitorAsync(monitor.Tenant!.OrganizationId, monitor.ExternalId);
         }
         
         monitor.UptimeMonitorEnabled = false;
@@ -753,7 +755,7 @@ public class MonitorOrchestrationService(
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).StartMonitorAsync(monitor.ExternalId);
+            await monitoringProviders.ForProvider(monitor.Provider).StartMonitorAsync(monitor.Tenant!.OrganizationId, monitor.ExternalId);
         }
         
         monitor.UptimeMonitorEnabled = true;
@@ -807,6 +809,7 @@ public class MonitorOrchestrationService(
         if (id > 0 && (nameChanged || urlChanged || typeChanged || tagsChanged))
         {
             await monitoringProviders.ForProvider(monitor.Provider).UpdateMonitorAsync(
+                monitor.Tenant!.OrganizationId,
                 monitor.ExternalId,
                 nameChanged ? name : null,
                 urlChanged ? url : null,

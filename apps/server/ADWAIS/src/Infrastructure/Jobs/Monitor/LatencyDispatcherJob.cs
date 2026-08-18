@@ -14,13 +14,18 @@ public class LatencyDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContex
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
         var globalConfig = await dbContext.GlobalConfigs.SingleOrDefaultAsync();
-        
-        if (globalConfig == null || string.IsNullOrWhiteSpace(globalConfig.MonitoringProviderSettings) || !globalConfig.MonitoringFetchEnabled)
+        var hasConfiguredOrg = await dbContext.OrganizationConfigs
+            .AnyAsync(c => c.MonitoringProviderSettings != null);
+
+        if (globalConfig == null || !globalConfig.MonitoringFetchEnabled || !hasConfiguredOrg)
         {
             return;
         }
-        
-        var globalInterval = globalConfig.LatencyFetchIntervalMinutes;
+
+        var defaultOrgConfig = await dbContext.OrganizationConfigs
+            .AsNoTracking()
+            .SingleOrDefaultAsync(c => c.MonitoringProviderSettings != null);
+        var globalInterval = defaultOrgConfig?.LatencyFetchIntervalMinutes ?? 10;
         
         var monitors = await dbContext.Monitors
             .Where(m => m.Id > 0 && m.UptimeMonitorEnabled)

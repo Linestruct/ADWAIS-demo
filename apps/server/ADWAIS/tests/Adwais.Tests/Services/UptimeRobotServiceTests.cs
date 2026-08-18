@@ -28,6 +28,7 @@ public class UptimeRobotServiceTests
     private readonly Mock<HttpMessageHandler> _httpHandlerMock;
     private readonly HttpClient _client;
     private readonly UptimeRobotService _service;
+    private readonly Guid _orgId = Guid.NewGuid();
 
     public UptimeRobotServiceTests()
     {
@@ -47,11 +48,10 @@ public class UptimeRobotServiceTests
 
         // Seed API key config
         using var db = new AnalyticsDbContext(_dbOptions);
-        db.GlobalConfigs.Add(new GlobalConfig
+        db.OrganizationConfigs.Add(new OrganizationConfig
         {
-            Id = 1,
-            MonitoringProviderSettings = "{\"apiKey\":\"test-api-key\"}",
-            OrderFetchIntervalMinutes = 30
+            OrganizationId = _orgId,
+            MonitoringProviderSettings = "{\"apiKey\":\"test-api-key\"}"
         });
         db.SaveChanges();
     }
@@ -87,7 +87,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        var result = await _service.CreateMonitorAsync("Test Monitor", "https://test.com", "ping");
+        var result = await _service.CreateMonitorAsync(_orgId, "Test Monitor", "https://test.com", "ping");
 
         // Assert
         Assert.NotNull(result);
@@ -128,6 +128,7 @@ public class UptimeRobotServiceTests
 
         // Act
         var (avg, lowest, highest) = await _service.GetResponseTimeAsync(
+            _orgId,
             "12345",
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow,
@@ -161,7 +162,7 @@ public class UptimeRobotServiceTests
                 requestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult())
             .ReturnsAsync(mockResponse);
 
-        await _service.UpdateMonitorAsync("12345", null, null, "ping", null);
+        await _service.UpdateMonitorAsync(_orgId, "12345", null, null, "ping", null);
 
         Assert.NotNull(requestBody);
         using var payload = JsonDocument.Parse(requestBody);
@@ -193,7 +194,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        var result = await _service.GetUptimeAsync("12345");
+        var result = await _service.GetUptimeAsync(_orgId, "12345");
 
         // Assert
         Assert.Equal(99.95, result);
@@ -217,7 +218,7 @@ public class UptimeRobotServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<HttpRequestException>(() =>
-            _service.CreateMonitorAsync("Fail Monitor", "https://fail.com", null));
+            _service.CreateMonitorAsync(_orgId, "Fail Monitor", "https://fail.com", null));
 
         _eventServiceMock.Verify(s => s.LogErrorAsync(
             nameof(UptimeRobotService),
@@ -288,7 +289,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(responsePage2);
 
         // Act
-        var result = await _service.GetMonitorsAsync();
+        var result = await _service.GetMonitorsAsync(_orgId);
 
         // Assert
         Assert.NotNull(result);
@@ -333,7 +334,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        await _service.DeleteMonitorAsync("123");
+        await _service.DeleteMonitorAsync(_orgId, "123");
 
         // Assert
         Assert.NotNull(capturedRequest);
@@ -362,7 +363,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        await _service.GetMonitorsAsync(new[] { "7", "11" });
+        await _service.GetMonitorsAsync(_orgId, new[] { "7", "11" });
 
         // Assert
         Assert.NotNull(capturedRequest);
@@ -389,7 +390,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        await _service.DeleteMonitorAsync("999");
+        await _service.DeleteMonitorAsync(_orgId, "999");
 
         // Assert
         Assert.NotNull(capturedRequest);
@@ -416,7 +417,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        await _service.PauseMonitorAsync("999");
+        await _service.PauseMonitorAsync(_orgId, "999");
 
         // Assert
         Assert.NotNull(capturedRequest);
@@ -443,7 +444,7 @@ public class UptimeRobotServiceTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        await _service.StartMonitorAsync("999");
+        await _service.StartMonitorAsync(_orgId, "999");
 
         // Assert
         Assert.NotNull(capturedRequest);
@@ -455,7 +456,7 @@ public class UptimeRobotServiceTests
     public async Task UpdateMonitorAsync_WhenAllFieldsNull_ShouldNotSendRequest()
     {
         // Act
-        await _service.UpdateMonitorAsync("12345", null, null, null, null);
+        await _service.UpdateMonitorAsync(_orgId, "12345", null, null, null, null);
 
         // Assert
         _httpHandlerMock.Protected().Verify(
@@ -468,7 +469,7 @@ public class UptimeRobotServiceTests
     [Fact]
     public async Task DeleteMonitorAsync_WithInvalidExternalId_ShouldRejectBeforeSending()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.DeleteMonitorAsync("not-an-integer"));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.DeleteMonitorAsync(_orgId, "not-an-integer"));
 
         _httpHandlerMock.Protected().Verify(
             "SendAsync",

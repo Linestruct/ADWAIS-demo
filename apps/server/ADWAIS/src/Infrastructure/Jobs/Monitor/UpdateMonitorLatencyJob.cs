@@ -28,7 +28,9 @@ public class UpdateMonitorLatencyJob(
             await using var dbContext = await dbContextFactory.CreateDbContextAsync();
             
             currentStep = $"Fetching Monitor metadata for MonitorId {monitorId}";
-            var monitor = await dbContext.Monitors.FirstOrDefaultAsync(m => m.Id == monitorId);
+            var monitor = await dbContext.Monitors
+                .Include(m => m.Tenant)
+                .FirstOrDefaultAsync(m => m.Id == monitorId);
 
             if (monitor == null || !monitor.UptimeMonitorEnabled) return;
 
@@ -36,7 +38,7 @@ public class UpdateMonitorLatencyJob(
             var monitoringProvider = monitoringProviders.ForProvider(monitor.Provider);
             currentStep = "Fetching response latency time-series from monitoring provider";
             var responseTime = await monitoringProvider.GetResponseTimeAsync(
-                monitor.ExternalId, startDate, endDate, monitor.Name);
+                monitor.Tenant!.OrganizationId, monitor.ExternalId, startDate, endDate, monitor.Name);
 
             if (responseTime.Average.HasValue)
             {
@@ -51,8 +53,9 @@ public class UpdateMonitorLatencyJob(
                 });
 
                 currentStep = "Updating local memory cache state";
-                var globalConfig = await dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync();
-                var intervalMins = globalConfig?.LatencyFetchIntervalMinutes ?? 10;
+                var orgConfig = await dbContext.OrganizationConfigs.AsNoTracking()
+                    .SingleOrDefaultAsync(c => c.OrganizationId == monitor.Tenant!.OrganizationId);
+                var intervalMins = orgConfig?.LatencyFetchIntervalMinutes ?? 10;
 
                 var existing = cache.TryGetValue(GlobalCacheKeys.MonitorState(monitorId), out LiveMonitorState? state) ? state : null;
                 cache.Set(

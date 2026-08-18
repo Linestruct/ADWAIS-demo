@@ -20,6 +20,7 @@ using Adwais.Infrastructure.Persistence;
 using Adwais.Application.Services;
 using Adwais.Application.Common.Models;
 using Adwais.Application.DTOs.Monitoring;
+using Adwais.Application.DTOs.GlobalConfig;
 
 namespace Adwais.Tests.Services;
 
@@ -46,14 +47,35 @@ public class MonitorOrchestrationServiceTests
         _currentAccessMock = new Mock<ICurrentAccess>();
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new Adwais.Application.Common.Access.AccessScope(null, null, [UserRole.Admin]));
-        _dbContext.GlobalConfigs.Add(new GlobalConfig { Id = 1, OrderFetchIntervalMinutes = 60 });
+        _dbContext.GlobalConfigs.Add(new GlobalConfig { Id = 1 });
+        _dbContext.OrganizationConfigs.Add(new OrganizationConfig { OrganizationId = _defaultOrgId });
         _dbContext.SaveChanges();
+
+        var organizationConfigServiceMock = new Mock<IOrganizationConfigService>();
+        organizationConfigServiceMock.Setup(service => service.GetConfigAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationConfigDto(
+                WeatherLocation: null,
+                WeatherFetchIntervalMinutes: 15,
+                ReportingTimeZoneId: "Europe/Stockholm",
+                MonitoringProvider: "uptimerobot",
+                MonitoringProviderSettings: new Dictionary<string, string?>(),
+                MonitoringProviderConfiguredSecretKeys: [],
+                OrderFetchIntervalMinutes: 60,
+                UptimeFetchIntervalMinutes: 60,
+                LatencyFetchIntervalMinutes: 10,
+                UserStatsFetchIntervalMinutes: 60,
+                FeedFetchIntervalHours: 2,
+                MonitorsCount: null,
+                MonitorsLimit: null,
+                ActiveSubscription: null,
+                LastSyncError: null));
 
         _service = new MonitorOrchestrationService(
             _dbContext,
             new[] { _uptimeRobotServiceMock.Object },
             _cacheServiceMock.Object,
-            _currentAccessMock.Object
+            _currentAccessMock.Object,
+            organizationConfigServiceMock.Object
         );
     }
 
@@ -405,7 +427,7 @@ public class MonitorOrchestrationServiceTests
     {
         // Arrange
         var tenantId = Guid.NewGuid();
-        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant" });
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant", OrganizationId = _defaultOrgId });
         await _dbContext.SaveChangesAsync();
         var remoteMonitor = new Adwais.Application.DTOs.Monitoring.Upstream.MonitoringProviderMonitor(
             ExternalId: "9876",
@@ -418,7 +440,7 @@ public class MonitorOrchestrationServiceTests
             Tags: new List<string>()
         );
 
-        _uptimeRobotServiceMock.Setup(s => s.CreateMonitorAsync("New Monitor", "https://new.com", "PING"))
+        _uptimeRobotServiceMock.Setup(s => s.CreateMonitorAsync(_defaultOrgId, "New Monitor", "https://new.com", "PING"))
             .ReturnsAsync(remoteMonitor);
 
         // Act
@@ -442,7 +464,7 @@ public class MonitorOrchestrationServiceTests
     public async Task CreateMonitorAsync_ShouldDefaultTypeToHttp_WhenOmitted()
     {
         var tenantId = Guid.NewGuid();
-        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant" });
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant", OrganizationId = _defaultOrgId });
         await _dbContext.SaveChangesAsync();
         var remoteMonitor = new Adwais.Application.DTOs.Monitoring.Upstream.MonitoringProviderMonitor(
             ExternalId: "9877",
@@ -455,7 +477,7 @@ public class MonitorOrchestrationServiceTests
             Tags: new List<string>());
 
         _uptimeRobotServiceMock
-            .Setup(service => service.CreateMonitorAsync("Default Monitor", "https://default.com", "HTTP"))
+            .Setup(service => service.CreateMonitorAsync(_defaultOrgId, "Default Monitor", "https://default.com", "HTTP"))
             .ReturnsAsync(remoteMonitor);
 
         var result = await _service.CreateMonitorAsync(
@@ -468,7 +490,7 @@ public class MonitorOrchestrationServiceTests
 
         Assert.Equal("HTTP", result.Type);
         _uptimeRobotServiceMock.Verify(
-            service => service.CreateMonitorAsync("Default Monitor", "https://default.com", "HTTP"),
+            service => service.CreateMonitorAsync(_defaultOrgId, "Default Monitor", "https://default.com", "HTTP"),
             Times.Once);
     }
 
@@ -520,11 +542,13 @@ public class MonitorOrchestrationServiceTests
     public async Task PauseMonitorAsync_ShouldCallPause_AndSetDisabledInDb()
     {
         // Arrange
-        var monitor = new UptimeMonitor { Id = 70, ExternalId = "70", TenantId = Guid.NewGuid(), Name = "M", Url = "https://url.com", UptimeMonitorEnabled = true };
+        var tenantId = Guid.NewGuid();
+        var monitor = new UptimeMonitor { Id = 70, ExternalId = "70", TenantId = tenantId, Name = "M", Url = "https://url.com", UptimeMonitorEnabled = true };
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant", OrganizationId = _defaultOrgId });
         _dbContext.Monitors.Add(monitor);
         await _dbContext.SaveChangesAsync();
 
-        _uptimeRobotServiceMock.Setup(s => s.PauseMonitorAsync("70"))
+        _uptimeRobotServiceMock.Setup(s => s.PauseMonitorAsync(_defaultOrgId, "70"))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -534,28 +558,30 @@ public class MonitorOrchestrationServiceTests
         var updated = await _dbContext.Monitors.FindAsync(70);
         Assert.NotNull(updated);
         Assert.False(updated.UptimeMonitorEnabled);
-        _uptimeRobotServiceMock.Verify(s => s.PauseMonitorAsync("70"), Times.Once);
+        _uptimeRobotServiceMock.Verify(s => s.PauseMonitorAsync(_defaultOrgId, "70"), Times.Once);
     }
 
     [Fact]
     public async Task UpdateMonitorAsync_ShouldPatchUptimeRobot_AndModifyDbFields()
     {
         // Arrange
+        var tenantId = Guid.NewGuid();
         var monitor = new UptimeMonitor 
         { 
             Id = 80, 
             ExternalId = "80",
-            TenantId = Guid.NewGuid(), 
+            TenantId = tenantId, 
             Name = "Old Name", 
             Url = "https://old.com", 
             Type = "HTTP",
             UptimeSla = 99.0, 
             Tags = new List<string> { "tag1" } 
         };
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant", OrganizationId = _defaultOrgId });
         _dbContext.Monitors.Add(monitor);
         await _dbContext.SaveChangesAsync();
 
-        _uptimeRobotServiceMock.Setup(s => s.UpdateMonitorAsync("80", "New Name", "https://new.com", "PING", It.IsAny<List<string>>()))
+        _uptimeRobotServiceMock.Setup(s => s.UpdateMonitorAsync(_defaultOrgId, "80", "New Name", "https://new.com", "PING", It.IsAny<List<string>>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -568,7 +594,7 @@ public class MonitorOrchestrationServiceTests
         Assert.Equal("PING", result.Type);
         Assert.Equal(99.9, result.UptimeSla);
         Assert.Contains("tag2", result.Tags);
-        _uptimeRobotServiceMock.Verify(s => s.UpdateMonitorAsync("80", "New Name", "https://new.com", "PING", It.IsAny<List<string>>()), Times.Once);
+        _uptimeRobotServiceMock.Verify(s => s.UpdateMonitorAsync(_defaultOrgId, "80", "New Name", "https://new.com", "PING", It.IsAny<List<string>>()), Times.Once);
     }
 
     [Fact]
@@ -598,10 +624,10 @@ public class MonitorOrchestrationServiceTests
         Assert.True((await _dbContext.Monitors.FindAsync(-2))!.UptimeMonitorEnabled);
         Assert.Null(await _dbContext.Monitors.FindAsync(-3));
         _uptimeRobotServiceMock.Verify(service => service.UpdateMonitorAsync(
-            It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<List<string>?>()), Times.Never);
-        _uptimeRobotServiceMock.Verify(service => service.PauseMonitorAsync(It.IsAny<string>()), Times.Never);
-        _uptimeRobotServiceMock.Verify(service => service.StartMonitorAsync(It.IsAny<string>()), Times.Never);
-        _uptimeRobotServiceMock.Verify(service => service.DeleteMonitorAsync(It.IsAny<string>()), Times.Never);
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<List<string>?>()), Times.Never);
+        _uptimeRobotServiceMock.Verify(service => service.PauseMonitorAsync(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        _uptimeRobotServiceMock.Verify(service => service.StartMonitorAsync(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
+        _uptimeRobotServiceMock.Verify(service => service.DeleteMonitorAsync(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

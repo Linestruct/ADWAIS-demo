@@ -18,49 +18,53 @@ public class UpdateGlobalMonitoringStatsJob(
     public async Task ExecuteAsync()
     {
         await using var db = await dbContextFactory.CreateDbContextAsync();
-        var config = await db.GlobalConfigs.SingleOrDefaultAsync();
+        var globalConfig = await db.GlobalConfigs.SingleOrDefaultAsync();
 
-        if (config == null || string.IsNullOrWhiteSpace(config.MonitoringProviderSettings) || !config.MonitoringFetchEnabled)
+        if (globalConfig == null || !globalConfig.MonitoringFetchEnabled)
         {
             return;
         }
 
-        try
-        {
-            var user = await monitoringProviders.ForProvider(config.MonitoringProvider).GetAccountDetailsAsync();
-            config.MonitorsCount = user.MonitorsCount;
-            config.MonitorsLimit = user.MonitorLimit;
-            config.ActiveSubscription = user.ActiveSubscriptionPlan;
-            config.LastSyncError = null;
-            
-            await db.SaveChangesAsync();
-            logger.LogInformation("Updated global monitoring account stats: {Count}/{Limit} ({Sub})", user.MonitorsCount, user.MonitorLimit, user.ActiveSubscriptionPlan);
-        }
-        catch (Exception ex)
-        {
-            var detailedErrorMessage = $"Failed to update global monitoring account stats: {ex.Message}";
-            try
-            {
-                await eventService.LogErrorAsync(nameof(UpdateGlobalMonitoringStatsJob), detailedErrorMessage, ex);
-            }
-            catch
-            {
-                // Suppress logging service failure
-            }
+        var orgConfigs = await db.OrganizationConfigs
+            .Where(c => c.MonitoringProviderSettings != null)
+            .ToListAsync();
 
+        foreach (var orgConfig in orgConfigs)
+        {
             try
             {
-                config.LastSyncError = detailedErrorMessage;
+                var user = await monitoringProviders.ForProvider(orgConfig.MonitoringProvider)
+                    .GetAccountDetailsAsync(orgConfig.OrganizationId);
+                orgConfig.MonitorsCount = user.MonitorsCount;
+                orgConfig.MonitorsLimit = user.MonitorLimit;
+                orgConfig.ActiveSubscription = user.ActiveSubscriptionPlan;
+                orgConfig.LastSyncError = null;
                 await db.SaveChangesAsync();
+                logger.LogInformation("Updated monitoring account stats for org {OrgId}: {Count}/{Limit} ({Sub})",
+                    orgConfig.OrganizationId, user.MonitorsCount, user.MonitorLimit, user.ActiveSubscriptionPlan);
             }
-            catch
+            catch (Exception ex)
             {
-                // Suppress nested DB update failure
+                var detailedErrorMessage = $"Failed to update monitoring account stats for org {orgConfig.OrganizationId}: {ex.Message}";
+                try
+                {
+                    await eventService.LogErrorAsync(nameof(UpdateGlobalMonitoringStatsJob), detailedErrorMessage, ex);
+                }
+                catch
+                {
+                    // Suppress logging service failure
+                }
+
+                try
+                {
+                    orgConfig.LastSyncError = detailedErrorMessage;
+                    await db.SaveChangesAsync();
+                }
+                catch
+                {
+                    // Suppress nested DB update failure
+                }
             }
-            throw;
         }
     }
 }
-
-
-

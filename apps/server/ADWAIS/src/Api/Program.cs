@@ -107,8 +107,8 @@ app.MapOpenApi();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseMiddleware<Adwais.Api.Middleware.DevMockAuthMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<Adwais.Api.Middleware.DevMockAuthMiddleware>();
 app.UseAuthorization();
 
 if (!isBuildTime)

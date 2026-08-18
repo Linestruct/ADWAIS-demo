@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Moq;
@@ -24,6 +25,8 @@ public class LocalUserClaimsTransformationTests
     private readonly DbContextOptions<AnalyticsDbContext> _dbOptions;
     private readonly Mock<IDbContextFactory<AnalyticsDbContext>> _dbContextFactoryMock;
     private readonly LocalUserClaimsTransformation _transformation;
+    private readonly DefaultHttpContext _httpContext;
+    private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
 
     public LocalUserClaimsTransformationTests()
     {
@@ -41,7 +44,13 @@ public class LocalUserClaimsTransformationTests
                 ["Authentication:KioskJwtIssuer"] = "ADWAIS"
             })
             .Build();
-        _transformation = new LocalUserClaimsTransformation(_dbContextFactoryMock.Object, configuration);
+        _httpContext = new DefaultHttpContext();
+        _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
+        _httpContextAccessorMock.Setup(accessor => accessor.HttpContext).Returns(_httpContext);
+        _transformation = new LocalUserClaimsTransformation(
+            _dbContextFactoryMock.Object,
+            configuration,
+            _httpContextAccessorMock.Object);
     }
 
     [Fact]
@@ -365,6 +374,105 @@ public class LocalUserClaimsTransformationTests
 
         Assert.True(result.IsInRole("Admin"));
         Assert.False(result.IsInRole("Employee"));
+    }
+
+    [Fact]
+    public async Task TransformAsync_AdminRequestingOrgHeader_EmitsOrgClaimsWithAdminRole()
+    {
+        var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "scope-admin-user",
+                Name = "Scope Admin",
+                Email = "scope-admin@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = null,
+                TenantId = null,
+                Role = UserRole.Admin
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _httpContext.Request.Headers[AccessRequestHeaders.OrganizationId] = orgId.ToString();
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("scope-admin-user", "scope-admin@example.com", "Scope Admin"));
+
+        Assert.True(result.IsInRole("Admin"));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == orgId.ToString()));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin));
+    }
+
+    [Fact]
+    public async Task TransformAsync_OrgMemberRequestingOtherOrg_AddsNoClaims()
+    {
+        var userId = Guid.NewGuid();
+        var ownOrg = Guid.NewGuid();
+        var otherOrg = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "scope-member-user",
+                Name = "Scope Member",
+                Email = "scope-member@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = ownOrg,
+                TenantId = null,
+                Role = UserRole.Employee
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _httpContext.Request.Headers[AccessRequestHeaders.OrganizationId] = otherOrg.ToString();
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("scope-member-user", "scope-member@example.com", "Scope Member"));
+
+        Assert.False(result.HasClaim(c => c.Type == ClaimTypes.Role));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId));
+    }
+
+    [Fact]
+    public async Task TransformAsync_MultiOrgMemberWithoutHeader_DefaultsToFirstOrg()
+    {
+        var userId = Guid.NewGuid();
+        var firstOrg = Guid.NewGuid();
+        var secondOrg = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "scope-multi-user",
+                Name = "Multi User",
+                Email = "multi@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.AddRange(
+                new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = firstOrg, TenantId = null, Role = UserRole.Viewer },
+                new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = secondOrg, TenantId = null, Role = UserRole.Admin });
+            await db.SaveChangesAsync();
+        }
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("scope-multi-user", "multi@example.com", "Multi User"));
+
+        Assert.True(result.IsInRole("Viewer"));
+        Assert.False(result.IsInRole("Admin"));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == firstOrg.ToString()));
     }
 
     private static ClaimsPrincipal CreatePrincipal(string subjectId, string email, string name)

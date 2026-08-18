@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
 using Adwais.Domain.Entities;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Adwais.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
@@ -20,9 +21,11 @@ namespace Adwais.Infrastructure.Security;
 /// </summary>
 public class LocalUserClaimsTransformation(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
-    IConfiguration configuration) : IClaimsTransformation
+    IConfiguration configuration,
+    IHttpContextAccessor httpContextAccessor) : IClaimsTransformation
 {
     private readonly IDbContextFactory<AnalyticsDbContext> _dbContextFactory = dbContextFactory;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly string _kioskIssuer = configuration["Authentication:KioskJwtIssuer"] ?? "ADWAIS";
 
     /// <inheritdoc />
@@ -98,10 +101,16 @@ public class LocalUserClaimsTransformation(
             .Where(access => access.UserId == user.Id)
             .ToListAsync();
 
-        var scope = AccessScopeResolver.Resolve(memberships);
+        var resolution = AccessScopeResolver.ResolveAllowed(memberships);
+        var requestedOrganizationId = TryParseGuid(
+            _httpContextAccessor.HttpContext?.Request.Headers[AccessRequestHeaders.OrganizationId]);
+        var requestedTenantId = TryParseGuid(
+            _httpContextAccessor.HttpContext?.Request.Headers[AccessRequestHeaders.TenantId]);
+
+        var scope = AccessScopeResolver.SelectEffective(resolution, requestedOrganizationId, requestedTenantId);
         if (scope is null)
         {
-            // A provisioned user without membership rows gets no claims.
+            // A provisioned user without a valid scope gets no claims.
             return principal;
         }
 
@@ -122,4 +131,7 @@ public class LocalUserClaimsTransformation(
 
         return clone;
     }
+
+    private static Guid? TryParseGuid(string? value)
+        => Guid.TryParse(value, out var parsed) ? parsed : null;
 }

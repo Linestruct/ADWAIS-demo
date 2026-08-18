@@ -8,59 +8,96 @@ using Adwais.Domain.Enums;
 namespace Adwais.Application.Common.Access;
 
 /// <summary>
-/// Resolves the visibility scope for a user from their memberships.
+/// Resolves the contexts a user may operate in from their memberships, and
+/// selects the effective scope for a request from those contexts.
 /// </summary>
 public static class AccessScopeResolver
 {
-    public static AccessScope? Resolve(IEnumerable<UserAccess> memberships)
+    public static MembershipResolution ResolveAllowed(IEnumerable<UserAccess> memberships)
     {
         var rows = memberships.ToList();
-        if (rows.Count == 0)
+        var isPlatformAdmin = rows.Any(row =>
+            row.OrganizationId is null && row.Role == UserRole.Admin);
+
+        var orgLevelScopes = new List<AllowedScope>();
+        var tenantScopes = new List<AllowedScope>();
+
+        foreach (var orgGroup in rows
+                     .Where(row => row.OrganizationId is not null)
+                     .GroupBy(row => row.OrganizationId!.Value))
         {
-            return null;
+            var orgLevelRoles = orgGroup
+                .Where(row => row.TenantId is null)
+                .Select(row => row.Role)
+                .Distinct()
+                .ToList();
+            if (orgLevelRoles.Count > 0)
+            {
+                orgLevelScopes.Add(new AllowedScope(orgGroup.Key, null, orgLevelRoles));
+            }
+
+            foreach (var tenantGroup in orgGroup
+                         .Where(row => row.TenantId is not null)
+                         .GroupBy(row => row.TenantId!.Value))
+            {
+                tenantScopes.Add(new AllowedScope(
+                    orgGroup.Key,
+                    tenantGroup.Key,
+                    tenantGroup.Select(row => row.Role).Distinct().ToList()));
+            }
         }
 
-        var platformRows = rows.Where(row => row.OrganizationId is null).ToList();
-        if (platformRows.Any(row => row.Role == UserRole.Admin))
-        {
-            return new AccessScope(null, null, DistinctRoles(platformRows));
-        }
-
-        var organizationId = rows
-            .Select(row => row.OrganizationId)
-            .FirstOrDefault(id => id is not null);
-
-        if (organizationId is null)
-        {
-            return null;
-        }
-
-        var orgLevelRows = rows
-            .Where(row => row.OrganizationId == organizationId && row.TenantId is null)
-            .ToList();
-
-        if (orgLevelRows.Count > 0)
-        {
-            return new AccessScope(organizationId, null, DistinctRoles(orgLevelRows));
-        }
-
-        var tenantId = rows
-            .Where(row => row.OrganizationId == organizationId)
-            .Select(row => row.TenantId)
-            .FirstOrDefault(id => id is not null);
-
-        if (tenantId is null)
-        {
-            return null;
-        }
-
-        var tenantRows = rows
-            .Where(row => row.OrganizationId == organizationId && row.TenantId == tenantId)
-            .ToList();
-
-        return new AccessScope(organizationId, tenantId, DistinctRoles(tenantRows));
+        return new MembershipResolution(isPlatformAdmin, [.. orgLevelScopes, .. tenantScopes]);
     }
 
-    private static IReadOnlyCollection<UserRole> DistinctRoles(IEnumerable<UserAccess> rows)
-        => rows.Select(row => row.Role).Distinct().ToList();
+    public static AccessScope? SelectEffective(
+        MembershipResolution resolution,
+        Guid? requestedOrganizationId,
+        Guid? requestedTenantId)
+    {
+        if (resolution.IsPlatformAdmin)
+        {
+            if (requestedOrganizationId is null)
+            {
+                return new AccessScope(null, null, [UserRole.Admin]);
+            }
+
+            return new AccessScope(requestedOrganizationId, requestedTenantId, [UserRole.Admin]);
+        }
+
+        if (requestedOrganizationId is null)
+        {
+            var defaultScope = resolution.OrgScopes.FirstOrDefault(scope => scope.TenantId is null)
+                ?? resolution.OrgScopes.FirstOrDefault();
+            return defaultScope is null
+                ? null
+                : new AccessScope(defaultScope.OrganizationId, defaultScope.TenantId, defaultScope.Roles);
+        }
+
+        var scopesForOrg = resolution.OrgScopes
+            .Where(scope => scope.OrganizationId == requestedOrganizationId)
+            .ToList();
+        if (scopesForOrg.Count == 0)
+        {
+            return null;
+        }
+
+        if (requestedTenantId is { } tenantId)
+        {
+            var tenantScope = scopesForOrg.FirstOrDefault(scope => scope.TenantId == tenantId);
+            if (tenantScope is not null)
+            {
+                return new AccessScope(tenantScope.OrganizationId, tenantScope.TenantId, tenantScope.Roles);
+            }
+
+            var orgLevelScope = scopesForOrg.FirstOrDefault(scope => scope.TenantId is null);
+            return orgLevelScope is null
+                ? null
+                : new AccessScope(orgLevelScope.OrganizationId, null, orgLevelScope.Roles);
+        }
+
+        var orgScope = scopesForOrg.FirstOrDefault(scope => scope.TenantId is null)
+            ?? scopesForOrg.First();
+        return new AccessScope(orgScope.OrganizationId, orgScope.TenantId, orgScope.Roles);
+    }
 }

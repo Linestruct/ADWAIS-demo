@@ -39,13 +39,14 @@ Add `TenantViewer` to `UserRole`. Do not build tenant login yet.
 
 ### Claims and scope
 
-`LocalUserClaimsTransformation` adds `org_id` and `tenant_id` claims from membership. A request-scoped `ICurrentAccess` service exposes the scope:
+`LocalUserClaimsTransformation` resolves the user's allowed scopes from membership, then selects the effective scope for the request:
 
-- Platform admin: everything.
-- Org member: one organization.
-- Tenant viewer: one organization and one tenant.
+- The request carries the scope it wants to operate in: `X-ADWAIS-ORG-ID` and `X-ADWAIS-TENANT-ID` headers.
+- Platform admins may select any org, or operate in the platform scope when no org is requested.
+- Org members may select only orgs they belong to. Single-org users default to their org. Multi-org users default to the first org until a selector exists.
+- Tenant viewers are pinned to their tenant.
 
-All tenant-scoped queries apply the scope through one helper. No service filters by raw tenant ids.
+The transformation emits `org_id` and `tenant_id` claims for the effective scope, plus the roles valid inside that scope. A request-scoped `ICurrentAccess` service exposes the scope. All tenant-scoped queries apply the scope through one helper. No service filters by raw tenant ids.
 
 ## Surfaces touched
 

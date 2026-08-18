@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
 using Adwais.Application.DTOs.Weather;
 using Adwais.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
@@ -19,13 +20,15 @@ namespace Adwais.Infrastructure.Services;
 /// Resolves the configured weather location through Open-Meteo geocoding, then fetches
 /// current conditions from the Open-Meteo Forecast API.
 /// No API key required. Responses use the configured cache interval.
+/// The location and cache entry are scoped to the current organization.
 /// </summary>
 public class WeatherService(
     HttpClient httpClient,
-    IGlobalConfigService configService,
-    IMemoryCache cache) : IWeatherService
+    IOrganizationConfigService configService,
+    IMemoryCache cache,
+    ICurrentAccess currentAccess) : IWeatherService
 {
-    private const string CacheKey = "weather:current";
+    private const string CacheKeyPrefix = "weather:current:";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,19 +37,23 @@ public class WeatherService(
 
     public async Task<WeatherDto> GetCurrentWeatherAsync(CancellationToken ct = default)
     {
-        var config = await configService.GetConfigAsync(ct);
-        var location = config.WeatherLocation;
+        var orgId = currentAccess.Scope.OrganizationId
+            ?? throw new InvalidOperationException("Weather requires an organization scope.");
+
+        var config = await configService.GetConfigAsync(orgId, ct);
+        var location = config?.WeatherLocation;
         if (string.IsNullOrWhiteSpace(location))
             throw new InvalidOperationException("Weather location is not configured.");
 
-        if (cache.TryGetValue(CacheKey, out WeatherDto? cached) && cached is not null)
+        var cacheKey = $"{CacheKeyPrefix}{orgId}";
+        if (cache.TryGetValue(cacheKey, out WeatherDto? cached) && cached is not null)
             return cached;
 
         var (latitude, longitude, resolvedLocation) = await GeocodeAsync(location, ct);
         var dto = await FetchForecastAsync(latitude, longitude, resolvedLocation, ct);
 
-        var duration = TimeSpan.FromMinutes(config.WeatherFetchIntervalMinutes > 0 ? config.WeatherFetchIntervalMinutes : 15);
-        cache.Set(CacheKey, dto, duration);
+        var duration = TimeSpan.FromMinutes(config!.WeatherFetchIntervalMinutes > 0 ? config.WeatherFetchIntervalMinutes : 15);
+        cache.Set(cacheKey, dto, duration);
         return dto;
     }
 

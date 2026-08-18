@@ -15,7 +15,7 @@ public class DevMockAuthenticationHandlerTests
     [Fact]
     public void BuildForDev_InDevelopment_NoAuthHeader_ReturnsPlatformAdmin()
     {
-        var principal = DevMockAuthenticationHandler.BuildForDev(isDevelopment: true, hasAuthHeader: false);
+        var principal = DevMockAuthenticationHandler.BuildForDev(isDevelopment: true, hasAuthHeader: false, mockOrganizationId: null);
 
         Assert.NotNull(principal);
         Assert.True(principal.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"));
@@ -25,14 +25,27 @@ public class DevMockAuthenticationHandlerTests
     }
 
     [Fact]
+    public void BuildForDev_WithMockOrganizationId_ReturnsOrgScopedAdmin()
+    {
+        var orgId = Guid.NewGuid();
+
+        var principal = DevMockAuthenticationHandler.BuildForDev(isDevelopment: true, hasAuthHeader: false, mockOrganizationId: orgId);
+
+        Assert.NotNull(principal);
+        Assert.True(principal.IsInRole("Admin"));
+        Assert.True(principal.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == orgId.ToString()));
+        Assert.False(principal.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin));
+    }
+
+    [Fact]
     public void BuildForDev_InDevelopment_WithAuthHeader_ReturnsNull()
     {
-        Assert.Null(DevMockAuthenticationHandler.BuildForDev(isDevelopment: true, hasAuthHeader: true));
+        Assert.Null(DevMockAuthenticationHandler.BuildForDev(isDevelopment: true, hasAuthHeader: true, mockOrganizationId: null));
     }
 
     [Fact]
     public void BuildForDev_InProduction_ReturnsNull()
     {
-        Assert.Null(DevMockAuthenticationHandler.BuildForDev(isDevelopment: false, hasAuthHeader: false));
+        Assert.Null(DevMockAuthenticationHandler.BuildForDev(isDevelopment: false, hasAuthHeader: false, mockOrganizationId: null));
     }
 }

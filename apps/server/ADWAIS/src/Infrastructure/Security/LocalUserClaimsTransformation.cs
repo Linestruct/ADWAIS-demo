@@ -44,7 +44,7 @@ public class LocalUserClaimsTransformation(
         var subjectId = principal.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(subjectId))
         {
-            return principal;
+            return WithoutAuthorityClaims(principal);
         }
 
         await using var db = await _dbContextFactory.CreateDbContextAsync();
@@ -91,8 +91,8 @@ public class LocalUserClaimsTransformation(
 
             if (user == null)
             {
-                // Users are provisioned by an admin. Unknown subjects get no claims.
-                return principal;
+                // Users are provisioned by an admin. Unknown subjects get no authority claims.
+                return WithoutAuthorityClaims(principal);
             }
         }
 
@@ -110,24 +110,40 @@ public class LocalUserClaimsTransformation(
         var scope = AccessScopeResolver.SelectEffective(resolution, requestedOrganizationId, requestedTenantId);
         if (scope is null)
         {
-            // A provisioned user without a valid scope gets no claims.
-            return principal;
+            // A provisioned user without a valid scope gets no authority claims.
+            return WithoutAuthorityClaims(principal);
         }
 
-        // Append role and scope claims using a cloned principal to ensure thread-safety/immutability
+        // Upstream identities never decide roles or scope. Scrub their authority
+        // claims so the local identity is the only source, then attach it.
+        var clone = WithoutAuthorityClaims(principal);
+        clone.AddIdentity(AccessClaimsBuilder.Build(user.Id, scope));
+
+        return clone;
+    }
+
+    /// <summary>
+    /// Removes role, scope, and name identifier claims from every upstream
+    /// identity. Identity claims such as name and email are kept. Used so a
+    /// federated principal can never carry authority that membership did not grant.
+    /// </summary>
+    private static ClaimsPrincipal WithoutAuthorityClaims(ClaimsPrincipal principal)
+    {
         var clone = principal.Clone();
-        
-        if (clone.Identity is ClaimsIdentity primaryIdentity)
+        foreach (var identity in clone.Identities)
         {
-            var existingNameIds = primaryIdentity.FindAll(ClaimTypes.NameIdentifier).ToList();
-            foreach (var claim in existingNameIds)
+            var authorityClaims = identity.FindAll(claim =>
+                    claim.Type is ClaimTypes.Role
+                        or ClaimTypes.NameIdentifier
+                        or AccessClaimTypes.OrganizationId
+                        or AccessClaimTypes.TenantId
+                        or AccessClaimTypes.IsPlatformAdmin)
+                .ToList();
+            foreach (var claim in authorityClaims)
             {
-                primaryIdentity.RemoveClaim(claim);
+                identity.RemoveClaim(claim);
             }
         }
-
-        var localIdentity = AccessClaimsBuilder.Build(user.Id, scope);
-        clone.AddIdentity(localIdentity);
 
         return clone;
     }

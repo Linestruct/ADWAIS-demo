@@ -89,30 +89,35 @@ public class LocalUserClaimsTransformationTests
         var subjectId = "google-oauth2|bob";
         var name = "Bob Jones";
         var email = "bob@example.com";
-        var principal = CreatePrincipal(subjectId, email, name);
+        var principal = CreatePrincipal(subjectId, email, name, roles: ["SuperAdmin"]);
 
         var result = await _transformation.TransformAsync(principal);
 
-        Assert.Same(principal, result);
+        Assert.NotSame(principal, result);
         Assert.False(result.HasClaim(c => c.Type == ClaimTypes.Role));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.TenantId));
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin));
 
         await using var db = new AnalyticsDbContext(_dbOptions);
         Assert.False(await db.Users.AnyAsync(u => u.ExternalSubjectId == subjectId));
     }
 
     [Fact]
-    public async Task TransformAsync_ShouldNotModifyPrincipal_WhenSubjectClaimIsMissing()
+    public async Task TransformAsync_PrincipalWithoutSubject_KeepsIdentityButNoAuthorityClaims()
     {
         // Arrange
         var identity = new ClaimsIdentity("TestAuthentication");
         identity.AddClaim(new Claim(ClaimTypes.Name, "Anonymous Kiosk"));
+        identity.AddClaim(new Claim(ClaimTypes.Role, UserRole.Admin.ToString()));
         var principal = new ClaimsPrincipal(identity);
 
         // Act
         var result = await _transformation.TransformAsync(principal);
 
         // Assert
-        Assert.Same(principal, result);
+        Assert.NotSame(principal, result);
+        Assert.True(result.HasClaim(c => c.Type == ClaimTypes.Name));
         Assert.False(result.HasClaim(c => c.Type == ClaimTypes.Role));
     }
 
@@ -370,10 +375,56 @@ public class LocalUserClaimsTransformationTests
             await db.SaveChangesAsync();
         }
 
-        var result = await _transformation.TransformAsync(CreatePrincipal("membership-role-user", "role@example.com", "Role User"));
+        // The upstream identity carries a legacy role claim. Membership wins.
+        var result = await _transformation.TransformAsync(
+            CreatePrincipal("membership-role-user", "role@example.com", "Role User", roles: ["Employee"]));
 
         Assert.True(result.IsInRole("Admin"));
         Assert.False(result.IsInRole("Employee"));
+    }
+
+    [Fact]
+    public async Task TransformAsync_ScrubsUpstreamScopeClaims_WhenMembershipGrantsScope()
+    {
+        var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "scope-scrub-user",
+                Name = "Scrub User",
+                Email = "scrub@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = orgId,
+                TenantId = null,
+                Role = UserRole.Admin
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // An upstream identity that tries to claim a different org or platform admin.
+        var otherOrg = Guid.NewGuid();
+        var principal = CreatePrincipal("scope-scrub-user", "scrub@example.com", "Scrub User");
+        foreach (var identity in principal.Identities)
+        {
+            identity.AddClaim(new Claim(AccessClaimTypes.OrganizationId, otherOrg.ToString()));
+            identity.AddClaim(new Claim(AccessClaimTypes.IsPlatformAdmin, "true"));
+        }
+
+        var result = await _transformation.TransformAsync(principal);
+
+        var scopeClaims = result.FindAll(AccessClaimTypes.OrganizationId).Select(c => c.Value).ToList();
+        Assert.Single(scopeClaims);
+        Assert.Equal(orgId.ToString(), scopeClaims[0]);
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin));
+        Assert.True(result.IsInRole("Admin"));
     }
 
     [Fact]
@@ -475,13 +526,17 @@ public class LocalUserClaimsTransformationTests
         Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == firstOrg.ToString()));
     }
 
-    private static ClaimsPrincipal CreatePrincipal(string subjectId, string email, string name)
+    private static ClaimsPrincipal CreatePrincipal(string subjectId, string email, string name, string[]? roles = null)
     {
         var identity = new ClaimsIdentity("FederatedAuthentication");
         identity.AddClaim(new Claim("sub", subjectId));
         identity.AddClaim(new Claim("email", email));
         identity.AddClaim(new Claim("name", name));
-        
+        foreach (var role in roles ?? [])
+        {
+            identity.AddClaim(new Claim(ClaimTypes.Role, role));
+        }
+
         return new ClaimsPrincipal(identity);
     }
 }

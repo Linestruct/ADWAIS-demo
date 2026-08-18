@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Microsoft.EntityFrameworkCore;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.Financial.Upstream;
 using Adwais.Domain;
 using Adwais.Domain.Entities;
@@ -87,7 +88,7 @@ public class OrderIngestionService(
     private async Task<int> ExecuteIngestionCoreAsync(Tenant tenant, IOrderSource orderSource, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct)
     {
         if (!orderSource.IsConfigured(tenant.OrderProviderSettings))
-            throw new InvalidOperationException("Order provider settings are missing or invalid.");
+            throw new ConfigurationException("Order provider settings are missing or invalid.");
         var totalIngested = 0;
         var currentStart = startDate;
 
@@ -175,7 +176,7 @@ public class OrderIngestionService(
             .SingleAsync(ct);
         var orderSource = orderSources.ForProvider(provider);
         if (!tenantProvider.Equals(orderSource.Provider, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Tenant is configured for order provider '{tenantProvider}', not '{orderSource.Provider}'.");
+            throw new ConfigurationException($"Tenant is configured for order provider '{tenantProvider}', not '{orderSource.Provider}'.");
 
         var pIds = new[] { Guid.NewGuid() };
         var pTenantIds = new[] { tenantId };

@@ -36,7 +36,7 @@ public class GlobalConfigService(
     public async Task<GlobalConfigResponseDto> GetConfigAsync(CancellationToken ct = default)
     {
         var config = await _dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
-        if (config == null) throw new InvalidOperationException("Global configuration not found.");
+        if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
         var orgId = _currentAccess.Scope.OrganizationId;
         var orgConfig = orgId is null
@@ -49,7 +49,7 @@ public class GlobalConfigService(
     public async Task<GlobalConfigResponseDto> UpdateConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct = default)
     {
         var config = await _dbContext.GlobalConfigs.SingleOrDefaultAsync(ct);
-        if (config == null) throw new InvalidOperationException("Global configuration not found.");
+        if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
         if (request.OrderFetchEnabled.HasValue) config.OrderFetchEnabled = request.OrderFetchEnabled.Value;
         if (request.MonitoringFetchEnabled.HasValue) config.MonitoringFetchEnabled = request.MonitoringFetchEnabled.Value;

@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.Monitoring.Upstream;
 using Adwais.Application.DTOs.Integrations;
 using Adwais.Application.Interfaces;
@@ -78,7 +79,7 @@ public class UptimeRobotService(
         var config = await context.OrganizationConfigs.AsNoTracking().SingleOrDefaultAsync(c => c.OrganizationId == organizationId);
         if (config == null || !IsConfigured(config.MonitoringProviderSettings))
         {
-            throw new InvalidOperationException("UptimeRobot provider settings require apiKey.");
+            throw new ConfigurationException("UptimeRobot provider settings require apiKey.");
         }
         return ParseSettings(config.MonitoringProviderSettings).ApiKey!;
     }

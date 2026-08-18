@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.Financial.Upstream;
 using Adwais.Application.DTOs.Integrations;
 using Adwais.Application.Interfaces;
@@ -94,7 +95,7 @@ public sealed class ShopifyOrderSource(HttpClient httpClient) : IOrderSource
     {
         var sourceSettings = ParseSettings(settings);
         if (string.IsNullOrWhiteSpace(sourceSettings.EndpointUrl) || string.IsNullOrWhiteSpace(sourceSettings.AccessToken))
-            throw new InvalidOperationException("Shopify provider settings require endpointUrl and accessToken.");
+            throw new ConfigurationException("Shopify provider settings require endpointUrl and accessToken.");
 
         var orders = new List<OrderSourceOrder>();
         var nextUrl = BuildOrdersUrl(sourceSettings.EndpointUrl, startDate, endDate, take);

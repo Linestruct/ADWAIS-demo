@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.Weather;
 using Adwais.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
@@ -43,7 +44,7 @@ public class WeatherService(
         var config = await configService.GetConfigAsync(orgId, ct);
         var location = config?.WeatherLocation;
         if (string.IsNullOrWhiteSpace(location))
-            throw new InvalidOperationException("Weather location is not configured.");
+            throw new ConfigurationException("Weather location is not configured.");
 
         var cacheKey = $"{CacheKeyPrefix}{orgId}";
         if (cache.TryGetValue(cacheKey, out WeatherDto? cached) && cached is not null)
@@ -63,10 +64,10 @@ public class WeatherService(
     {
         var url = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(location)}&count=1&language=en&format=json";
         var response = await httpClient.GetFromJsonAsync<GeocodingResponse>(url, JsonOptions, ct)
-            ?? throw new InvalidOperationException($"Geocoding API returned no response for '{location}'.");
+            ?? throw new HttpRequestException($"Geocoding API returned no response for '{location}'.");
         var result = response.Results?.Length > 0
             ? response.Results[0]
-            : throw new InvalidOperationException($"No coordinates found for weather location '{location}'.");
+            : throw new ConfigurationException($"No coordinates found for weather location '{location}'.");
         return (result.Latitude, result.Longitude, result.Name);
     }
 
@@ -84,7 +85,7 @@ public class WeatherService(
                   $"&timezone=UTC";
 
         var response = await httpClient.GetFromJsonAsync<ForecastResponse>(url, JsonOptions, ct)
-                       ?? throw new InvalidOperationException("Open-Meteo forecast API returned null.");
+                       ?? throw new HttpRequestException("Open-Meteo forecast API returned null.");
 
         var current = response.Current;
         return new WeatherDto(

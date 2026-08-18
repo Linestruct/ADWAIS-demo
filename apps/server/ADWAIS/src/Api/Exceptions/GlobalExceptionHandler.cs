@@ -2,6 +2,7 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,15 @@ public class GlobalExceptionHandler(
 
         var (statusCode, title, type) = MapException(exception);
 
-        logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
+        if (statusCode >= 500)
+        {
+            logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
+        }
+        else
+        {
+            logger.LogWarning(exception, "Request rejected: {Message}", exception.Message);
+        }
+
         await eventService.LogErrorAsync("GlobalExceptionHandler", exception.Message, exception);
 
         var problemDetails = new ProblemDetails
@@ -48,6 +57,11 @@ public class GlobalExceptionHandler(
     {
         return exception switch
         {
+            ConfigurationException => (
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.8"
+            ),
             ArgumentException or InvalidOperationException => (
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
@@ -59,8 +73,8 @@ public class GlobalExceptionHandler(
                 "https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.4"
             ),
             UnauthorizedAccessException => (
-                StatusCodes.Status401Unauthorized,
-                "Unauthorized",
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
                 "https://datatracker.ietf.org/doc/html/rfc7235#section-3.1"
             ),
             HttpRequestException httpEx when httpEx.StatusCode == System.Net.HttpStatusCode.NotFound => (

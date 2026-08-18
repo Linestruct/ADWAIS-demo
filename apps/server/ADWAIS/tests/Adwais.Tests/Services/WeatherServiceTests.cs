@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Enums;
@@ -70,7 +71,7 @@ public class WeatherServiceTests
             .ReturnsAsync(CreateConfig(null));
         var service = new WeatherService(new HttpClient(), _configServiceMock.Object, _cacheMock.Object, OrgAccess(orgId));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetCurrentWeatherAsync());
+        await Assert.ThrowsAsync<ConfigurationException>(() => service.GetCurrentWeatherAsync());
     }
 
     [Fact]

@@ -27,7 +27,7 @@ public class DevMockAuthMiddlewareTests
 
     private DevMockAuthMiddleware CreateMiddleware(RequestDelegate next)
     {
-        return new DevMockAuthMiddleware(next, _envMock.Object);
+        return new DevMockAuthMiddleware(next, _envMock.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<DevMockAuthMiddleware>.Instance);
     }
 
     [Fact]

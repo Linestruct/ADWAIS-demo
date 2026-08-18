@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Application.Common.Models;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
 using Adwais.Application.Services;
 using Adwais.Domain.Entities;
@@ -18,9 +19,11 @@ public class FinancialServiceTests : IDisposable
 {
     private readonly AnalyticsDbContext _dbContext;
     private readonly FinancialService _service;
+    private readonly Mock<ICurrentAccess> _currentAccessMock;
     private readonly ResolvedPeriod _period;
     private readonly Guid _b2bTenantId = Guid.NewGuid();
     private readonly Guid _b2cTenantId = Guid.NewGuid();
+    private readonly Guid _defaultOrgId = Guid.NewGuid();
 
     public FinancialServiceTests()
     {
@@ -28,7 +31,10 @@ public class FinancialServiceTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new AnalyticsDbContext(options);
-        _service = new FinancialService(_dbContext, Mock.Of<IReportingCalendar>());
+        _currentAccessMock = new Mock<ICurrentAccess>();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(null, null, [UserRole.Admin]));
+        _service = new FinancialService(_dbContext, Mock.Of<IReportingCalendar>(), _currentAccessMock.Object);
 
         var currentStart = DateTimeOffset.UtcNow.AddHours(-2);
         _period = new ResolvedPeriod(
@@ -41,8 +47,8 @@ public class FinancialServiceTests : IDisposable
             includeActualTime: true);
 
         _dbContext.Tenants.AddRange(
-            new Tenant { Id = _b2bTenantId, Name = "Wholesale", Type = TenantType.B2B },
-            new Tenant { Id = _b2cTenantId, Name = "Retail", Type = TenantType.B2C });
+            new Tenant { Id = _b2bTenantId, OrganizationId = _defaultOrgId, Name = "Wholesale", Type = TenantType.B2B },
+            new Tenant { Id = _b2cTenantId, OrganizationId = _defaultOrgId, Name = "Retail", Type = TenantType.B2C });
         AddOrder(_b2bTenantId, _period.CurrentStart.AddMinutes(30), 100m, "b2b-current");
         AddOrder(_b2bTenantId, _period.PreviousStart.AddMinutes(30), 50m, "b2b-previous");
         AddOrder(_b2cTenantId, _period.CurrentStart.AddMinutes(30), 300m, "b2c-current");
@@ -153,6 +159,85 @@ public class FinancialServiceTests : IDisposable
         Assert.Equal(75m, result[0].NetGrowthAddition);
         Assert.Equal(40m, result[1].NetGrowthAddition);
         Assert.Equal(start.AddHours(4), result[1].Timestamp);
+    }
+
+    [Fact]
+    public async Task GetKpisAsync_OrgScope_OnlyIncludesOrgTenants()
+    {
+        var otherOrgId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = otherTenantId, OrganizationId = otherOrgId, Name = "Other Org Store", Type = TenantType.B2C });
+        AddOrder(otherTenantId, _period.CurrentStart.AddMinutes(30), 500m, "other-org-order");
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+
+        Assert.Equal(400m, result.CurrentRevenue);
+        Assert.Equal(2, result.TransactionVolume);
+    }
+
+    [Fact]
+    public async Task GetKpisAsync_TenantScope_RestrictsToThatTenant()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, _b2bTenantId, [UserRole.TenantViewer]));
+
+        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+
+        Assert.Equal(100m, result.CurrentRevenue);
+        Assert.Equal(1, result.TransactionVolume);
+    }
+
+    [Fact]
+    public async Task GetKpisAsync_RequestedTenantOutsideScope_ThrowsKeyNotFound()
+    {
+        var otherOrgId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = otherTenantId, OrganizationId = otherOrgId, Name = "Other Org Store", Type = TenantType.B2C });
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            _service.GetKpisAsync(_period, tenantId: otherTenantId, ct: CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetKpisAsync_NullScope_ReturnsNoRevenue()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns((AccessScope?)null);
+
+        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+
+        Assert.Equal(0m, result.CurrentRevenue);
+        Assert.Equal(0, result.TransactionVolume);
+    }
+
+    [Fact]
+    public async Task GetOrdersAsync_OrgScope_FiltersToOrgTenants()
+    {
+        var otherOrgId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = otherTenantId, OrganizationId = otherOrgId, Name = "Other Org Store", Type = TenantType.B2C });
+        AddOrder(otherTenantId, DateTimeOffset.UtcNow.AddMinutes(-5), 500m, "other-org-order");
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        var orders = await _service.GetOrdersAsync(
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow,
+            100,
+            CancellationToken.None);
+
+        Assert.All(orders, order => Assert.NotEqual(otherTenantId, order.AdwaisTenantId));
+        Assert.Equal(4, orders.Count);
     }
 
     private void AddOrder(Guid tenantId, DateTimeOffset createdDate, decimal value, string litiumOrderId)

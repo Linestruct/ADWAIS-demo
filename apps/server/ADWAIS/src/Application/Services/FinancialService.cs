@@ -8,6 +8,7 @@ using Adwais.Application.Common.Models;
 using Adwais.Application.DTOs.Financial;
 using Adwais.Application.Interfaces;
 using Adwais.Application.Common.Interfaces;
+using Adwais.Application.Common.Access;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Domain.Entities.OrderData;
@@ -21,13 +22,15 @@ namespace Adwais.Application.Services;
 /// </summary>
 public class FinancialService(
     IApplicationDbContext dbContext,
-    IReportingCalendar reportingCalendar) : IFinancialService
+    IReportingCalendar reportingCalendar,
+    ICurrentAccess currentAccess) : IFinancialService
 {
     private const int DensityBucketCount = 7 * 24;
     private const int SparseDensityThreshold = DensityBucketCount * 5;
     private const int StableDensityThreshold = DensityBucketCount * 20;
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly IReportingCalendar _reportingCalendar = reportingCalendar;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
 
     #region Internal data model for the merge layer
 
@@ -35,11 +38,39 @@ public class FinancialService(
 
     #endregion
 
+    /// <summary>
+    /// The tenant ids the current scope may see. Null means no restriction
+    /// (platform admin). An empty array means no access.
+    /// </summary>
+    private async Task<Guid[]?> GetVisibleTenantIdsAsync(IApplicationDbContext context, CancellationToken ct)
+    {
+        var scope = _currentAccess.Scope;
+        if (scope is null)
+        {
+            return [];
+        }
+
+        if (scope.IsPlatformAdmin)
+        {
+            return null;
+        }
+
+        if (scope.TenantId is { } tenantId)
+        {
+            return [tenantId];
+        }
+
+        return await context.Tenants
+            .Where(tenant => tenant.OrganizationId == scope.OrganizationId)
+            .Select(tenant => tenant.Id)
+            .ToArrayAsync(ct);
+    }
+
     #region Historical + Fresh Data Merge
 
     private async Task<List<DataRow>> GetMergedTenantDataAsync(
         IApplicationDbContext context, DateTimeOffset start, DateTimeOffset end, bool isHourly,
-        Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
+        Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, Guid[]? visibleTenantIds = null, CancellationToken ct = default)
     {
         var scopedTenantTypes = !tenantId.HasValue && tenantTypes is { Count: > 0 }
             ? tenantTypes.Distinct().ToArray()
@@ -47,6 +78,8 @@ public class FinancialService(
 
         if (tenantId.HasValue)
         {
+            if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
+                throw new KeyNotFoundException($"Tenant {tenantId.Value} is outside the current scope.");
             var tenantExists = await context.Tenants.AnyAsync(t => t.Id == tenantId.Value, ct);
             if (!tenantExists) throw new KeyNotFoundException($"Tenant {tenantId.Value} not found.");
         }
@@ -66,6 +99,8 @@ public class FinancialService(
                 if (scopedTenantTypes.Length > 0)
                     query = query.Where(o => o.Tenant != null && scopedTenantTypes.Contains(o.Tenant.Type));
             }
+            if (visibleTenantIds is not null)
+                query = query.Where(o => visibleTenantIds.Contains(o.TenantId));
 
             var rows = await query
                 .Select(o => new { o.CreatedDate, o.TenantId, o.TotalValueExcVat })
@@ -100,6 +135,8 @@ public class FinancialService(
                     .Contains(r.TenantId));
             }
         }
+        if (visibleTenantIds is not null)
+            historicalQuery = historicalQuery.Where(r => visibleTenantIds.Contains(r.TenantId));
 
         var rawHist = await historicalQuery
             .Select(r => new { r.CreatedDate, r.TenantId, r.Revenue, r.Volume })
@@ -122,6 +159,8 @@ public class FinancialService(
                 if (scopedTenantTypes.Length > 0)
                     freshQuery = freshQuery.Where(o => o.Tenant != null && scopedTenantTypes.Contains(o.Tenant.Type));
             }
+            if (visibleTenantIds is not null)
+                freshQuery = freshQuery.Where(o => visibleTenantIds.Contains(o.TenantId));
 
             var freshRows = await freshQuery
                 .GroupBy(o => new { o.CreatedDate.Year, o.CreatedDate.Month, o.CreatedDate.Day, o.TenantId })
@@ -147,8 +186,20 @@ public class FinancialService(
     }
 
     private async Task<List<DataRow>> GetMergedGlobalDataAsync(
-        IApplicationDbContext context, DateTimeOffset start, DateTimeOffset end, bool isHourly, CancellationToken ct = default)
+        IApplicationDbContext context, DateTimeOffset start, DateTimeOffset end, bool isHourly, Guid[]? visibleTenantIds = null, CancellationToken ct = default)
     {
+        if (visibleTenantIds is not null)
+        {
+            // Scoped principals cannot read the deployment-wide rollup. Aggregate
+            // the visible tenants from the tenant-level path instead.
+            var scopedRows = await GetMergedTenantDataAsync(context, start, end, isHourly, visibleTenantIds: visibleTenantIds, ct: ct);
+            return scopedRows
+                .GroupBy(row => row.Timestamp)
+                .Select(group => new DataRow(group.Key, null, group.Sum(row => row.Revenue), group.Sum(row => row.Volume)))
+                .OrderBy(row => row.Timestamp)
+                .ToList();
+        }
+
         if (isHourly)
         {
             var rows = await context.Orders
@@ -220,8 +271,10 @@ public class FinancialService(
         var isHourly = period.IsHourly;
         var context = _dbContext;
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, ct);
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+
+        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
 
         var currentRevenue = currentRows.Sum(r => r.Revenue);
         var previousRevenue = previousRows.Sum(r => r.Revenue);
@@ -257,8 +310,10 @@ public class FinancialService(
         var includeActualTime = period.IncludeActualTime;
         var context = _dbContext;
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, ct);
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+
+        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
         var tenantTypeMap = await context.Tenants.ToDictionaryAsync(t => t.Id, t => t.Type, ct);
 
         var binnedSteps = steps;
@@ -325,12 +380,15 @@ public class FinancialService(
         var isHourly = period.IsHourly;
         var context = _dbContext;
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, ct: ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, ct: ct);
-        
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+
+        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
+        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
+
         var tenantDetails = await context.Tenants
             .AsNoTracking()
             .Where(t => t.Id != IApplicationDbContext.SystemTenantGuid)
+            .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
 
@@ -389,10 +447,13 @@ public class FinancialService(
         var isHourly = period.IsHourly;
         var context = _dbContext;
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, ct: ct);
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+
+        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
         var tenantDetails = await context.Tenants
             .AsNoTracking()
             .Where(t => t.Id != IApplicationDbContext.SystemTenantGuid)
+            .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
 
@@ -530,11 +591,14 @@ public class FinancialService(
         var isHourly = period.IsHourly;
         var context = _dbContext;
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, ct: ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, ct: ct);
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+
+        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
+        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
         var tenantDetails = await context.Tenants
             .AsNoTracking()
             .Where(t => t.Id != IApplicationDbContext.SystemTenantGuid)
+            .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
 
@@ -598,16 +662,18 @@ public class FinancialService(
         var binSizeHours = isHourly ? roundedTotalHours / steps : 24d;
         var lookbackStart = currentStart.AddHours(-binSizeHours);
 
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+
         List<DataRow> currentRows, beforeStartRows;
-        if (tenantId.HasValue || tenantTypes is { Count: > 0 })
+        if (tenantId.HasValue || tenantTypes is { Count: > 0 } || visibleTenantIds is not null)
         {
-            currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, ct);
-            beforeStartRows = await GetMergedTenantDataAsync(context, lookbackStart, currentStart, isHourly, tenantId, tenantTypes, ct);
+            currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+            beforeStartRows = await GetMergedTenantDataAsync(context, lookbackStart, currentStart, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
         }
         else
         {
-            currentRows = await GetMergedGlobalDataAsync(context, currentStart, currentEnd, isHourly, ct);
-            beforeStartRows = await GetMergedGlobalDataAsync(context, lookbackStart, currentStart, isHourly, ct);
+            currentRows = await GetMergedGlobalDataAsync(context, currentStart, currentEnd, isHourly, ct: ct);
+            beforeStartRows = await GetMergedGlobalDataAsync(context, lookbackStart, currentStart, isHourly, ct: ct);
         }
 
         var previousValue = beforeStartRows.Sum(r => r.Revenue);
@@ -637,6 +703,10 @@ public class FinancialService(
         var currentStart = period.CurrentStart;
         var currentEnd = period.CurrentEnd;
         var context = _dbContext;
+
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+        if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
+            throw new KeyNotFoundException($"Tenant {tenantId} is outside the current scope.");
 
         var orderValues = await context.Orders
             .AsNoTracking()
@@ -737,6 +807,10 @@ public class FinancialService(
         var currentEnd = DateTimeOffset.UtcNow;
         var timeZone = await _reportingCalendar.GetTimeZoneAsync(ct);
 
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+        if (tenantId.HasValue && visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
+            throw new KeyNotFoundException($"Tenant {tenantId.Value} is outside the current scope.");
+
         var query = context.Orders
             .AsNoTracking()
             .Where(o => o.OrderState != OrderState.Cancelled);
@@ -752,6 +826,8 @@ public class FinancialService(
                 query = query.Where(o => o.Tenant != null && scopedTenantTypes.Contains(o.Tenant.Type));
             }
         }
+        if (visibleTenantIds is not null)
+            query = query.Where(o => visibleTenantIds.Contains(o.TenantId));
 
         var starts = new Dictionary<TransactionDensityPeriod, DateTimeOffset>
         {
@@ -886,17 +962,19 @@ public class FinancialService(
         var includeActualTime = period.IncludeActualTime;
         var context = _dbContext;
 
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+
         List<DataRow> currentRows, previousRows;
 
-        if (tenantId.HasValue || tenantTypes is { Count: > 0 })
+        if (tenantId.HasValue || tenantTypes is { Count: > 0 } || visibleTenantIds is not null)
         {
-            currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, ct);
-            previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, ct);
+            currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+            previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
         }
         else
         {
-            currentRows = await GetMergedGlobalDataAsync(context, currentStart, currentEnd, isHourly, ct);
-            previousRows = await GetMergedGlobalDataAsync(context, previousStart, period.PreviousEnd, isHourly, ct);
+            currentRows = await GetMergedGlobalDataAsync(context, currentStart, currentEnd, isHourly, ct: ct);
+            previousRows = await GetMergedGlobalDataAsync(context, previousStart, period.PreviousEnd, isHourly, ct: ct);
         }
 
         var currentByStep = currentRows
@@ -932,13 +1010,18 @@ public class FinancialService(
     public async Task<IReadOnlyList<OrderDto>> GetOrdersAsync(DateTimeOffset dateSince, DateTimeOffset dateUntil, int ceilingCount, CancellationToken ct)
     {
         var context = _dbContext;
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
-        return await context.Orders
+        var query = context.Orders
             .AsNoTracking()
             .Where(o => o.CreatedDate >= dateSince
                         && o.CreatedDate <= dateUntil
                         && o.OrderState != OrderState.Cancelled
-                        && o.TotalValueExcVat > 0m)
+                        && o.TotalValueExcVat > 0m);
+        if (visibleTenantIds is not null)
+            query = query.Where(o => visibleTenantIds.Contains(o.TenantId));
+
+        return await query
             .OrderByDescending(o => o.CreatedDate)
             .Take(ceilingCount)
             .Select(p => new OrderDto(

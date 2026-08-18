@@ -108,7 +108,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseAuthentication();
-app.UseMiddleware<Adwais.Api.Middleware.DevMockAuthMiddleware>();
 app.UseAuthorization();
 
 if (!isBuildTime)

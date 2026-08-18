@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Adwais.Api.Authentication;
 using Adwais.Infrastructure.Security;
 
 namespace Adwais.Api.Extensions;
@@ -147,6 +148,16 @@ public static class AuthenticationExtensions
         // Register claims transformation for external OIDC users.
         services.AddTransient<IClaimsTransformation, LocalUserClaimsTransformation>();
 
+        var isDevelopment = string.Equals(
+            configuration["ASPNETCORE_ENVIRONMENT"],
+            "Development",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (isDevelopment)
+        {
+            authBuilder.AddScheme<AuthenticationSchemeOptions, DevMockAuthenticationHandler>("DevMock", null);
+        }
+
         // Configure Authorization Policies
         services.AddAuthorization(options =>
         {
@@ -154,6 +165,7 @@ public static class AuthenticationExtensions
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
                 policy.RequireRole("Admin");
             });
 
@@ -161,6 +173,7 @@ public static class AuthenticationExtensions
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
                 policy.RequireRole("Admin", "Employee");
             });
 
@@ -168,6 +181,7 @@ public static class AuthenticationExtensions
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
                 policy.RequireRole("Admin", "Employee", "Viewer");
             });
         });

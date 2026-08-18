@@ -20,6 +20,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     : DbContext(options), IApplicationDbContext
 {
     public DbSet<GlobalConfig> GlobalConfigs => Set<GlobalConfig>();
+    public DbSet<OrganizationConfig> OrganizationConfigs => Set<OrganizationConfig>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Organization> Organizations => Set<Organization>();
@@ -257,40 +258,16 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 t.HasCheckConstraint("CK_GlobalConfig_SingleRow", 
                     "\"id\" = 1"));
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.MonitoringProvider)
-                .HasMaxLength(100)
-                .HasDefaultValue(IntegrationProviders.UptimeRobot)
-                .IsRequired();
-            entity.Property(x => x.MonitoringProviderSettings).HasMaxLength(4096);
-            if (dataProtectionProvider != null)
-            {
-                entity.Property(x => x.MonitoringProviderSettings)
-                    .HasConversion(new EncryptedStringConverter(dataProtectionProvider));
-            }
-            entity.Property(x => x.UptimeFetchIntervalMinutes).HasDefaultValue(60);
-            entity.Property(x => x.LatencyFetchIntervalMinutes).HasDefaultValue(10);
-            entity.Property(x => x.UserStatsFetchIntervalMinutes).HasDefaultValue(60);
             entity.Property(x => x.SystemEventRetentionDays).HasDefaultValue(2);
             entity.Property(x => x.OrderFetchEnabled).HasDefaultValue(true);
             entity.Property(x => x.MonitoringFetchEnabled).HasDefaultValue(true);
-            entity.Property(x => x.WeatherLocation).HasDefaultValue("Karlstad");
-            entity.Property(x => x.WeatherFetchIntervalMinutes).HasDefaultValue(15);
-            entity.Property(x => x.ReportingTimeZoneId).HasMaxLength(100).HasDefaultValue("Europe/Stockholm");
 
             entity.HasData(new GlobalConfig
             {
                 Id = 1,
                 OrderFetchEnabled = true,
                 MonitoringFetchEnabled = true,
-                OrderFetchIntervalMinutes = 60,
-                UptimeFetchIntervalMinutes = 60,
-                LatencyFetchIntervalMinutes = 10,
-                UserStatsFetchIntervalMinutes = 60,
-                SystemEventRetentionDays = 2,
-                FeedFetchIntervalHours = 2,
-                WeatherLocation = "Karlstad",
-                WeatherFetchIntervalMinutes = 15,
-                ReportingTimeZoneId = "Europe/Stockholm"
+                SystemEventRetentionDays = 2
             });
         });
         
@@ -361,6 +338,32 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                     CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
                 }
             );
+        });
+
+        modelBuilder.Entity<OrganizationConfig>(entity =>
+        {
+            entity.ToTable("organization_config");
+            entity.HasKey(config => config.OrganizationId);
+            entity.Property(config => config.WeatherLocation).HasMaxLength(255);
+            entity.Property(config => config.ReportingTimeZoneId).HasMaxLength(100).HasDefaultValue("Europe/Stockholm");
+            entity.Property(config => config.MonitoringProvider).HasMaxLength(50).HasDefaultValue(IntegrationProviders.UptimeRobot);
+            entity.Property(config => config.MonitoringProviderSettings).HasMaxLength(4096);
+            if (dataProtectionProvider != null)
+            {
+                entity.Property(config => config.MonitoringProviderSettings)
+                    .HasConversion(new EncryptedStringConverter(dataProtectionProvider));
+            }
+            entity.Property(config => config.WeatherFetchIntervalMinutes).HasDefaultValue(15);
+            entity.Property(config => config.OrderFetchIntervalMinutes).HasDefaultValue(60);
+            entity.Property(config => config.UptimeFetchIntervalMinutes).HasDefaultValue(60);
+            entity.Property(config => config.LatencyFetchIntervalMinutes).HasDefaultValue(10);
+            entity.Property(config => config.UserStatsFetchIntervalMinutes).HasDefaultValue(60);
+            entity.Property(config => config.FeedFetchIntervalHours).HasDefaultValue(2);
+
+            entity.HasOne(config => config.Organization)
+                .WithOne()
+                .HasForeignKey<OrganizationConfig>(config => config.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<UserAccess>(entity =>

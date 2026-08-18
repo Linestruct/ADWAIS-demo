@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IKioskService, KioskService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IGlobalConfigService, GlobalConfigService>();
+        services.AddScoped<IOrganizationConfigService, OrganizationConfigService>();
         services.AddScoped<IReportingCalendar, ReportingCalendar>();
         services.AddScoped<RefreshFinancialMaterializedViewJob>();
         services.AddScoped<RefreshMonitoringMaterializedViewJob>();

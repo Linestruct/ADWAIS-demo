@@ -1,0 +1,24 @@
+// Part of the ADWAIS project, under the Business Source License 1.1.
+// See /LICENSE for license information.
+// SPDX-License-Identifier: BUSL-1.1
+
+using System.Collections.Generic;
+
+namespace Adwais.Application.DTOs.GlobalConfig;
+
+public record OrganizationConfigDto(
+    string? WeatherLocation,
+    int WeatherFetchIntervalMinutes,
+    string ReportingTimeZoneId,
+    string MonitoringProvider,
+    IReadOnlyDictionary<string, string?> MonitoringProviderSettings,
+    IReadOnlyCollection<string> MonitoringProviderConfiguredSecretKeys,
+    int OrderFetchIntervalMinutes,
+    int UptimeFetchIntervalMinutes,
+    int LatencyFetchIntervalMinutes,
+    int UserStatsFetchIntervalMinutes,
+    int FeedFetchIntervalHours,
+    int? MonitorsCount,
+    int? MonitorsLimit,
+    string? ActiveSubscription,
+    string? LastSyncError);

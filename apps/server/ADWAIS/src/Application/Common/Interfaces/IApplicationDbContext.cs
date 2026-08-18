@@ -15,6 +15,7 @@ public interface IApplicationDbContext : IDisposable, IAsyncDisposable
     public static readonly Guid SystemTenantGuid = new Guid("00000000-0000-0000-0000-000000000001");
 
     DbSet<GlobalConfig> GlobalConfigs { get; }
+    DbSet<OrganizationConfig> OrganizationConfigs { get; }
     DbSet<User> Users { get; }
     DbSet<Tenant> Tenants { get; }
     DbSet<Order> Orders { get; }

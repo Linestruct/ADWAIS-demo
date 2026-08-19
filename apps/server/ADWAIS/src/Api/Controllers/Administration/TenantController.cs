@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Api.DTOs.Tenants;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
+using Adwais.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,11 +22,15 @@ namespace Adwais.Api.Controllers.Administration;
 public class TenantController(
     IApplicationDbContext dbContext,
     IMonitorOrchestrationService monitorService,
-    IEnumerable<IOrderSource> orderSources) : ControllerBase
+    IEnumerable<IOrderSource> orderSources,
+    ICurrentAccess currentAccess) : ControllerBase
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly IMonitorOrchestrationService _monitorService = monitorService;
     private readonly IEnumerable<IOrderSource> _orderSources = orderSources;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+
+    private OrganizationFilter OrganizationFilter => OrganizationFilter.From(_currentAccess.Scope);
 
     /// <summary>
     /// Retrieves tenants, optionally filtered by ID.
@@ -34,26 +40,49 @@ public class TenantController(
     [Authorize(Policy = "KioskOrStaffAccess")]
     public async Task<ActionResult<IEnumerable<TenantResponseDto>>> GetTenants([FromQuery] Guid? id)
     {
+        var filter = OrganizationFilter;
+        if (filter.Denied) return Ok(Enumerable.Empty<TenantResponseDto>());
+
         var context = _dbContext;
 
         if (id.HasValue)
         {
-            var tenant = await context.Tenants
+            if (filter.TenantId is { } pinnedTenant && pinnedTenant != id.Value)
+            {
+                return Ok(Enumerable.Empty<TenantResponseDto>());
+            }
+
+            var query = context.Tenants
                 .AsNoTracking()
                 .Include(t => t.Monitors)
-                .Where(t => t.Id == id.Value)
-                .SingleOrDefaultAsync();
+                .Where(t => t.Id == id.Value);
 
+            if (filter.OrganizationId is { } orgId)
+            {
+                query = query.Where(t => t.OrganizationId == orgId);
+            }
+
+            var tenant = await query.SingleOrDefaultAsync();
             if (tenant == null) return Ok(Enumerable.Empty<TenantResponseDto>());
 
             return Ok(new[] { Map(tenant) });
         }
 
-        var tenants = await context.Tenants
+        var listQuery = context.Tenants
             .AsNoTracking()
             .Include(t => t.Monitors)
-            .ToListAsync();
+            .AsQueryable();
 
+        if (filter.OrganizationId is { } filterOrgId)
+        {
+            listQuery = listQuery.Where(t => t.OrganizationId == filterOrgId);
+        }
+        if (filter.TenantId is { } pinnedTenantId)
+        {
+            listQuery = listQuery.Where(t => t.Id == pinnedTenantId);
+        }
+
+        var tenants = await listQuery.ToListAsync();
         return Ok(tenants.Select(Map));
     }
 
@@ -64,6 +93,13 @@ public class TenantController(
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> CreateTenant([FromBody] CreateTenantRequestDto request)
     {
+        var filter = OrganizationFilter;
+        if (filter.Denied || (filter.OrganizationId is null && _currentAccess.Scope?.IsPlatformAdmin != true))
+        {
+            return Forbid();
+        }
+
+        var organizationId = filter.OrganizationId ?? AnalyticsDbContext.DefaultOrganizationGuid;
         var context = _dbContext;
 
         var provider = request.OrderProvider.Trim().ToLowerInvariant();
@@ -82,6 +118,7 @@ public class TenantController(
 
         var tenant = new Tenant
         {
+            OrganizationId = organizationId,
             Name = request.Name,
             Type = request.Type,
             OrderProvider = provider,
@@ -108,9 +145,17 @@ public class TenantController(
             return BadRequest("Cannot delete the system tenant.");
         }
 
+        var filter = OrganizationFilter;
+        if (filter.Denied) return Forbid();
+
         var context = _dbContext;
         var tenant = await context.Tenants.FindAsync(id);
         if (tenant == null)
+        {
+            return NotFound();
+        }
+
+        if (filter.OrganizationId is { } orgId && tenant.OrganizationId != orgId)
         {
             return NotFound();
         }
@@ -129,10 +174,18 @@ public class TenantController(
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> UpdateTenant(Guid id, [FromBody] UpdateTenantRequestDto request)
     {
+        var filter = OrganizationFilter;
+        if (filter.Denied) return Forbid();
+
         var context = _dbContext;
 
         var tenant = await context.Tenants.FindAsync(id);
         if (tenant == null)
+        {
+            return NotFound();
+        }
+
+        if (filter.OrganizationId is { } orgId && tenant.OrganizationId != orgId)
         {
             return NotFound();
         }

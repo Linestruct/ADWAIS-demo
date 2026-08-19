@@ -81,7 +81,9 @@ public class TenantProviderSettingsControllerTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
         var monitorService = new Mock<IMonitorOrchestrationService>();
-        var controller = new TenantController(db, monitorService.Object, [new LitiumOrderSource(new HttpClient())]);
+        var currentAccess = new Mock<Adwais.Application.Common.Access.ICurrentAccess>();
+        currentAccess.SetupGet(a => a.Scope).Returns(new Adwais.Application.Common.Access.AccessScope(null, null, [Adwais.Domain.Enums.UserRole.Admin]));
+        var controller = new TenantController(db, monitorService.Object, [new LitiumOrderSource(new HttpClient())], currentAccess.Object);
         return (controller, db, new Tenant
         {
             Id = Guid.NewGuid(),

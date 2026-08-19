@@ -132,12 +132,16 @@ public class LocalUserClaimsTransformation(
         var clone = principal.Clone();
         foreach (var identity in clone.Identities)
         {
+            var roleClaimType = identity.RoleClaimType;
             var authorityClaims = identity.FindAll(claim =>
                     claim.Type is ClaimTypes.Role
+                        or "role"
+                        or "roles"
                         or ClaimTypes.NameIdentifier
                         or AccessClaimTypes.OrganizationId
                         or AccessClaimTypes.TenantId
-                        or AccessClaimTypes.IsPlatformAdmin)
+                        or AccessClaimTypes.IsPlatformAdmin
+                        || (!string.IsNullOrEmpty(roleClaimType) && claim.Type == roleClaimType))
                 .ToList();
             foreach (var claim in authorityClaims)
             {

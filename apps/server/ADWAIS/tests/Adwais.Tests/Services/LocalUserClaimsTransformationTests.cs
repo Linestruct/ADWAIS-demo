@@ -526,6 +526,56 @@ public class LocalUserClaimsTransformationTests
         Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == firstOrg.ToString()));
     }
 
+    [Fact]
+    public async Task TransformAsync_ScrubsShortFormRoleClaims_ForUnprovisionedUser()
+    {
+        var identity = new ClaimsIdentity("FederatedAuthentication", "name", "role");
+        identity.AddClaim(new Claim("sub", "unprovisioned-attacker"));
+        identity.AddClaim(new Claim("email", "attacker@example.com"));
+        identity.AddClaim(new Claim("name", "Attacker"));
+        identity.AddClaim(new Claim("role", "Admin"));
+        identity.AddClaim(new Claim("roles", "Admin"));
+        identity.AddClaim(new Claim(ClaimTypes.Role, "Admin"));
+
+        var principal = new ClaimsPrincipal(identity);
+        var result = await _transformation.TransformAsync(principal);
+
+        Assert.False(result.IsInRole("Admin"));
+        Assert.Empty(result.FindAll("role"));
+        Assert.Empty(result.FindAll("roles"));
+        Assert.Empty(result.FindAll(ClaimTypes.Role));
+    }
+
+    [Fact]
+    public async Task TransformAsync_ScrubsShortFormRoleClaims_WhenUserHasNoValidScope()
+    {
+        var userId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "no-scope-user",
+                Name = "No Scope User",
+                Email = "noscope@example.com",
+                Role = UserRole.Employee
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var identity = new ClaimsIdentity("FederatedAuthentication", "name", "role");
+        identity.AddClaim(new Claim("sub", "no-scope-user"));
+        identity.AddClaim(new Claim("email", "noscope@example.com"));
+        identity.AddClaim(new Claim("name", "No Scope User"));
+        identity.AddClaim(new Claim("role", "Admin"));
+
+        var principal = new ClaimsPrincipal(identity);
+        var result = await _transformation.TransformAsync(principal);
+
+        Assert.False(result.IsInRole("Admin"));
+        Assert.Empty(result.FindAll("role"));
+    }
+
     private static ClaimsPrincipal CreatePrincipal(string subjectId, string email, string name, string[]? roles = null)
     {
         var identity = new ClaimsIdentity("FederatedAuthentication");

@@ -20,10 +20,11 @@ public sealed class CurrentAccessService(IHttpContextAccessor httpContextAccesso
             return null;
         }
 
-        var roles = principal.FindAll(ClaimTypes.Role)
+        var roles = principal.FindAll(claim => claim.Type is ClaimTypes.Role or "role" or "roles")
             .Select(claim => claim.Value)
             .Where(value => Enum.TryParse<UserRole>(value, out _))
             .Select(Enum.Parse<UserRole>)
+            .Distinct()
             .ToList();
 
         if (principal.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"))

@@ -38,7 +38,7 @@ public class WeatherService(
 
     public async Task<WeatherDto> GetCurrentWeatherAsync(CancellationToken ct = default)
     {
-        var orgId = currentAccess.Scope.OrganizationId
+        var orgId = currentAccess.Scope?.OrganizationId
             ?? throw new InvalidOperationException("Weather requires an organization scope.");
 
         var config = await configService.GetConfigAsync(orgId, ct);

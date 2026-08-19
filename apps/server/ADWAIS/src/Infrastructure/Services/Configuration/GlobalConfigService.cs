@@ -38,7 +38,7 @@ public class GlobalConfigService(
         var config = await _dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
         if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
-        var orgId = _currentAccess.Scope.OrganizationId;
+        var orgId = _currentAccess.Scope?.OrganizationId;
         var orgConfig = orgId is null
             ? null
             : await _organizationConfigService.GetConfigAsync(orgId.Value, ct);
@@ -56,7 +56,7 @@ public class GlobalConfigService(
         if (request.SystemEventRetentionDays.HasValue) config.SystemEventRetentionDays = request.SystemEventRetentionDays.Value;
         await _dbContext.SaveChangesAsync(ct);
 
-        var orgId = _currentAccess.Scope.OrganizationId;
+        var orgId = _currentAccess.Scope?.OrganizationId;
         var previousOrgConfig = orgId is null
             ? null
             : await _organizationConfigService.GetConfigAsync(orgId.Value, ct);
@@ -89,7 +89,7 @@ public class GlobalConfigService(
     {
         if (intervalHours <= 0) throw new ArgumentException("Interval must be at least 1 hour.", nameof(intervalHours));
 
-        var orgId = _currentAccess.Scope.OrganizationId
+        var orgId = _currentAccess.Scope?.OrganizationId
             ?? throw new InvalidOperationException("Feed intervals require an organization scope.");
 
         var orgConfig = await _organizationConfigService.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
@@ -114,7 +114,7 @@ public class GlobalConfigService(
 
     public async Task<FetchIntervalsDto> GetFetchIntervalsAsync(CancellationToken ct = default)
     {
-        var orgId = _currentAccess.Scope.OrganizationId;
+        var orgId = _currentAccess.Scope?.OrganizationId;
         var orgConfig = orgId is null
             ? null
             : await _organizationConfigService.GetConfigAsync(orgId.Value, ct);
@@ -144,7 +144,7 @@ public class GlobalConfigService(
 
     public async Task<FetchIntervalsDto> UpdateFetchIntervalsAsync(UpdateFetchIntervalsRequestDto request, CancellationToken ct = default)
     {
-        var orgId = _currentAccess.Scope.OrganizationId
+        var orgId = _currentAccess.Scope?.OrganizationId
             ?? throw new InvalidOperationException("Fetch intervals require an organization scope.");
 
         var orgConfig = await _organizationConfigService.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
@@ -224,7 +224,7 @@ public class GlobalConfigService(
 
     private async Task<OrganizationConfigDto> UpdateOrgConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct)
     {
-        var orgId = _currentAccess.Scope.OrganizationId;
+        var orgId = _currentAccess.Scope?.OrganizationId;
         var hasOrgFields = request.MonitoringProvider is not null
             || request.MonitoringProviderSettings is not null
             || request.WeatherLocation is not null

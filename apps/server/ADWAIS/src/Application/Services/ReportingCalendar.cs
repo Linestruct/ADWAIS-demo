@@ -28,7 +28,7 @@ public sealed class ReportingCalendar(
 
     public async Task<TimeZoneInfo> GetTimeZoneAsync(CancellationToken ct = default)
     {
-        var orgId = currentAccess.Scope.OrganizationId;
+        var orgId = currentAccess.Scope?.OrganizationId;
         if (orgId is not null && _timeZonesByOrg.TryGetValue(orgId.Value, out var cached))
             return cached;
 

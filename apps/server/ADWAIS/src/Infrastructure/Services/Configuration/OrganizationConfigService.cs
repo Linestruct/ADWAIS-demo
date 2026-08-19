@@ -26,7 +26,7 @@ public class OrganizationConfigService(
 
     public async Task<OrganizationConfigDto?> GetConfigAsync(CancellationToken ct = default)
     {
-        var orgId = _currentAccess.Scope.OrganizationId;
+        var orgId = _currentAccess.Scope?.OrganizationId;
         if (orgId is null) return null;
 
         return await GetConfigAsync(orgId.Value, ct);

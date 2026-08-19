@@ -33,7 +33,7 @@ public class MonitorController(
 
     private async Task<bool> IsMonitoringProviderConfiguredAsync(CancellationToken ct)
     {
-        var orgId = _currentAccess.Scope.OrganizationId;
+        var orgId = _currentAccess.Scope?.OrganizationId;
         if (orgId is null)
         {
             return await _dbContext.OrganizationConfigs

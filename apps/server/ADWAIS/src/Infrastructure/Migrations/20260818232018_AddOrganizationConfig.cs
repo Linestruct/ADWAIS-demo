@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -140,9 +140,6 @@ namespace Adwais.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "organization_config");
-
             migrationBuilder.AddColumn<string>(
                 name: "active_subscription",
                 table: "global_config",
@@ -239,12 +236,30 @@ namespace Adwais.Infrastructure.Migrations
                 nullable: true,
                 defaultValue: "Karlstad");
 
-            migrationBuilder.UpdateData(
-                table: "global_config",
-                keyColumn: "id",
-                keyValue: 1,
-                columns: new[] { "active_subscription", "feed_fetch_interval_hours", "last_sync_error", "latency_fetch_interval_minutes", "monitoring_provider", "monitoring_provider_settings", "monitors_count", "monitors_limit", "order_fetch_interval_minutes", "reporting_time_zone_id", "uptime_fetch_interval_minutes", "user_stats_fetch_interval_minutes", "weather_fetch_interval_minutes", "weather_location" },
-                values: new object[] { null, 2, null, 10, "uptimerobot", null, null, null, 60, "Europe/Stockholm", 60, 60, 15, "Karlstad" });
+            migrationBuilder.Sql(@"
+                UPDATE global_config g
+                SET
+                    active_subscription = oc.active_subscription,
+                    feed_fetch_interval_hours = oc.feed_fetch_interval_hours,
+                    last_sync_error = oc.last_sync_error,
+                    latency_fetch_interval_minutes = oc.latency_fetch_interval_minutes,
+                    monitoring_provider = oc.monitoring_provider,
+                    monitoring_provider_settings = oc.monitoring_provider_settings,
+                    monitors_count = oc.monitors_count,
+                    monitors_limit = oc.monitors_limit,
+                    order_fetch_interval_minutes = oc.order_fetch_interval_minutes,
+                    reporting_time_zone_id = oc.reporting_time_zone_id,
+                    uptime_fetch_interval_minutes = oc.uptime_fetch_interval_minutes,
+                    user_stats_fetch_interval_minutes = oc.user_stats_fetch_interval_minutes,
+                    weather_fetch_interval_minutes = oc.weather_fetch_interval_minutes,
+                    weather_location = oc.weather_location
+                FROM organization_config oc
+                WHERE oc.organization_id = (SELECT MIN(organization_id) FROM organization_config)
+                  AND g.id = 1;
+            ");
+
+            migrationBuilder.DropTable(
+                name: "organization_config");
         }
     }
 }

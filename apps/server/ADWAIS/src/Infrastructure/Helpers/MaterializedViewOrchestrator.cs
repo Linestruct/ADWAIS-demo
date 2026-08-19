@@ -40,13 +40,14 @@ public static class MaterializedViewOrchestrator
                            current_local_day AT TIME ZONE time_zone_id AS current_day_start,
                            (current_local_day - '730 days'::interval) AT TIME ZONE time_zone_id AS retention_start
                     FROM (
-                        SELECT reporting_time_zone_id AS time_zone_id,
+                        SELECT COALESCE(reporting_time_zone_id, 'UTC') AS time_zone_id,
                                date_trunc(
                                    'day',
-                                   CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id
+                                   CURRENT_TIMESTAMP AT TIME ZONE COALESCE(reporting_time_zone_id, 'UTC')
                                ) AS current_local_day
-                        FROM global_config
-                        WHERE id = 1
+                        FROM organization_config
+                        ORDER BY organization_id
+                        LIMIT 1
                     ) reporting_clock
                 )
                 SELECT date_trunc(
@@ -87,13 +88,17 @@ public static class MaterializedViewOrchestrator
             await context.Database.ExecuteSqlRawAsync(@"
                 CREATE MATERIALIZED VIEW v_mat_daily_latency_monitor_rollup AS
                 WITH reporting AS (
-                    SELECT reporting_time_zone_id AS time_zone_id,
-                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id)
-                               AT TIME ZONE reporting_time_zone_id AS current_day_start,
-                           (date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id)
-                               - '730 days'::interval) AT TIME ZONE reporting_time_zone_id AS retention_start
-                    FROM global_config
-                    WHERE id = 1
+                    SELECT time_zone_id,
+                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE time_zone_id)
+                               AT TIME ZONE time_zone_id AS current_day_start,
+                           (date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE time_zone_id)
+                               - '730 days'::interval) AT TIME ZONE time_zone_id AS retention_start
+                    FROM (
+                        SELECT COALESCE(reporting_time_zone_id, 'UTC') AS time_zone_id
+                        FROM organization_config
+                        ORDER BY organization_id
+                        LIMIT 1
+                    ) reporting_clock
                 )
                 SELECT date_trunc('day', response_time.date AT TIME ZONE reporting.time_zone_id)
                            AT TIME ZONE reporting.time_zone_id AS date,
@@ -116,11 +121,15 @@ public static class MaterializedViewOrchestrator
             await context.Database.ExecuteSqlRawAsync(@"
                 CREATE MATERIALIZED VIEW v_mat_daily_latency_tenant_rollup AS
                 WITH reporting AS (
-                    SELECT reporting_time_zone_id AS time_zone_id,
-                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id)
-                               AT TIME ZONE reporting_time_zone_id AS current_day_start
-                    FROM global_config
-                    WHERE id = 1
+                    SELECT time_zone_id,
+                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE time_zone_id)
+                               AT TIME ZONE time_zone_id AS current_day_start
+                    FROM (
+                        SELECT COALESCE(reporting_time_zone_id, 'UTC') AS time_zone_id
+                        FROM organization_config
+                        ORDER BY organization_id
+                        LIMIT 1
+                    ) reporting_clock
                 )
                 SELECT date_trunc('day', rt.date AT TIME ZONE reporting.time_zone_id)
                            AT TIME ZONE reporting.time_zone_id AS date,
@@ -143,11 +152,15 @@ public static class MaterializedViewOrchestrator
             await context.Database.ExecuteSqlRawAsync(@"
                 CREATE MATERIALIZED VIEW v_mat_daily_latency_global_rollup AS
                 WITH reporting AS (
-                    SELECT reporting_time_zone_id AS time_zone_id,
-                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id)
-                               AT TIME ZONE reporting_time_zone_id AS current_day_start
-                    FROM global_config
-                    WHERE id = 1
+                    SELECT time_zone_id,
+                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE time_zone_id)
+                               AT TIME ZONE time_zone_id AS current_day_start
+                    FROM (
+                        SELECT COALESCE(reporting_time_zone_id, 'UTC') AS time_zone_id
+                        FROM organization_config
+                        ORDER BY organization_id
+                        LIMIT 1
+                    ) reporting_clock
                 )
                 SELECT date_trunc('day', rt.date AT TIME ZONE reporting.time_zone_id)
                            AT TIME ZONE reporting.time_zone_id AS date,
@@ -171,13 +184,17 @@ public static class MaterializedViewOrchestrator
             await context.Database.ExecuteSqlRawAsync(@"
                 CREATE MATERIALIZED VIEW v_mat_daily_availability_monitor_rollup AS
                 WITH reporting AS (
-                    SELECT reporting_time_zone_id AS time_zone_id,
-                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id)
-                               AT TIME ZONE reporting_time_zone_id AS current_day_start,
-                           (date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id)
-                               - '730 days'::interval) AT TIME ZONE reporting_time_zone_id AS retention_start
-                    FROM global_config
-                    WHERE id = 1
+                    SELECT time_zone_id,
+                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE time_zone_id)
+                               AT TIME ZONE time_zone_id AS current_day_start,
+                           (date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE time_zone_id)
+                               - '730 days'::interval) AT TIME ZONE time_zone_id AS retention_start
+                    FROM (
+                        SELECT COALESCE(reporting_time_zone_id, 'UTC') AS time_zone_id
+                        FROM organization_config
+                        ORDER BY organization_id
+                        LIMIT 1
+                    ) reporting_clock
                 )
                 SELECT date_trunc('day', monitor_availability.date AT TIME ZONE reporting.time_zone_id)
                            AT TIME ZONE reporting.time_zone_id AS date,
@@ -198,11 +215,15 @@ public static class MaterializedViewOrchestrator
             await context.Database.ExecuteSqlRawAsync(@"
                 CREATE MATERIALIZED VIEW v_mat_daily_availability_tenant_rollup AS
                 WITH reporting AS (
-                    SELECT reporting_time_zone_id AS time_zone_id,
-                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE reporting_time_zone_id)
-                               AT TIME ZONE reporting_time_zone_id AS current_day_start
-                    FROM global_config
-                    WHERE id = 1
+                    SELECT time_zone_id,
+                           date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE time_zone_id)
+                               AT TIME ZONE time_zone_id AS current_day_start
+                    FROM (
+                        SELECT COALESCE(reporting_time_zone_id, 'UTC') AS time_zone_id
+                        FROM organization_config
+                        ORDER BY organization_id
+                        LIMIT 1
+                    ) reporting_clock
                 )
                 SELECT date_trunc('day', ma.date AT TIME ZONE reporting.time_zone_id)
                            AT TIME ZONE reporting.time_zone_id AS date,

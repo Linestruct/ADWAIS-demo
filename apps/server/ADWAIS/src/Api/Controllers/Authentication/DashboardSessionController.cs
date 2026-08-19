@@ -4,6 +4,7 @@
 
 using System.Security.Claims;
 using Adwais.Api.Extensions;
+using Adwais.Application.Common.Access;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,7 @@ public class DashboardSessionController : ControllerBase
     /// the SPA's Authorization header.
     /// </remarks>
     [HttpPost]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "PlatformAdminOnly")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -34,8 +35,9 @@ public class DashboardSessionController : ControllerBase
     {
         var identity = new ClaimsIdentity(
             [
-                new Claim(ClaimTypes.Name, User.Identity?.Name ?? "Admin"),
-                new Claim(ClaimTypes.Role, "Admin")
+                new Claim(ClaimTypes.Name, User.Identity?.Name ?? "PlatformAdmin"),
+                new Claim(ClaimTypes.Role, "Admin"),
+                new Claim(AccessClaimTypes.IsPlatformAdmin, "true")
             ],
             AuthenticationExtensions.DashboardCookieScheme);
 

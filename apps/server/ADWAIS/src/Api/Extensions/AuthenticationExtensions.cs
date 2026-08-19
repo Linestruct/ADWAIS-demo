@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Adwais.Api.Authentication;
+using Adwais.Application.Common.Access;
 using Adwais.Infrastructure.Security;
 
 namespace Adwais.Api.Extensions;
@@ -161,6 +162,14 @@ public static class AuthenticationExtensions
         // Configure Authorization Policies
         services.AddAuthorization(options =>
         {
+            options.AddPolicy("PlatformAdminOnly", policy =>
+            {
+                policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                policy.AuthenticationSchemes.Add("KioskJwt");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireClaim(AccessClaimTypes.IsPlatformAdmin, "true");
+            });
+
             options.AddPolicy("AdminOnly", policy =>
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);

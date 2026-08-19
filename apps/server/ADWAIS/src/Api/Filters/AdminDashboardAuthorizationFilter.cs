@@ -2,6 +2,7 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using Adwais.Application.Common.Access;
 using Hangfire.Dashboard;
 
 namespace Adwais.Api.Filters;
@@ -12,6 +13,6 @@ public class AdminDashboardAuthorizationFilter : IDashboardAuthorizationFilter
     {
         var httpContext = context.GetHttpContext();
         return httpContext.User.Identity?.IsAuthenticated == true
-            && httpContext.User.IsInRole("Admin");
+            && httpContext.User.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true");
     }
 }

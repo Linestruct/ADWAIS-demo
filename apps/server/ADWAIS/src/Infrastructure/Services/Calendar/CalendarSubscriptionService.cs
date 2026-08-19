@@ -172,6 +172,7 @@ public class CalendarSubscriptionService(
                     var newEvent = new CalendarEvent
                     {
                         Id = Guid.NewGuid(),
+                        OrganizationId = sub.OrganizationId,
                         Title = calendarEvent.Summary ?? "Untitled Event",
                         Description = calendarEvent.Description,
                         Location = calendarEvent.Location,

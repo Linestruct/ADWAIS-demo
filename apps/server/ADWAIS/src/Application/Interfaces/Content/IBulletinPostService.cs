@@ -14,6 +14,7 @@ public interface IBulletinPostService
 {
     Task<BulletinPost?> GetPostByIdAsync(Guid id, CancellationToken ct = default);
     Task<BulletinPost> CreatePostAsync(Guid userId, string title, string body, CancellationToken ct = default);
+    Task<BulletinPost> CreatePostAsync(Guid userId, string title, string body, Guid? organizationId, CancellationToken ct = default);
     Task<BulletinPost?> UpdatePostAsync(Guid id, string? title, string? body, CancellationToken ct = default);
     Task<IEnumerable<BulletinPost>> GetPostsAsync(CancellationToken ct = default);
     Task<bool> DeletePostAsync(Guid id, CancellationToken ct = default);

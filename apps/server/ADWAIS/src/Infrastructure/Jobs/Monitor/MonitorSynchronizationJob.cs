@@ -50,9 +50,13 @@ public class MonitorSynchronizationJob(
             }
 
             var localMonitors = await dbContext.Monitors
-                .Where(monitor => monitor.Provider == monitoringProvider.Provider)
+                .Include(m => m.Tenant)
+                .Where(monitor => monitor.Provider == monitoringProvider.Provider
+                    && (monitor.TenantId == AnalyticsDbContext.SystemTenantGuid || monitor.Tenant!.OrganizationId == orgConfig.OrganizationId))
                 .ToListAsync();
-            var localByExternalId = localMonitors.ToDictionary(monitor => monitor.ExternalId, StringComparer.Ordinal);
+            var localByExternalId = localMonitors
+                .GroupBy(monitor => monitor.ExternalId, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
             foreach (var remote in upStreamMonitors)
             {

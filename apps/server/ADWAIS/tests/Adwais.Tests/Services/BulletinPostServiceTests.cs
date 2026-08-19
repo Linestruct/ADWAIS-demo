@@ -161,6 +161,32 @@ public class BulletinPostServiceTests
         Assert.Equal("Own", result[0].Title);
     }
 
+    [Fact]
+    public async Task CreatePostAsync_WithExplicitOrganizationId_AssignsGivenOrg()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
+        var dbContext = new AnalyticsDbContext(options);
+        var targetOrgId = Guid.NewGuid();
+
+        // An unscoped service (e.g., background / anonymous webhook context)
+        var mockAccess = new Mock<ICurrentAccess>();
+        mockAccess.Setup(a => a.Scope).Returns((AccessScope?)null);
+
+        var service = new BulletinPostService(dbContext, mockAccess.Object);
+
+        var result = await service.CreatePostAsync(
+            AnalyticsDbContext.SystemUserGuid,
+            "Webhook Title",
+            "Webhook Body",
+            targetOrgId,
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(targetOrgId, result.OrganizationId);
+        Assert.Equal("Webhook Title", result.Title);
+    }
+
     private static ICurrentAccess PlatformAccess()
     {
         var mock = new Mock<ICurrentAccess>();

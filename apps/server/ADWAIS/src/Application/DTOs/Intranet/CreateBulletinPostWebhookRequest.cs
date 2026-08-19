@@ -8,4 +8,5 @@ public record CreateBulletinPostWebhookRequest
 {
     public required string Title { get; set; }
     public required string Body { get; set; }
+    public Guid? OrganizationId { get; set; }
 }

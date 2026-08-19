@@ -73,7 +73,8 @@ public class WebhooksController(
             return BadRequest(new { Error = "Payload cannot be null." });
         }
 
-        var post = await postService.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, ct);
+        var targetOrgId = payload.OrganizationId ?? AnalyticsDbContext.DefaultOrganizationGuid;
+        var post = await postService.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, targetOrgId, ct);
 
         return Ok(new { Id = post.Id });
     }

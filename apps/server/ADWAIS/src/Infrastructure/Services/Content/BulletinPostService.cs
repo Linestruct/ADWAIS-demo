@@ -38,16 +38,41 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
         return post;
     }
 
-    public async Task<BulletinPost> CreatePostAsync(Guid userId, string title, string body, CancellationToken ct = default)
+    public Task<BulletinPost> CreatePostAsync(
+        Guid userId,
+        string title,
+        string body,
+        CancellationToken ct = default)
+        => CreatePostAsync(userId, title, body, organizationId: null, ct);
+
+    public async Task<BulletinPost> CreatePostAsync(
+        Guid userId,
+        string title,
+        string body,
+        Guid? organizationId,
+        CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
-        if (filter.Denied) throw new UnauthorizedAccessException("The current scope cannot create bulletin posts.");
-        if (filter.OrganizationId is null) throw new InvalidOperationException("Bulletin posts require an organization scope.");
+        Guid targetOrgId;
+        if (organizationId.HasValue)
+        {
+            if (!filter.Denied && filter.OrganizationId is { } filterOrg && filterOrg != organizationId.Value)
+            {
+                throw new UnauthorizedAccessException("Cannot create bulletin post for another organization.");
+            }
+            targetOrgId = organizationId.Value;
+        }
+        else
+        {
+            if (filter.Denied) throw new UnauthorizedAccessException("The current scope cannot create bulletin posts.");
+            if (filter.OrganizationId is null) throw new InvalidOperationException("Bulletin posts require an organization scope.");
+            targetOrgId = filter.OrganizationId.Value;
+        }
 
         var post = new BulletinPost
         {
             Id = Guid.NewGuid(),
-            OrganizationId = filter.OrganizationId.Value,
+            OrganizationId = targetOrgId,
             UserId = userId,
             Title = title,
             Body = body,

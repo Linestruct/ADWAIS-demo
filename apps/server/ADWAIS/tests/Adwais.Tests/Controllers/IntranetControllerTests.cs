@@ -92,7 +92,7 @@ public class IntranetControllerTests
             CreatedAt = DateTime.UtcNow
         };
         var postServiceMock = new Mock<IBulletinPostService>();
-        postServiceMock.Setup(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        postServiceMock.Setup(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(createdPost);
 
         var controller = new WebhooksController(
@@ -114,7 +114,7 @@ public class IntranetControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returnedData = okResult.Value;
         Assert.NotNull(returnedData);
-        postServiceMock.Verify(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, It.IsAny<CancellationToken>()), Times.Once);
+        postServiceMock.Verify(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

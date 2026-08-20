@@ -178,7 +178,7 @@ export function FormField(props: FormFieldProps) {
             aria-label={props.hideLabel ? props.label : props['aria-label']}
             aria-invalid={Boolean(props.error) || undefined}
             aria-describedby={describedBy}
-            className="w-full h-full bg-transparent outline-none disabled:bg-transparent custom-scrollbar resize-y text-inherit placeholder:text-on-surface-variant"
+            className="w-full h-full bg-transparent outline-none disabled:bg-transparent custom-scrollbar resize-none text-inherit placeholder:text-on-surface-variant"
           />
         </div>
       </FieldFrame>

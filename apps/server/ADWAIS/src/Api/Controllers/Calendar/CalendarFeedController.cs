@@ -1,6 +1,7 @@
-// Part of the ADWAIS project, under the Business Source License 1.1.
+// Part of the ADWAIS project, licensed under the MIT License.
+// Copyright (c) 2026 Marmenlind.
 // See /LICENSE for license information.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 
 using System.Security.Claims;
 using Adwais.Application.DTOs.Intranet;
@@ -10,12 +11,24 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Adwais.Api.Controllers.Calendar;
 
+/// <summary>
+/// Provides personal calendar feed tokens and token-protected iCalendar feeds.
+/// </summary>
 [ApiController]
 [Route("api/intranet/calendar")]
 public class CalendarFeedController(ICalendarFeedService feedService) : ControllerBase
 {
     private readonly ICalendarFeedService _feedService = feedService;
 
+    /// <summary>
+    /// Generates an iCalendar feed for a valid feed token.
+    /// </summary>
+    /// <remarks>
+    /// The token grants access to the calendar feed, so clients must keep the feed URL private.
+    /// </remarks>
+    /// <param name="token">The calendar feed token.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>An iCalendar file containing the events available to the token.</returns>
     [HttpGet("feed.ics")]
     [AllowAnonymous]
     public async Task<IActionResult> GetFeed([FromQuery] string token, CancellationToken ct)
@@ -29,6 +42,11 @@ public class CalendarFeedController(ICalendarFeedService feedService) : Controll
         return File(fileBytes, "text/calendar", "feed.ics");
     }
 
+    /// <summary>
+    /// Retrieves the current calendar feed token for the authenticated user.
+    /// </summary>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The authenticated user's calendar feed token.</returns>
     [HttpGet("token")]
     [Authorize(Policy = "StaffAccess")]
     public async Task<ActionResult<CalendarTokenDto>> GetToken(CancellationToken ct)
@@ -43,6 +61,14 @@ public class CalendarFeedController(ICalendarFeedService feedService) : Controll
         return Ok(new CalendarTokenDto { Token = token });
     }
 
+    /// <summary>
+    /// Replaces the authenticated user's calendar feed token.
+    /// </summary>
+    /// <remarks>
+    /// Existing calendar feed URLs stop working after the token is regenerated.
+    /// </remarks>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The new calendar feed token.</returns>
     [HttpPost("token/regenerate")]
     [Authorize(Policy = "StaffAccess")]
     public async Task<ActionResult<CalendarTokenDto>> RegenerateToken(CancellationToken ct)

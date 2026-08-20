@@ -1,6 +1,7 @@
-﻿// Part of the ADWAIS project, under the Business Source License 1.1.
+﻿// Part of the ADWAIS project, licensed under the MIT License.
+// Copyright (c) 2026 Marmenlind.
 // See /LICENSE for license information.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 
 export function buildUrl(base: string, params: Record<string, string | number | null | undefined>) {
     const url = new URL(base, window.location.origin);

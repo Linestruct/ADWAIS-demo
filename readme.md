@@ -2,34 +2,7 @@
 
 A multi-tenant platform for e-commerce analytics, endpoint monitoring, and team communication.
 
-## License
-
-This repository is source-available under the Business Source License 1.1 (BUSL 1.1). See [LICENSE](./LICENSE) for the full terms.
-
-Free use:
-
-- Internal business use.
-- Client deployments without a fee for the software itself.
-- Deployments must keep the `© Marmenlind` credit visible in the UI.
-
-Paid use needs a commercial agreement:
-
-- Remove or change the `© Marmenlind` credit.
-- Offer the software as a paid managed service.
-
-Contact: olle@marmenlind.com
-
-## Branding
-
-The code is licensed. The trademarks are not. See [TRADEMARK.md](./TRADEMARK.md).
-
-## Contributing
-
-By contributing, you agree to the terms in [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## Acknowledgements
-
-Started as a university project. Contributions from David Vilselius, Francisco Vigo Flores, Erik Falk, and Christoffer Bohm.
+[Live interactive demo](https://adwais.marmenlind.com)
 
 ## Architecture
 
@@ -52,9 +25,6 @@ graph TD
   - `/apps/server/ADWAIS` - ASP.NET Core solution (`src/Api`, `src/Application`, `src/Domain`, `src/Infrastructure`, `tests`).
 - `/packages`
   - `/packages/types` - TypeScript types generated from the OpenAPI spec.
-  - `/packages/utils` - Helper utilities.
-  - `/packages/ui` - Placeholder for shared UI components.
-  - `/packages/shared` - Placeholder for shared logic.
 - `/docs` - Documentation and the generated OpenAPI spec.
 - `/infrastructure` - nginx config baked into the frontend image.
 - `/scripts` - Helper scripts.
@@ -160,3 +130,18 @@ Run after API changes:
 ```bash
 pnpm codegen
 ```
+
+## License
+
+This repository is licensed under the MIT License. See [LICENSE](./LICENSE) for the full terms.
+
+The MIT copyright and permission notices must remain in source distributions
+and substantial portions of the software.
+
+## Contributing
+
+By contributing, you agree to the terms in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Acknowledgements
+
+Started as a university project. Contributions from David Vilselius, Francisco Vigo Flores, Erik Falk, and Christoffer Bohm.

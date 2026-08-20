@@ -138,10 +138,12 @@
         "tags": [
           "BulletinPost"
         ],
+        "summary": "Retrieves a bulletin post by ID.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the post.",
             "required": true,
             "schema": {
               "type": "string",
@@ -176,10 +178,12 @@
         "tags": [
           "BulletinPost"
         ],
+        "summary": "Updates a bulletin post owned by the authenticated user or an administrator.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the post.",
             "required": true,
             "schema": {
               "type": "string",
@@ -188,6 +192,7 @@
           }
         ],
         "requestBody": {
+          "description": "The post fields to update. Omitted fields keep their current values.",
           "content": {
             "application/json": {
               "schema": {
@@ -233,10 +238,12 @@
         "tags": [
           "BulletinPost"
         ],
+        "summary": "Deletes a bulletin post owned by the authenticated user or an administrator.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the post.",
             "required": true,
             "schema": {
               "type": "string",
@@ -256,6 +263,7 @@
         "tags": [
           "BulletinPost"
         ],
+        "summary": "Lists all bulletin posts.",
         "responses": {
           "200": {
             "description": "OK",
@@ -292,7 +300,9 @@
         "tags": [
           "BulletinPost"
         ],
+        "summary": "Creates a bulletin post for the authenticated user.",
         "requestBody": {
+          "description": "The title and body of the post.",
           "content": {
             "application/json": {
               "schema": {
@@ -340,10 +350,12 @@
         "tags": [
           "CalendarEvent"
         ],
+        "summary": "Lists calendar events within an optional time range.",
         "parameters": [
           {
             "name": "start",
             "in": "query",
+            "description": "The inclusive start of the requested range.",
             "schema": {
               "type": "string",
               "format": "date-time"
@@ -352,6 +364,7 @@
           {
             "name": "end",
             "in": "query",
+            "description": "The exclusive end of the requested range.",
             "schema": {
               "type": "string",
               "format": "date-time"
@@ -394,7 +407,9 @@
         "tags": [
           "CalendarEvent"
         ],
+        "summary": "Creates a calendar event for the authenticated user.",
         "requestBody": {
+          "description": "The event title, time range, type, and recurrence settings.",
           "content": {
             "application/json": {
               "schema": {
@@ -442,6 +457,7 @@
         "tags": [
           "CalendarEvent"
         ],
+        "summary": "Lists the calendar events scheduled for today.",
         "responses": {
           "200": {
             "description": "OK",
@@ -480,10 +496,12 @@
         "tags": [
           "CalendarEvent"
         ],
+        "summary": "Retrieves a calendar event by ID.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the event.",
             "required": true,
             "schema": {
               "type": "string",
@@ -518,10 +536,12 @@
         "tags": [
           "CalendarEvent"
         ],
+        "summary": "Updates a calendar event.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the event.",
             "required": true,
             "schema": {
               "type": "string",
@@ -530,6 +550,7 @@
           }
         ],
         "requestBody": {
+          "description": "The event fields to update. Omitted fields keep their current values.",
           "content": {
             "application/json": {
               "schema": {
@@ -575,10 +596,12 @@
         "tags": [
           "CalendarEvent"
         ],
+        "summary": "Deletes a calendar event.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the event.",
             "required": true,
             "schema": {
               "type": "string",
@@ -598,10 +621,13 @@
         "tags": [
           "CalendarFeed"
         ],
+        "summary": "Generates an iCalendar feed for a valid feed token.",
+        "description": "The token grants access to the calendar feed, so clients must keep the feed URL private.",
         "parameters": [
           {
             "name": "token",
             "in": "query",
+            "description": "The calendar feed token.",
             "schema": {
               "type": "string"
             }
@@ -619,6 +645,7 @@
         "tags": [
           "CalendarFeed"
         ],
+        "summary": "Retrieves the current calendar feed token for the authenticated user.",
         "responses": {
           "200": {
             "description": "OK",
@@ -648,6 +675,8 @@
         "tags": [
           "CalendarFeed"
         ],
+        "summary": "Replaces the authenticated user's calendar feed token.",
+        "description": "Existing calendar feed URLs stop working after the token is regenerated.",
         "responses": {
           "200": {
             "description": "OK",
@@ -677,6 +706,7 @@
         "tags": [
           "CalendarSubscription"
         ],
+        "summary": "Lists all configured calendar subscriptions.",
         "responses": {
           "200": {
             "description": "OK",
@@ -713,7 +743,9 @@
         "tags": [
           "CalendarSubscription"
         ],
+        "summary": "Creates a calendar subscription.",
         "requestBody": {
+          "description": "The display name, iCalendar URL, and active state for the subscription.",
           "content": {
             "application/json": {
               "schema": {
@@ -761,10 +793,12 @@
         "tags": [
           "CalendarSubscription"
         ],
+        "summary": "Retrieves a calendar subscription by ID.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the subscription.",
             "required": true,
             "schema": {
               "type": "string",
@@ -799,10 +833,12 @@
         "tags": [
           "CalendarSubscription"
         ],
+        "summary": "Updates a calendar subscription.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the subscription.",
             "required": true,
             "schema": {
               "type": "string",
@@ -811,6 +847,7 @@
           }
         ],
         "requestBody": {
+          "description": "The subscription fields to update. Omitted fields keep their current values.",
           "content": {
             "application/json": {
               "schema": {
@@ -856,10 +893,12 @@
         "tags": [
           "CalendarSubscription"
         ],
+        "summary": "Deletes a calendar subscription.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the subscription.",
             "required": true,
             "schema": {
               "type": "string",
@@ -879,10 +918,12 @@
         "tags": [
           "CalendarSubscription"
         ],
+        "summary": "Starts an immediate synchronization for a calendar subscription.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the subscription.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1989,6 +2030,7 @@
         "tags": [
           "Integration"
         ],
+        "summary": "Lists the order provider integrations available for tenant configuration.",
         "responses": {
           "200": {
             "description": "OK",
@@ -2027,6 +2069,7 @@
         "tags": [
           "Integration"
         ],
+        "summary": "Lists the monitoring provider integrations available for monitor configuration.",
         "responses": {
           "200": {
             "description": "OK",
@@ -3279,6 +3322,7 @@
         "tags": [
           "User"
         ],
+        "summary": "Lists all application users.",
         "responses": {
           "200": {
             "description": "OK",
@@ -3317,6 +3361,7 @@
         ],
         "summary": "Manually creates a new user record.\r\nUsed for pre-provisioning users before OIDC sign-in.",
         "requestBody": {
+          "description": "The email address and role for the new user.",
           "content": {
             "application/json": {
               "schema": {
@@ -3364,10 +3409,12 @@
         "tags": [
           "User"
         ],
+        "summary": "Retrieves an application user by ID.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the user.",
             "required": true,
             "schema": {
               "type": "string",
@@ -3402,10 +3449,12 @@
         "tags": [
           "User"
         ],
+        "summary": "Updates the name or role of an existing user.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the user.",
             "required": true,
             "schema": {
               "type": "string",
@@ -3414,6 +3463,7 @@
           }
         ],
         "requestBody": {
+          "description": "The fields to update. Omitted fields keep their current values.",
           "content": {
             "application/json": {
               "schema": {
@@ -3459,10 +3509,12 @@
         "tags": [
           "User"
         ],
+        "summary": "Deletes an application user.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "The unique identifier of the user.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4004,13 +4056,15 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "The user's email address used to match the external identity.",
             "nullable": true
           },
           "role": {
             "$ref": "#/components/schemas/UserRole"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request data for pre-provisioning an application user."
       },
       "CrossSegmentCohortGroupResponseDto": {
         "type": "object",
@@ -5831,13 +5885,15 @@
         "properties": {
           "name": {
             "type": "string",
+            "description": "The replacement display name, or null to keep the current name.",
             "nullable": true
           },
           "role": {
             "$ref": "#/components/schemas/UserRole"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Request data for partially updating an application user."
       },
       "UptimeMonitor": {
         "required": [

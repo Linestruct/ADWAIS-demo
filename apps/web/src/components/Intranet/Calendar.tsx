@@ -36,19 +36,6 @@ export function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const todayRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (viewMode === 'week' && todayRef.current) {
-      const timer = setTimeout(() => {
-        todayRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
-        });
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [viewMode, currentDate]);
   
   // Modals/panels visibility
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventDto | null>(null);
@@ -107,6 +94,20 @@ export function Calendar() {
 
   // Load events
   const { data: rawEvents = [], isLoading, isError } = useCalendarEventsQuery(rangeBoundaries.start, rangeBoundaries.end);
+
+  useEffect(() => {
+    if (viewMode === 'week' && !isLoading && todayRef.current) {
+      const timer = setTimeout(() => {
+        todayRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, currentDate, isLoading]);
+
   const events = useMemo(
     () => [...rawEvents, ...getMockCalendarEvents(currentDate)],
     [rawEvents, currentDate],

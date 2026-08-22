@@ -370,7 +370,7 @@ public class FinancialService(
 
         var tenantDetails = await context.Tenants
             .AsNoTracking()
-            .Where(t => t.Id != IApplicationDbContext.SystemTenantGuid)
+            .Where(t => !t.IsSystem)
             .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
@@ -435,7 +435,7 @@ public class FinancialService(
         var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
         var tenantDetails = await context.Tenants
             .AsNoTracking()
-            .Where(t => t.Id != IApplicationDbContext.SystemTenantGuid)
+            .Where(t => !t.IsSystem)
             .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
@@ -580,7 +580,7 @@ public class FinancialService(
         var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
         var tenantDetails = await context.Tenants
             .AsNoTracking()
-            .Where(t => t.Id != IApplicationDbContext.SystemTenantGuid)
+            .Where(t => !t.IsSystem)
             .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);

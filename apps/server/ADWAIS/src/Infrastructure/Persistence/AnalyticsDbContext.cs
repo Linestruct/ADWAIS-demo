@@ -136,6 +136,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             }
             entity.Property(t => t.CurrentlyFetching).HasDefaultValue(false);
             entity.Property(t => t.OrderFetchingEnabled).HasDefaultValue(false);
+            entity.Property(t => t.IsSystem).HasDefaultValue(false);
 
             entity.HasOne(t => t.Organization)
                 .WithMany(org => org.Tenants)
@@ -151,7 +152,8 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                     Name = "System (unassigned monitors)",
                     Type = TenantType.Mixed,
                     OrderProviderSettings = null,
-                    OrderFetchingEnabled = false
+                    OrderFetchingEnabled = false,
+                    IsSystem = true
                 }
             );
         });

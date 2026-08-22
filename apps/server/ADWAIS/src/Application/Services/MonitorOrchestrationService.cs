@@ -32,6 +32,20 @@ public class MonitorOrchestrationService(
         return await TenantVisibility.ResolveAsync(filter, dbContext.Tenants, ct);
     }
 
+    private async Task<List<Guid>> GetSystemTenantIdsAsync(CancellationToken ct)
+        => await dbContext.Tenants
+            .AsNoTracking()
+            .Where(t => t.IsSystem)
+            .Select(t => t.Id)
+            .ToListAsync(ct);
+
+    private async Task<Guid> ResolveOrganizationBucketIdAsync(Guid organizationId, CancellationToken ct)
+        => await dbContext.Tenants
+            .Where(t => t.OrganizationId == organizationId && t.IsSystem)
+            .Select(t => (Guid?)t.Id)
+            .SingleOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Organization {organizationId} has no unassigned monitor bucket.");
+
     private static void ValidateTenantInScope(Guid tenantId, Guid[]? visibleTenantIds)
     {
         if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
@@ -74,13 +88,14 @@ public class MonitorOrchestrationService(
         if (tenantId.HasValue) ValidateTenantInScope(tenantId.Value, visibleTenantIds);
 
         IQueryable<UptimeMonitor> monitorQuery = dbContext.Monitors.AsNoTracking().Include(m => m.Tenant);
-        if (monitorId.HasValue) 
+        if (monitorId.HasValue)
             monitorQuery = monitorQuery.Where(m => m.Id == monitorId.Value);
-        else if (tenantId.HasValue) 
+        else if (tenantId.HasValue)
             monitorQuery = monitorQuery.Where(m => m.TenantId == tenantId.Value);
-        else 
+        else
         {
-            monitorQuery = monitorQuery.Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid);
+            var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+            monitorQuery = monitorQuery.Where(m => !systemTenantIds.Contains(m.TenantId));
             if (visibleTenantIds is not null)
                 monitorQuery = monitorQuery.Where(m => visibleTenantIds.Contains(m.TenantId));
         }
@@ -188,6 +203,8 @@ public class MonitorOrchestrationService(
 
     private async Task<Dictionary<int, double?>> GetPeriodUptimesAsync(DateTimeOffset start, DateTimeOffset end, List<int>? allowedMonitorIds, CancellationToken ct = default)
     {
+        var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+
         // Floor start boundary to UTC midnight to capture preceding time-series buckets
         var queryStart = new DateTimeOffset(start.UtcDateTime.Date, TimeSpan.Zero);
         var yesterday = new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero);
@@ -203,7 +220,7 @@ public class MonitorOrchestrationService(
         else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
             histQuery = histQuery.Where(r => false); // no allowed monitors
         else
-            histQuery = histQuery.Where(r => r.UptimeMonitor.TenantId != IApplicationDbContext.SystemTenantGuid);
+            histQuery = histQuery.Where(r => !systemTenantIds.Contains(r.UptimeMonitor.TenantId));
 
         var historicalDaily = await histQuery
             .GroupBy(r => r.MonitorId)
@@ -227,7 +244,7 @@ public class MonitorOrchestrationService(
             else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
                 liveQuery = liveQuery.Where(ma => false);
             else
-                liveQuery = liveQuery.Where(ma => ma.UptimeMonitor!.TenantId != IApplicationDbContext.SystemTenantGuid);
+                liveQuery = liveQuery.Where(ma => !systemTenantIds.Contains(ma.UptimeMonitor!.TenantId));
 
             todayLive = await liveQuery
                 .GroupBy(ma => ma.MonitorId)
@@ -289,7 +306,8 @@ public class MonitorOrchestrationService(
             monitorQuery = monitorQuery.Where(m => m.TenantId == tenantId.Value);
         else
         {
-            monitorQuery = monitorQuery.Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid);
+            var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+            monitorQuery = monitorQuery.Where(m => !systemTenantIds.Contains(m.TenantId));
             if (visibleTenantIds is not null)
                 monitorQuery = monitorQuery.Where(m => visibleTenantIds.Contains(m.TenantId));
         }
@@ -377,15 +395,17 @@ public class MonitorOrchestrationService(
     private async Task<List<LatencyRow>> GetMergedLatencyDataAsync(
         IApplicationDbContext db, DateTimeOffset start, DateTimeOffset end, bool isHourly, List<int>? allowedMonitorIds, CancellationToken ct = default)
     {
+        var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+
         if (isHourly)
         {
             var query = db.ResponseTimes.AsNoTracking().Where(rt => rt.Date >= start && rt.Date < end);
-            if (allowedMonitorIds != null && allowedMonitorIds.Any()) 
+            if (allowedMonitorIds != null && allowedMonitorIds.Any())
                 query = query.Where(rt => allowedMonitorIds.Contains(rt.MonitorId));
             else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
                 query = query.Where(rt => false);
-            else 
-                query = query.Where(rt => rt.UptimeMonitor!.TenantId != IApplicationDbContext.SystemTenantGuid);
+            else
+                query = query.Where(rt => !systemTenantIds.Contains(rt.UptimeMonitor!.TenantId));
 
             var raw = await query
                 .Select(rt => new { rt.Date, rt.Average })
@@ -407,7 +427,7 @@ public class MonitorOrchestrationService(
         else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
             histQuery = histQuery.Where(r => false);
         else
-            histQuery = histQuery.Where(r => r.UptimeMonitor.TenantId != IApplicationDbContext.SystemTenantGuid);
+            histQuery = histQuery.Where(r => !systemTenantIds.Contains(r.UptimeMonitor.TenantId));
 
         var historical = await histQuery
             .Select(r => new LatencyRow(r.Date, r.Average, r.P10, r.P90))
@@ -421,7 +441,7 @@ public class MonitorOrchestrationService(
             else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
                 liveQuery = liveQuery.Where(rt => false);
             else
-                liveQuery = liveQuery.Where(rt => rt.UptimeMonitor!.TenantId != IApplicationDbContext.SystemTenantGuid);
+                liveQuery = liveQuery.Where(rt => !systemTenantIds.Contains(rt.UptimeMonitor!.TenantId));
 
             var liveRaw = await liveQuery
                 .Select(rt => new { rt.Date, rt.Average })
@@ -594,15 +614,75 @@ public class MonitorOrchestrationService(
         var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
         ValidateTenantInScope(tenantId, visibleTenantIds);
 
+        var organizationId = await dbContext.Tenants
+            .Where(t => t.Id == tenantId)
+            .Select(t => (Guid?)t.OrganizationId)
+            .SingleOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
+        var bucketId = await ResolveOrganizationBucketIdAsync(organizationId, ct);
+
         var monitors = await dbContext.Monitors
             .Where(m => m.TenantId == tenantId)
             .ToListAsync(ct);
 
         foreach (var m in monitors)
         {
-            m.TenantId = IApplicationDbContext.SystemTenantGuid;
+            m.TenantId = bucketId;
         }
         await dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task UnassignMonitorAsync(int monitorId, CancellationToken ct = default)
+    {
+        await ValidateMonitorInScopeAsync(monitorId, ct);
+
+        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == monitorId, ct)
+            ?? throw new KeyNotFoundException($"Monitor {monitorId} not found.");
+
+        var organizationId = await dbContext.Tenants
+            .Where(t => t.Id == monitor.TenantId)
+            .Select(t => t.OrganizationId)
+            .SingleOrDefaultAsync(ct);
+        var bucketId = await ResolveOrganizationBucketIdAsync(organizationId, ct);
+
+        monitor.TenantId = bucketId;
+        await dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task<IEnumerable<UptimeMonitor>> GetUnassignedMonitorsAsync(ResolvedPeriod period, CancellationToken ct = default)
+    {
+        var filter = OrganizationFilter.From(currentAccess.Scope);
+        if (filter.Denied) return [];
+
+        IQueryable<Tenant> buckets = dbContext.Tenants.AsNoTracking().Where(t => t.IsSystem);
+        if (filter.OrganizationId is { } orgId)
+            buckets = buckets.Where(t => t.OrganizationId == orgId);
+        if (filter.TenantId is { } pinned)
+            buckets = buckets.Where(t => t.Id == pinned);
+        var bucketIds = await buckets.Select(t => t.Id).ToListAsync(ct);
+
+        var start = period.CurrentStart;
+        var end = period.CurrentEnd;
+
+        var monitors = await dbContext.Monitors
+            .AsNoTracking()
+            .Include(m => m.Tenant)
+            .Where(m => bucketIds.Contains(m.TenantId))
+            .ToListAsync(ct);
+
+        var monitorIds = monitors.Select(m => m.Id).ToList();
+        var uptimes = await GetPeriodUptimesAsync(start, end, monitorIds, ct);
+
+        foreach (var m in monitors)
+        {
+            HydrateLiveStatus(m);
+            if (uptimes.TryGetValue(m.Id, out var uptime))
+            {
+                m.CurrentUptimePercentage = uptime;
+            }
+        }
+
+        return monitors;
     }
 
     public async Task<IEnumerable<UptimeMonitor>> GetMonitorsByTenantAsync(Guid tenantId, ResolvedPeriod period, CancellationToken ct = default)
@@ -624,7 +704,8 @@ public class MonitorOrchestrationService(
             query = query.Where(m => m.TenantId == tenantId.Value);
         else
         {
-            query = query.Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid);
+            var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+            query = query.Where(m => !systemTenantIds.Contains(m.TenantId));
             if (visibleTenantIds is not null)
                 query = query.Where(m => visibleTenantIds.Contains(m.TenantId));
         }

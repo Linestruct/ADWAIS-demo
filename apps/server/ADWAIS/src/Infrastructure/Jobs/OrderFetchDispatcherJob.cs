@@ -35,7 +35,7 @@ public class OrderFetchDispatcherJob(
         var now = DateTimeOffset.UtcNow;
 
         var tenants = await db.Tenants
-            .Where(t => t.OrderFetchingEnabled && t.Id != AnalyticsDbContext.SystemTenantGuid
+            .Where(t => t.OrderFetchingEnabled && !t.IsSystem
                         && t.OrderProviderSettings != null)
             .ToListAsync();
 

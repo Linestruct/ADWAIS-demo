@@ -49,10 +49,16 @@ public class MonitorSynchronizationJob(
                     : Math.Min(lowestUpstreamInterval.Value, orgLowest);
             }
 
+            var bucketId = await dbContext.Tenants
+                .Where(t => t.OrganizationId == orgConfig.OrganizationId && t.IsSystem)
+                .Select(t => (Guid?)t.Id)
+                .SingleOrDefaultAsync()
+                ?? throw new InvalidOperationException($"Organization {orgConfig.OrganizationId} has no unassigned monitor bucket.");
+
             var localMonitors = await dbContext.Monitors
                 .Include(m => m.Tenant)
                 .Where(monitor => monitor.Provider == monitoringProvider.Provider
-                    && (monitor.TenantId == AnalyticsDbContext.SystemTenantGuid || monitor.Tenant!.OrganizationId == orgConfig.OrganizationId))
+                    && (monitor.TenantId == bucketId || monitor.Tenant!.OrganizationId == orgConfig.OrganizationId))
                 .ToListAsync();
             var localByExternalId = localMonitors
                 .GroupBy(monitor => monitor.ExternalId, StringComparer.Ordinal)
@@ -88,7 +94,7 @@ public class MonitorSynchronizationJob(
                     var monitorState = !remote.Status.Equals("PAUSED");
                     local = new UptimeMonitor
                     {
-                        TenantId = AnalyticsDbContext.SystemTenantGuid,
+                        TenantId = bucketId,
                         Provider = monitoringProvider.Provider,
                         ExternalId = remote.ExternalId,
                         Type = remote.Type,

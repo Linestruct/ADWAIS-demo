@@ -122,10 +122,10 @@ public class GlobalConfigService(
 
         var lowestInterval = orgId is null
             ? await _dbContext.Monitors
-                .Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid)
+                .Where(m => !_dbContext.Tenants.Any(s => s.IsSystem && s.Id == m.TenantId))
                 .MinAsync(m => (int?)m.UpdateInterval, ct)
             : await _dbContext.Monitors
-                .Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid
+                .Where(m => !_dbContext.Tenants.Any(s => s.IsSystem && s.Id == m.TenantId)
                     && m.Tenant!.OrganizationId == orgId.Value)
                 .MinAsync(m => (int?)m.UpdateInterval, ct);
 
@@ -205,7 +205,7 @@ public class GlobalConfigService(
         }
 
         var lowestInterval = await _dbContext.Monitors
-            .Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid
+            .Where(m => !_dbContext.Tenants.Any(s => s.IsSystem && s.Id == m.TenantId)
                 && m.Tenant!.OrganizationId == orgId)
             .MinAsync(m => (int?)m.UpdateInterval, ct);
 

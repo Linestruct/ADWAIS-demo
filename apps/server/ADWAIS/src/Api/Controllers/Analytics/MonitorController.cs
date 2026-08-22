@@ -203,7 +203,7 @@ public class MonitorController(
     public async Task<ActionResult<IEnumerable<UptimeMonitorDto>>> GetUnassignedMonitors([FromQuery] Timeframe timeframe = Timeframe.T30, [FromQuery] ComparisonType comparison = ComparisonType.Preceding, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(timeframe, comparison, ct);
-        var monitors = await _monitorService.GetMonitorsByTenantAsync(IApplicationDbContext.SystemTenantGuid, period, ct);
+        var monitors = await _monitorService.GetUnassignedMonitorsAsync(period, ct);
         return Ok(monitors.Select(ToDto));
     }
 
@@ -240,7 +240,7 @@ public class MonitorController(
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> UnassignMonitor(int id, CancellationToken ct = default)
     {
-        await _monitorService.AssignMonitorAsync(id, IApplicationDbContext.SystemTenantGuid, ct);
+        await _monitorService.UnassignMonitorAsync(id, ct);
         return Ok();
     }
 

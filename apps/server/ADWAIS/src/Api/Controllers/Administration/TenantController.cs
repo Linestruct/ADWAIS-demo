@@ -134,17 +134,12 @@ public class TenantController(
     }
 
     /// <summary>
-    /// Deletes a tenant and reassigns its monitors to the system tenant.
+    /// Deletes a tenant and reassigns its monitors to its organization's unassigned bucket.
     /// </summary>
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeleteTenant(Guid id)
     {
-        if (id == IApplicationDbContext.SystemTenantGuid)
-        {
-            return BadRequest("Cannot delete the system tenant.");
-        }
-
         var filter = OrganizationFilter;
         if (filter.Denied) return Forbid();
 
@@ -153,6 +148,11 @@ public class TenantController(
         if (tenant == null)
         {
             return NotFound();
+        }
+
+        if (tenant.IsSystem)
+        {
+            return BadRequest("Cannot delete an unassigned monitor bucket.");
         }
 
         if (filter.OrganizationId is { } orgId && tenant.OrganizationId != orgId)

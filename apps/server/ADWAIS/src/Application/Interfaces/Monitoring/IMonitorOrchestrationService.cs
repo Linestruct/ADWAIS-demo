@@ -49,6 +49,17 @@ public interface IMonitorOrchestrationService
     Task<IEnumerable<UptimeMonitor>> GetMonitorsByTenantAsync(Guid tenantId, ResolvedPeriod period, CancellationToken ct = default);
 
     /// <summary>
+    /// Retrieves unassigned monitors for the current scope: the caller's organization bucket,
+    /// or every organization's bucket for platform admins.
+    /// </summary>
+    Task<IEnumerable<UptimeMonitor>> GetUnassignedMonitorsAsync(ResolvedPeriod period, CancellationToken ct = default);
+
+    /// <summary>
+    /// Moves a monitor to its own organization's unassigned bucket.
+    /// </summary>
+    Task UnassignMonitorAsync(int monitorId, CancellationToken ct = default);
+
+    /// <summary>
     /// Retrieves a specific uptime monitor for a tenant, hydrated with uptime for the given timeframe.
     /// </summary>
     Task<UptimeMonitor> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default);

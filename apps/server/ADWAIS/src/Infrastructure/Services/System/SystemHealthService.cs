@@ -55,7 +55,7 @@ public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealt
 
             totalMonitors = await db.Monitors.CountAsync(m => m.UptimeMonitorEnabled, ct);
             monitorsWithErrors = await db.Monitors.CountAsync(m => m.LastSyncError != null && m.UptimeMonitorEnabled, ct);
-            tenantsWithErrors = await db.Tenants.CountAsync(t => t.LastSyncError != null && t.Id != IApplicationDbContext.SystemTenantGuid, ct);
+            tenantsWithErrors = await db.Tenants.CountAsync(t => t.LastSyncError != null && !t.IsSystem, ct);
 
             var activeFeeds = await db.FeedSources.AsNoTracking().Where(fs => fs.IsActive).ToListAsync(ct);
             if (activeFeeds.Any())

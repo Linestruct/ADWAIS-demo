@@ -521,9 +521,12 @@ public class MonitorOrchestrationServiceTests
     {
         // Arrange
         var tenantId = Guid.NewGuid();
+        var bucketId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant", OrganizationId = _defaultOrgId });
+        _dbContext.Tenants.Add(new Tenant { Id = bucketId, Name = "Bucket", OrganizationId = _defaultOrgId, IsSystem = true });
         var monitor1 = new UptimeMonitor { Id = 60, TenantId = tenantId, Name = "M1", Url = "https://url.com" };
         var monitor2 = new UptimeMonitor { Id = 61, TenantId = tenantId, Name = "M2", Url = "https://url.com" };
-        
+
         _dbContext.Monitors.AddRange(monitor1, monitor2);
         await _dbContext.SaveChangesAsync();
 
@@ -535,8 +538,60 @@ public class MonitorOrchestrationServiceTests
         var updated2 = await _dbContext.Monitors.FindAsync(61);
         Assert.NotNull(updated1);
         Assert.NotNull(updated2);
-        Assert.Equal(IApplicationDbContext.SystemTenantGuid, updated1.TenantId);
-        Assert.Equal(IApplicationDbContext.SystemTenantGuid, updated2.TenantId);
+        Assert.Equal(bucketId, updated1.TenantId);
+        Assert.Equal(bucketId, updated2.TenantId);
+    }
+
+    [Fact]
+    public async Task UnassignMonitorAsync_ShouldMoveMonitorToItsOrganizationBucket()
+    {
+        // Arrange
+        var otherOrgId = Guid.NewGuid();
+        var ownBucketId = Guid.NewGuid();
+        var otherBucketId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant", OrganizationId = _defaultOrgId });
+        _dbContext.Tenants.Add(new Tenant { Id = ownBucketId, Name = "Own Bucket", OrganizationId = _defaultOrgId, IsSystem = true });
+        _dbContext.Tenants.Add(new Tenant { Id = otherBucketId, Name = "Other Bucket", OrganizationId = otherOrgId, IsSystem = true });
+        var monitor = new UptimeMonitor { Id = 62, TenantId = tenantId, Name = "M", Url = "https://url.com" };
+        _dbContext.Monitors.Add(monitor);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        await _service.UnassignMonitorAsync(62, CancellationToken.None);
+
+        // Assert
+        var updated = await _dbContext.Monitors.FindAsync(62);
+        Assert.NotNull(updated);
+        Assert.Equal(ownBucketId, updated.TenantId);
+    }
+
+    [Fact]
+    public async Task GetUnassignedMonitorsAsync_ShouldReturnOnlyCallerOrganizationBucket()
+    {
+        // Arrange
+        var otherOrgId = Guid.NewGuid();
+        var ownBucketId = Guid.NewGuid();
+        var otherBucketId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = ownBucketId, Name = "Own Bucket", OrganizationId = _defaultOrgId, IsSystem = true });
+        _dbContext.Tenants.Add(new Tenant { Id = otherBucketId, Name = "Other Bucket", OrganizationId = otherOrgId, IsSystem = true });
+        _dbContext.Monitors.AddRange(
+            new UptimeMonitor { Id = 63, TenantId = ownBucketId, Name = "Own", Url = "https://url.com" },
+            new UptimeMonitor { Id = 64, TenantId = otherBucketId, Name = "Other", Url = "https://url.com" });
+        await _dbContext.SaveChangesAsync();
+
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Admin]));
+
+        // Act
+        var result = await _service.GetUnassignedMonitorsAsync(
+            new ResolvedPeriod(DateTimeOffset.UtcNow.AddDays(-7), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddDays(-23), 7, false, false),
+            CancellationToken.None);
+
+        // Assert
+        var names = result.Select(m => m.Name).ToList();
+        Assert.Contains("Own", names);
+        Assert.DoesNotContain("Other", names);
     }
 
     [Fact]

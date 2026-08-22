@@ -171,7 +171,9 @@ public static class MaterializedViewOrchestrator
                     )
                 ) reporting
                 WHERE rt.date < reporting.current_day_start
-                  AND m.tenant_id != '00000000-0000-0000-0000-000000000001'::uuid
+                  AND NOT EXISTS (
+                      SELECT 1 FROM tenant sys_tenant
+                      WHERE sys_tenant.id = m.tenant_id AND sys_tenant.is_system)
                 GROUP BY 1, 2
                 ORDER BY 1 DESC;
                 CREATE UNIQUE INDEX uq_v_mat_lat_global_rollup ON v_mat_daily_latency_global_rollup (date, organization_id);

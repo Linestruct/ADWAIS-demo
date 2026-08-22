@@ -15,21 +15,32 @@ using Xunit;
 using Adwais.Api.Controllers;
 using Adwais.Api.Controllers.Authentication;
 using Adwais.Api.DTOs.Users;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
+using Adwais.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Tests.Controllers;
 
 public class UserControllerTests
 {
     private readonly Mock<IUserService> _userServiceMock;
+    private readonly Mock<ICurrentAccess> _accessMock;
+    private readonly AnalyticsDbContext _dbContext;
     private readonly UserController _controller;
 
     public UserControllerTests()
     {
         _userServiceMock = new Mock<IUserService>();
-        _controller = new UserController(_userServiceMock.Object);
+        _accessMock = new Mock<ICurrentAccess>();
+        _accessMock.Setup(access => access.Scope).Returns((AccessScope?)null);
+        _dbContext = new AnalyticsDbContext(new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        _controller = new UserController(_userServiceMock.Object, _accessMock.Object, _dbContext);
     }
 
     [Theory]
@@ -258,6 +269,96 @@ public class UserControllerTests
         Assert.Equal(Guid.Empty, returnedUser.Id);
         Assert.Equal("Kiosk-Device-123", returnedUser.Name);
         Assert.Equal(UserRole.Viewer, returnedUser.Role);
+    }
+
+    [Fact]
+    public async Task GetMe_ShouldReturnOrganizationFields_WhenScopeIsAnOrganization()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var subjectId = "auth0|org-user";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Org User", Role = UserRole.Employee };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _dbContext.Organizations.Add(new Organization { Id = orgId, Name = "Acme Consulting" });
+        await _dbContext.SaveChangesAsync();
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Equal("Acme Consulting", returnedUser.OrganizationName);
+        Assert.Null(returnedUser.TenantId);
+        Assert.False(returnedUser.IsPlatformAdmin);
+    }
+
+    [Fact]
+    public async Task GetMe_ShouldReturnPlatformAdminFields_WhenScopeIsPlatform()
+    {
+        // Arrange
+        var subjectId = "auth0|platform-user";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Platform User", Role = UserRole.Admin };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(null, null, [UserRole.Admin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.True(returnedUser.IsPlatformAdmin);
+        Assert.Null(returnedUser.OrganizationId);
+        Assert.Null(returnedUser.OrganizationName);
+    }
+
+    [Fact]
+    public async Task GetMe_ShouldReturnTenantPin_WhenScopeIsTenantRestricted()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var subjectId = "auth0|tenant-viewer";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Viewer", Role = UserRole.TenantViewer };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, tenantId, [UserRole.TenantViewer]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Equal(tenantId, returnedUser.TenantId);
+    }
+
+    private void GivenPrincipal(IEnumerable<System.Security.Claims.Claim> claims)
+    {
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+        var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
     }
 
     [Fact]

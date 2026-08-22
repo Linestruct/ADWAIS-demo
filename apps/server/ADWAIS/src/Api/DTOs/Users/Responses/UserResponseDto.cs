@@ -10,7 +10,9 @@ public record UserResponseDto(
     Guid Id,
     string Name,
     string? Email,
-    UserRole Role
+    UserRole Role,
+    Guid? OrganizationId = null,
+    string? OrganizationName = null,
+    Guid? TenantId = null,
+    bool IsPlatformAdmin = false
 );
-
-

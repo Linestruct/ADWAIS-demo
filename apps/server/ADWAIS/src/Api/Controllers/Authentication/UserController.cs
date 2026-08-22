@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Api.DTOs.Users;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Api.Controllers.Authentication;
 
@@ -15,9 +18,11 @@ namespace Adwais.Api.Controllers.Authentication;
 /// </summary>
 [ApiController]
 [Route("api/users")]
-public class UserController(IUserService userService) : ControllerBase
+public class UserController(IUserService userService, ICurrentAccess currentAccess, IApplicationDbContext dbContext) : ControllerBase
 {
     private readonly IUserService _userService = userService;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+    private readonly IApplicationDbContext _dbContext = dbContext;
 
     /// <summary>
     /// Resolves the authenticated OIDC subject or kiosk claims to the current application user.
@@ -39,10 +44,10 @@ public class UserController(IUserService userService) : ControllerBase
             var user = await _userService.GetUserByExternalSubjectIdAsync(subjectId, ct);
             if (user != null)
             {
-                return Ok(new UserResponseDto(user.Id, user.Name, user.Email, user.Role));
+                return Ok(await MapMeAsync(user.Id, user.Name, user.Email, user.Role, ct));
             }
         }
-        
+
         var role = User.FindFirst("role")?.Value ?? User.FindFirst(global::System.Security.Claims.ClaimTypes.Role)?.Value;
         var kioskRole = role switch
         {
@@ -53,10 +58,37 @@ public class UserController(IUserService userService) : ControllerBase
         };
 
         if (!kioskRole.HasValue) return Unauthorized("User context is invalid or not registered.");
-        
-        var name = User.Identity?.Name ?? User.FindFirst("name")?.Value ?? "Kiosk Device";
-        return Ok(new UserResponseDto(Guid.Empty, name, null, kioskRole.Value));
 
+        var name = User.Identity?.Name ?? User.FindFirst("name")?.Value ?? "Kiosk Device";
+        return Ok(await MapMeAsync(Guid.Empty, name, null, kioskRole.Value, ct));
+    }
+
+    /// <summary>
+    /// Builds the profile payload with the effective scope attached. The scope
+    /// fields are the single source the frontend uses for role and visibility.
+    /// </summary>
+    private async Task<UserResponseDto> MapMeAsync(Guid id, string name, string? email, UserRole role, CancellationToken ct)
+    {
+        var scope = _currentAccess.Scope;
+        string? organizationName = null;
+        if (scope?.OrganizationId is { } orgId)
+        {
+            organizationName = await _dbContext.Organizations
+                .AsNoTracking()
+                .Where(org => org.Id == orgId)
+                .Select(org => org.Name)
+                .SingleOrDefaultAsync(ct);
+        }
+
+        return new UserResponseDto(
+            id,
+            name,
+            email,
+            role,
+            scope?.OrganizationId,
+            organizationName,
+            scope?.TenantId,
+            scope?.IsPlatformAdmin == true);
     }
 
     [HttpGet]

@@ -207,7 +207,8 @@ public class FinancialService(
         var rawHist = await context.DailyGlobalRollups
             .AsNoTracking()
             .Where(r => r.CreatedDate >= start && r.CreatedDate < viewEnd)
-            .Select(r => new { r.CreatedDate, r.GlobalRevenue, r.GlobalVolume })
+            .GroupBy(r => r.CreatedDate)
+            .Select(g => new { CreatedDate = g.Key, GlobalRevenue = g.Sum(x => x.GlobalRevenue), GlobalVolume = g.Sum(x => x.GlobalVolume) })
             .ToListAsync(ct);
 
         var historical = rawHist.Select(r => new DataRow(r.CreatedDate, null, r.GlobalRevenue, (int)r.GlobalVolume)).ToList();

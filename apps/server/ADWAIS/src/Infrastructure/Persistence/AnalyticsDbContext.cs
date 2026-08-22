@@ -191,46 +191,46 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         });
 
         // Rollups
-        modelBuilder.Entity<DailyFinancialTenantRollup>(entity => 
+        modelBuilder.Entity<DailyFinancialTenantRollup>(entity =>
         {
             entity.ToView("v_mat_financial_daily_tenant_rollup");
-            entity.HasKey(r => new { r.CreatedDate, r.TenantId });
+            entity.HasKey(r => new { r.CreatedDate, r.OrganizationId, r.TenantId });
         });
-        
-        modelBuilder.Entity<DailyFinancialGlobalRollup>(entity => 
+
+        modelBuilder.Entity<DailyFinancialGlobalRollup>(entity =>
         {
             entity.ToView("v_mat_financial_daily_global_rollup");
-            entity.HasKey(r => r.CreatedDate);
+            entity.HasKey(r => new { r.CreatedDate, r.OrganizationId });
         });
-        
-        modelBuilder.Entity<DailyLatencyMonitorRollup>(entity => 
+
+        modelBuilder.Entity<DailyLatencyMonitorRollup>(entity =>
         {
             entity.ToView("v_mat_daily_latency_monitor_rollup");
-            entity.HasKey(r => new { r.Date, r.MonitorId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.MonitorId });
             entity.HasOne(r => r.UptimeMonitor)
                 .WithMany()
                 .HasForeignKey(r => r.MonitorId);
         });
-        
-        modelBuilder.Entity<DailyLatencyTenantRollup>(entity => 
+
+        modelBuilder.Entity<DailyLatencyTenantRollup>(entity =>
         {
             entity.ToView("v_mat_daily_latency_tenant_rollup");
-            entity.HasKey(r => new { r.Date, r.TenantId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.TenantId });
             entity.HasOne(r => r.Tenant)
                 .WithMany()
                 .HasForeignKey(r => r.TenantId);
         });
-        
-        modelBuilder.Entity<DailyLatencyGlobalRollup>(entity => 
+
+        modelBuilder.Entity<DailyLatencyGlobalRollup>(entity =>
         {
             entity.ToView("v_mat_daily_latency_global_rollup");
-            entity.HasKey(r => r.Date);
+            entity.HasKey(r => new { r.Date, r.OrganizationId });
         });
 
         modelBuilder.Entity<DailyAvailabilityMonitorRollup>(entity =>
         {
             entity.ToView("v_mat_daily_availability_monitor_rollup");
-            entity.HasKey(r => new { r.Date, r.MonitorId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.MonitorId });
             entity.HasOne(r => r.UptimeMonitor)
                 .WithMany()
                 .HasForeignKey(r => r.MonitorId);
@@ -239,7 +239,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         modelBuilder.Entity<DailyAvailabilityTenantRollup>(entity =>
         {
             entity.ToView("v_mat_daily_availability_tenant_rollup");
-            entity.HasKey(r => new { r.Date, r.TenantId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.TenantId });
             entity.HasOne(r => r.Tenant)
                 .WithMany()
                 .HasForeignKey(r => r.TenantId);
@@ -248,7 +248,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         modelBuilder.Entity<DailyAvailabilityGlobalRollup>(entity =>
         {
             entity.ToView("v_mat_daily_availability_global_rollup");
-            entity.HasKey(r => r.Date);
+            entity.HasKey(r => new { r.Date, r.OrganizationId });
         });
         
         // GlobalConfig

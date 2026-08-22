@@ -198,6 +198,7 @@ public class MonitorOrchestrationServiceTests
         {
             MonitorId = 1,
             Date = date,
+            OrganizationId = tenantId,
             Average = 150,
             P10 = 120,
             P90 = 250

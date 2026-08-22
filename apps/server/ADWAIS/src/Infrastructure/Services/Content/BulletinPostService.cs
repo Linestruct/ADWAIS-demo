@@ -56,6 +56,12 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
         Guid targetOrgId;
         if (organizationId.HasValue)
         {
+            var organizationExists = await _dbContext.Organizations
+                .AnyAsync(org => org.Id == organizationId.Value, ct);
+            if (!organizationExists)
+            {
+                throw new KeyNotFoundException($"Organization {organizationId.Value} does not exist.");
+            }
             if (!filter.Denied && filter.OrganizationId is { } filterOrg && filterOrg != organizationId.Value)
             {
                 throw new UnauthorizedAccessException("Cannot create bulletin post for another organization.");

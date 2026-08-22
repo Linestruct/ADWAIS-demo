@@ -168,6 +168,8 @@ public class BulletinPostServiceTests
         var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
         var dbContext = new AnalyticsDbContext(options);
         var targetOrgId = Guid.NewGuid();
+        dbContext.Organizations.Add(new Organization { Id = targetOrgId, Name = "Target Org" });
+        await dbContext.SaveChangesAsync();
 
         // An unscoped service (e.g., background / anonymous webhook context)
         var mockAccess = new Mock<ICurrentAccess>();
@@ -185,6 +187,27 @@ public class BulletinPostServiceTests
         Assert.NotNull(result);
         Assert.Equal(targetOrgId, result.OrganizationId);
         Assert.Equal("Webhook Title", result.Title);
+    }
+
+    [Fact]
+    public async Task CreatePostAsync_WithUnknownOrganization_ThrowsKeyNotFound()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
+        var dbContext = new AnalyticsDbContext(options);
+        var unknownOrgId = Guid.NewGuid();
+
+        var mockAccess = new Mock<ICurrentAccess>();
+        mockAccess.Setup(a => a.Scope).Returns((AccessScope?)null);
+
+        var service = new BulletinPostService(dbContext, mockAccess.Object);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.CreatePostAsync(
+            AnalyticsDbContext.SystemUserGuid,
+            "Webhook Title",
+            "Webhook Body",
+            unknownOrgId,
+            CancellationToken.None));
     }
 
     private static ICurrentAccess PlatformAccess()

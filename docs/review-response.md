@@ -116,3 +116,10 @@ All rows in the coverage checklist are verified with code implementations and pa
 
 ## 10. Known unknowns
 None. All 12 mandatory questions and 10 audit findings have verified implementation code and automated regression test coverage.
+
+## Post-review addendum
+
+A follow-up verification pass found two corrections to this report:
+
+1. F-10 was listed as RESOLVED, but `UserController` and `UserService` had no organization scoping and no endpoint created `UserAccess` membership rows. This is now fixed for real: user reads, updates, and deletes are scope-filtered; creation grants membership in the caller's organization (or the default organization for platform admins); cross-organization deletes are refused. Evidence: commit `0e0b422`, `UserService.cs`, `UserServiceTests.cs`. Backend suite now runs 306 tests, all passing.
+2. The verification log claim "79 tests passed" holds on this branch. The `main` checkout fails one availability strip test because it predates commit `538d12c`; that fix landed separately on its own branch (`fix/web/availability-strip-pin-test`) and is not part of this feature branch.

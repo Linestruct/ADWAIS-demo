@@ -32,7 +32,6 @@ public class UserController(IUserService userService) : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UserResponseDto>> GetMe(CancellationToken ct)
     {
-        Console.WriteLine("");
         var subjectId = User.FindFirst("sub")?.Value;
 
         if (!string.IsNullOrEmpty(subjectId))

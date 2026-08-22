@@ -1,10 +1,10 @@
 # Multi-organization plan
 
-Status: partially implemented. Phases 1 and 2 are in progress.
+Status: partially implemented. Phase 1 complete. Phase 2 complete apart from the deferred items listed below. Phase 3 (frontend) not started.
 
-Implemented: access model (membership, scopes, headers), per-org intranet ids, scope enforcement in statistics, fleet, intranet, weather, and jobs. `OrganizationConfig` with backfill migration. Per-org weather, reporting timezone, and monitoring provider settings.
+Implemented: access model (membership, scopes, headers), per-org intranet ids, scope enforcement in statistics, fleet, intranet, weather, jobs, tenant administration, and user administration. `OrganizationConfig` with backfill migration. Per-org weather, reporting timezone, and monitoring provider settings. Kiosk tokens carry an organization claim. The Hangfire dashboard is platform admin only.
 
-Remaining: org-keyed materialized views, per-org unassigned monitor bucket, webhook tenant-org verification, kiosk org claim, Hangfire dashboard policy, frontend scope.
+Remaining: org-keyed materialized views (views currently read the first organization's timezone), per-org unassigned monitor bucket, webhook tenant-to-organization verification, `/api/users/me` organization fields, frontend scope.
 
 ## Goal
 

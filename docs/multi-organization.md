@@ -1,10 +1,10 @@
 # Multi-organization plan
 
-Status: partially implemented. Phase 1 complete. Phase 2 complete apart from the deferred items listed below. Phase 3 (frontend) not started.
+Status: partially implemented. Phases 1 and 2 complete apart from the deferred items listed below. Phase 3 (frontend) not started.
 
-Implemented: access model (membership, scopes, headers), per-org intranet ids, scope enforcement in statistics, fleet, intranet, weather, jobs, tenant administration, and user administration. `OrganizationConfig` with backfill migration. Per-org weather, reporting timezone, and monitoring provider settings. Kiosk tokens carry an organization claim. The Hangfire dashboard is platform admin only.
+Implemented: access model (membership, scopes, headers), per-org intranet ids, scope enforcement in statistics, fleet, intranet, weather, jobs, tenant administration, and user administration. `OrganizationConfig` with backfill migration. Per-org weather, reporting timezone, and monitoring provider settings. Kiosk tokens carry an organization claim. The Hangfire dashboard is platform admin only. Org-keyed materialized views with per-org timezones. Per-org unassigned monitor buckets (`tenant.is_system`). `/api/users/me` returns scope fields. Bulletin webhook validates the target organization.
 
-Remaining: org-keyed materialized views (views currently read the first organization's timezone), per-org unassigned monitor bucket, webhook tenant-to-organization verification, `/api/users/me` organization fields, frontend scope.
+Remaining: frontend scope. Order webhook tenant-to-organization verification stays open by decision; the webhook key remains platform-level and ingestion targets one explicit tenant per call.
 
 ## Goal
 

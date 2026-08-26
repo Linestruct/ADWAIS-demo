@@ -92,6 +92,52 @@ public class OrderIngestionServiceTests
     }
 
     [Fact]
+    public async Task IngestSingleOrderAsync_IntoUnassignedBucket_ThrowsKeyNotFound()
+    {
+        // Arrange
+        var bucketId = Guid.NewGuid();
+        var (service, _, dbContext) = SetupTestEnvironment("TestDb_IngestBucket");
+        dbContext.Tenants.Add(new Adwais.Domain.Entities.Tenant
+        {
+            Id = bucketId,
+            Name = "System (unassigned monitors)",
+            IsSystem = true
+        });
+        await dbContext.SaveChangesAsync();
+
+        var orderDto = new LitiumSyncResponse.LitiumOrderDto
+        {
+            Id = Guid.NewGuid(),
+            OrderNumber = "BUCKET-1",
+            CreatedDate = DateTimeOffset.UtcNow,
+            OrderStatus = "Confirmed"
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.IngestSingleOrderAsync(bucketId, "litium", LitiumOrderSource.Normalize(orderDto)));
+    }
+
+    [Fact]
+    public async Task IngestSingleOrderAsync_UnknownTenant_ThrowsKeyNotFound()
+    {
+        // Arrange
+        var (service, _, _) = SetupTestEnvironment("TestDb_IngestUnknownTenant");
+
+        var orderDto = new LitiumSyncResponse.LitiumOrderDto
+        {
+            Id = Guid.NewGuid(),
+            OrderNumber = "MISSING-1",
+            CreatedDate = DateTimeOffset.UtcNow,
+            OrderStatus = "Confirmed"
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.IngestSingleOrderAsync(Guid.NewGuid(), "litium", LitiumOrderSource.Normalize(orderDto)));
+    }
+
+    [Fact]
     public void Normalize_ShouldMapLitiumOrderToProviderNeutralOrder()
     {
         var id = Guid.NewGuid();

@@ -170,13 +170,18 @@ public class OrderIngestionService(
     public async Task IngestSingleOrderAsync(Guid tenantId, string provider, OrderSourceOrder order, CancellationToken ct = default)
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(ct);
-        var tenantProvider = await dbContext.Tenants
-            .Where(tenant => tenant.Id == tenantId)
-            .Select(tenant => tenant.OrderProvider)
-            .SingleAsync(ct);
+        var tenant = await dbContext.Tenants
+            .Where(t => t.Id == tenantId)
+            .Select(t => new { t.OrderProvider, t.IsSystem })
+            .SingleOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
+        if (tenant.IsSystem)
+        {
+            throw new KeyNotFoundException($"Tenant {tenantId} is not an order target.");
+        }
         var orderSource = orderSources.ForProvider(provider);
-        if (!tenantProvider.Equals(orderSource.Provider, StringComparison.OrdinalIgnoreCase))
-            throw new ConfigurationException($"Tenant is configured for order provider '{tenantProvider}', not '{orderSource.Provider}'.");
+        if (!tenant.OrderProvider.Equals(orderSource.Provider, StringComparison.OrdinalIgnoreCase))
+            throw new ConfigurationException($"Tenant is configured for order provider '{tenant.OrderProvider}', not '{orderSource.Provider}'.");
 
         var pIds = new[] { Guid.NewGuid() };
         var pTenantIds = new[] { tenantId };

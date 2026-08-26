@@ -48,29 +48,25 @@ public static class ApplicationBootstrapperExtensions
 
                 var seededRows = await DatabaseSeeder.SeedSampleDataAsync(context, progress);
 
-                if (seededRows)
+                // The views must exist on every boot, not only when this boot
+                // seeded rows: migrations may have dropped them, and a first
+                // boot against an already seeded database skips the seeder.
+                progress.StartStep(7, "Materialized views");
+                var previousCommandTimeout = context.Database.GetCommandTimeout();
+                context.Database.SetCommandTimeout(TimeSpan.FromMinutes(10));
+                try
                 {
-                    progress.StartStep(7, "Materialized views");
-                    var previousCommandTimeout = context.Database.GetCommandTimeout();
-                    context.Database.SetCommandTimeout(TimeSpan.FromMinutes(10));
-                    try
-                    {
-                        await MaterializedViewOrchestrator.SyncViewsAsync(context);
-                        progress.CompleteStep();
-                    }
-                    catch (Exception exception)
-                    {
-                        progress.FailStep(exception);
-                        throw;
-                    }
-                    finally
-                    {
-                        context.Database.SetCommandTimeout(previousCommandTimeout);
-                    }
+                    await MaterializedViewOrchestrator.SyncViewsAsync(context);
+                    progress.CompleteStep();
                 }
-                else
+                catch (Exception exception)
                 {
-                    progress.SkipStep(7, "Materialized views", "no history or order rows were seeded");
+                    progress.FailStep(exception);
+                    throw;
+                }
+                finally
+                {
+                    context.Database.SetCommandTimeout(previousCommandTimeout);
                 }
 
                 progress.Finish();

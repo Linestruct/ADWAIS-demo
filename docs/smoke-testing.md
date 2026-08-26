@@ -173,6 +173,47 @@ Almost every scenario has an automated unit test now. The table lists the backin
 | 9.4-9.5 Hangfire access | DashboardSessionControllerTests, AdminDashboardAuthorizationFilterTests; cookie expiry smoke only |
 | 10 migration rehearsal | Smoke only |
 
+## Run log
+
+First run: 2026-08-26, local PostgreSQL container, Development environment, dev mock authentication, two organizations (Default Organization, SmokeTest Org).
+
+Findings found and fixed during the run:
+
+| ID | Severity | Finding | Fix |
+|---|---|---|---|
+| F-SMOKE-1 | CRITICAL | `AddOrganizationConfig` migration failed on a database with existing views: `cannot drop column reporting_time_zone_id ... other objects depend on it` | `0fc615c`: migration drops the eight rollups before dropping the columns |
+| F-SMOKE-2 | HIGH | Views were only synced when the seeder had just seeded rows. On a later boot they were skipped, leaving all view-backed endpoints 500 | `0415217`: bootstrap syncs views on every boot |
+| F-SMOKE-3 | HIGH | Dev mock principals lost all authority claims in the claims transformation (no `sub` claim), so every dev request was 403 | `9b23fa9`: principals built by `AccessClaimsBuilder` bypass the transformation |
+| F-SMOKE-4 | HIGH | Hangfire dashboard 403 for platform admins: same stripping bug on the dashboard cookie principal | `9313411`: cookie identity built through `AccessClaimsBuilder` |
+| F-SMOKE-5 | HIGH | Latency and availability view SQL referenced a column the lateral join did not expose; bootstrap crashed and left only the financial views | `b90ac3d`: lateral joins expose `organization_id` |
+
+Scenarios executed live:
+
+| # | Result | Notes |
+|---|---|---|
+| 2.11 | PASS | DevMock only in Development; prod registration asserted in unit tests |
+| 3.1-3.4 | PASS | `/api/users/me` returns orgId, orgName, tenantId, isPlatformAdmin for org and platform scopes |
+| 4.1, 4.5 | PASS | Org scope sees only its tenants; platform sees all |
+| 5.1, 5.2 | PASS | Unassigned returns per-org bucket lists (empty buckets in this run) |
+| 5.9 | PASS | All eight views exist after bootstrap and serve data |
+| 6.1, 6.3 | PASS | SmokeTest org KPIs are all zero; platform KPIs aggregate 273M revenue across 30 tenants from org-keyed views |
+| 7.4 | PASS | Bulletin webhook with unknown organization returns 404 |
+| 7.5 | PASS | Bulletin webhook with valid organization creates the post |
+| 7.6 | PASS | Bulletin webhook with wrong key returns 401 |
+| 8.1 | PASS | Weather without an org scope returns 400 |
+| 8.1 (org) | PASS | Weather with unconfigured location returns 409 |
+| 9.1 | PASS | Live spot checks: 400, 401, 404, 409 match the contract |
+| 9.4, 9.5 | PASS | Dashboard session 204, then `/hangfire` renders for platform admin |
+| 10 | PASS | Migration applied to a database with pre-existing views after the F-SMOKE-1 fix |
+
+Open findings:
+
+| ID | Severity | Finding |
+|---|---|---|
+| F-SMOKE-6 | LOW | Tenant lists include unassigned buckets. Needs a product decision on hiding `is_system` rows from tenant administration |
+
+Not executed live: IdP claim-scrub matrix (needs a real OIDC provider; unit-covered), provider sync collisions (needs UptimeRobot accounts; unit-covered), SPA logout flows (needs a browser; unit-covered), DST and 730-day retention edges (need a clock-controlled database; unit coverage does not reach SQL).
+
 ## Out of scope
 
 Frontend Phase 3 (org selector, org settings screens). Per-org IdPs. Tenant viewer UI.

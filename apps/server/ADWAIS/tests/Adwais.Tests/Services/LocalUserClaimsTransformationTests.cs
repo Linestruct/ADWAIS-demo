@@ -535,6 +535,22 @@ public class LocalUserClaimsTransformationTests
     }
 
     [Fact]
+    public async Task TransformAsync_LocallyBuiltPrincipal_KeepsItsAuthorityClaims()
+    {
+        // Arrange: the dev mock builds principals through AccessClaimsBuilder.
+        var principal = new ClaimsPrincipal(AccessClaimsBuilder.Build(
+            AnalyticsDbContext.SystemUserGuid,
+            new AccessScope(null, null, [UserRole.Admin])));
+
+        // Act
+        var result = await _transformation.TransformAsync(principal);
+
+        // Assert
+        Assert.True(result.IsInRole("Admin"));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin && c.Value == "true"));
+    }
+
+    [Fact]
     public async Task TransformAsync_MultiOrgMemberWithoutHeader_DefaultsToFirstOrg()
     {
         var userId = Guid.NewGuid();

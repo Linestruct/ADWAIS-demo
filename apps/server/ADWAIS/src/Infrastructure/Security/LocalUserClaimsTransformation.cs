@@ -41,6 +41,14 @@ public class LocalUserClaimsTransformation(
             return principal;
         }
 
+        // Principals built by the local claims builder (dev mock, dashboards)
+        // are authoritative by construction. Upstream OIDC principals never
+        // carry this identity type.
+        if (principal.Identities.Any(identity => identity.AuthenticationType == AccessClaimsBuilder.LocalDatabaseIdentity))
+        {
+            return principal;
+        }
+
         var subjectId = principal.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(subjectId))
         {

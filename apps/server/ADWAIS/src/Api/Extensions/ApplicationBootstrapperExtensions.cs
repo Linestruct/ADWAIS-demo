@@ -111,12 +111,13 @@ public static class ApplicationBootstrapperExtensions
                     .Where(c => c.MonitoringProviderSettings != null)
                     .OrderBy(c => c.OrganizationId)
                     .FirstOrDefaultAsync();
+                var intervals = SchedulingIntervalResolver.Resolve(orgConfig);
 
-                var uptimeInterval = orgConfig?.UptimeFetchIntervalMinutes ?? 60;
-                var latencyInterval = orgConfig?.LatencyFetchIntervalMinutes ?? 10;
-                var orderFetchInterval = Math.Max(1, orgConfig?.OrderFetchIntervalMinutes ?? 10);
-                var userStatsInterval = orgConfig?.UserStatsFetchIntervalMinutes ?? 60;
-                var feedInterval = Math.Max(1, orgConfig?.FeedFetchIntervalHours ?? 2);
+                var uptimeInterval = intervals.UptimeMinutes;
+                var latencyInterval = intervals.LatencyMinutes;
+                var orderFetchInterval = intervals.OrderFetchMinutes;
+                var userStatsInterval = intervals.UserStatsMinutes;
+                var feedInterval = intervals.FeedHours;
                 
                 recurringJobManager.AddOrUpdate<UptimeDispatcherJob>(
                         "dispatch-monitoring-uptime",

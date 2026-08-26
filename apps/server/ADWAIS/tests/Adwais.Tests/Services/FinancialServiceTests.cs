@@ -275,6 +275,127 @@ public class FinancialServiceTests : IDisposable
         Assert.Equal(4, orders.Count);
     }
 
+    private async Task<Guid> SeedOtherOrgTenantWithOrderAsync(decimal value)
+    {
+        var otherOrgId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant
+        {
+            Id = otherTenantId,
+            OrganizationId = otherOrgId,
+            Name = "Other Org Store",
+            Type = TenantType.B2C
+        });
+        AddOrder(otherTenantId, _period.CurrentStart.AddMinutes(30), value, $"other-{value}");
+        await _dbContext.SaveChangesAsync();
+        return otherTenantId;
+    }
+
+    [Fact]
+    public async Task GetAccumulatedRevenueAsync_OrgScope_ExcludesOtherOrgRevenue()
+    {
+        // Arrange: fixture own-org revenue is 400 across the current period.
+        await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        // Act
+        var points = await _service.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
+
+        // Assert
+        Assert.NotEmpty(points);
+        Assert.Equal(400m, points.Sum(point => point.CurrentRevenue));
+    }
+
+    [Fact]
+    public async Task GetRevenueEfficiencyAsync_OrgScope_ExcludesOtherOrgTenants()
+    {
+        // Arrange
+        var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        // Act
+        var result = await _service.GetRevenueEfficiencyAsync(_period, ct: CancellationToken.None);
+
+        // Assert
+        Assert.All(result.Tenants, tenant => Assert.NotEqual(otherTenantId, tenant.TenantId));
+        Assert.Equal(2, result.Tenants.Count);
+        Assert.Equal(200m, result.GlobalAverageOrderValue);
+    }
+
+    [Fact]
+    public async Task GetCrossSegmentDistributionAsync_OrgScope_ExcludesOtherOrgTenants()
+    {
+        // Arrange
+        var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        // Act
+        var result = await _service.GetCrossSegmentDistributionAsync(_period, ct: CancellationToken.None);
+
+        // Assert
+        Assert.All(result.Tenants, tenant => Assert.NotEqual(otherTenantId, tenant.TenantId));
+    }
+
+    [Fact]
+    public async Task GetPortfolioImpactAsync_OrgScope_ExcludesOtherOrgTenants()
+    {
+        // Arrange
+        var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        // Act
+        var result = await _service.GetPortfolioImpactAsync(_period, ct: CancellationToken.None);
+
+        // Assert
+        Assert.All(result.Tenants, tenant => Assert.NotEqual(otherTenantId, tenant.TenantId));
+    }
+
+    [Fact]
+    public async Task GetCumulativeGrowthDeltaAsync_OrgScope_ExcludesOtherOrgRevenue()
+    {
+        // Arrange
+        await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        // Act
+        var points = await _service.GetCumulativeGrowthDeltaAsync(_period, ct: CancellationToken.None);
+
+        // Assert
+        Assert.NotEmpty(points);
+        Assert.Equal(400m, points[^1].CurrentCumulative);
+    }
+
+    [Fact]
+    public async Task GetOrderDistributionAsync_CrossOrgTenant_ThrowsUnauthorizedAccess()
+    {
+        // Arrange
+        var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _service.GetOrderDistributionAsync(_period, otherTenantId, ct: CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetTransactionDensityAsync_CrossOrgTenant_ThrowsUnauthorizedAccess()
+    {
+        // Arrange
+        var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _service.GetTransactionDensityAsync(TransactionDensityPeriod.Auto, tenantId: otherTenantId, ct: CancellationToken.None));
+    }
+
     private void AddOrder(Guid tenantId, DateTimeOffset createdDate, decimal value, string litiumOrderId)
     {
         _dbContext.Orders.Add(new Order

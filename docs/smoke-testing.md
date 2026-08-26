@@ -208,9 +208,9 @@ Scenarios executed live:
 
 Open findings:
 
-| ID | Severity | Finding |
-|---|---|---|
-| F-SMOKE-6 | LOW | Tenant lists include unassigned buckets. Needs a product decision on hiding `is_system` rows from tenant administration |
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-SMOKE-6 | LOW | Tenant lists include unassigned buckets | RESOLVED (`565bebe`): `is_system` rows excluded from tenant lists and lookups; bucket edits rejected with 400 |
 
 Not executed live: IdP claim-scrub matrix (needs a real OIDC provider; unit-covered), provider sync collisions (needs UptimeRobot accounts; unit-covered), SPA logout flows (needs a browser; unit-covered), DST and 730-day retention edges (need a clock-controlled database; unit coverage does not reach SQL).
 

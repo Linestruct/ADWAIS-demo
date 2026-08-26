@@ -28,7 +28,7 @@ Verified against the tree on 2026-08-26:
 | ID | Item | Detail |
 |---|---|---|
 | B1 | `OrganizationConfigController` | GET plus PATCH at `api/organizations/{id}/config` and `api/me/config`. Scopes: staff read their own org; admins write their own org; platform admins address any org. Reuses `IOrganizationConfigService`. Updates reschedule jobs exactly like `GlobalConfigController` does today. |
-| B2 | `GET /api/organizations` | Ids and names. Platform admins get every organization. Org staff get only their own membership rows. Used by the selector and by kiosk header display fallback. |
+| B2 | `GET /api/organizations` | Ids and names. Platform admins get every organization; everyone else gets only organizations from their own membership rows. Feeds the picker for both platform and multi-org staff users, and the kiosk header display fallback. |
 
 Both ship before step 1 of the frontend sequence because client regeneration consumes them.
 
@@ -92,18 +92,25 @@ Files: `pages/Settings/configuration.tsx` plus new `components/settings/organiza
 
 Tests: component tests per section with mocked hooks; verify staff cannot reach platform fields.
 
-### W5 Platform admin organization selector
+### W5 Organization picker and runtime scope switching
 
-New lightweight picker in the settings shell (and optionally the top bar):
+There is no picker at login. Users land on their default organization and switch any time from a picker in the settings shell and top bar.
 
-- Populated from B2.
-- Selection state lives beside auth state (`useOrgSelection` hook persisting to sessionStorage).
-- Every scoped list query adds the selected org via the existing `X-ADWAIS-ORG-ID` request headers path.
-- Platform admins can pick "Platform overview", which passes no header and shows deployment totals; the financial and fleet pages already render correctly for that scope since the server decides.
+Backend behavior this relies on: scope resolves per request from `X-ADWAIS-ORG-ID`; the server re-validates the header against memberships on every call. Switching is therefore safe at any moment and grants nothing the caller did not already hold.
 
-Files: new `hooks/useOrgSelection.ts`, settings shell layout, affected list queries pass header.
+Requirements:
 
-Tests: selection persistence, header propagation into `queryFn`, guard behavior for non-platform users.
+1. `useOrgSelection` hook: current organization id, persisted to `sessionStorage`. Cross-tab sync is a documented follow-up, not part of this change.
+2. `apiFetch` attaches the selected org as `X-ADWAIS-ORG-ID` on every request, mirroring how kiosk and demo tokens are resolved per call today.
+3. Scoped list queries key by organization id (`['tenants', orgId]`), so switching cannot render another organization's cached rows and back-switching restores warm caches.
+4. Switch flow: set selection, let changed keys remount and refetch. Mutations disable the picker while pending.
+5. Revocation recovery: on 403 while a non-default selection is active, re-fetch `/api/users/me`, reset the selection to the first membership, and surface a notice. No redirect loops.
+6. Population rules: platform admins see every organization plus a "Platform overview" entry that sends no scope header (deployment totals; financial and fleet pages already support that scope). Multi-org staff see only their own organizations; single-org users never see the picker. Both groups depend on B2 returning membership-scoped results for non-admin callers, so B2 is specified as membership rows for everyone, unrestricted for platform admins.
+7. New users provisioned into several organizations default to their first membership until they pick one, matching the documented server default.
+
+Files: new `hooks/useOrgSelection.ts`, settings shell layout, top bar component, affected query hooks gain the org key segment, `apiClient.ts` header injection.
+
+Tests: selection persistence, header propagation through `queryFn`, cache separation between organizations (switch away and back without refetch artifacts), revocation fallback path, guard behavior for single-org users.
 
 ### W6 Kiosk polish
 

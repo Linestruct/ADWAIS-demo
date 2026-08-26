@@ -98,15 +98,15 @@ public static class MaterializedViewOrchestrator
                 FROM response_time
                 JOIN monitor ON monitor.id = response_time.monitor_id
                 CROSS JOIN LATERAL (
-                    SELECT COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
+                    SELECT t.organization_id AS organization_id,
+                           COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
                            date_trunc(
                                'day',
                                CURRENT_TIMESTAMP AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC')
                            ) AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC') AS current_day_start
-                    FROM organization_config config
-                    WHERE config.organization_id = (
-                        SELECT t.organization_id FROM tenant t WHERE t.id = monitor.tenant_id
-                    )
+                    FROM tenant t
+                    JOIN organization_config config ON config.organization_id = t.organization_id
+                    WHERE t.id = monitor.tenant_id
                 ) reporting
                 WHERE response_time.date >= (reporting.current_day_start - '730 days'::interval)
                   AND response_time.date < reporting.current_day_start
@@ -130,15 +130,15 @@ public static class MaterializedViewOrchestrator
                 FROM response_time rt
                          JOIN monitor m ON rt.monitor_id = m.id
                 CROSS JOIN LATERAL (
-                    SELECT COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
+                    SELECT t.organization_id AS organization_id,
+                           COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
                            date_trunc(
                                'day',
                                CURRENT_TIMESTAMP AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC')
                            ) AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC') AS current_day_start
-                    FROM organization_config config
-                    WHERE config.organization_id = (
-                        SELECT t.organization_id FROM tenant t WHERE t.id = m.tenant_id
-                    )
+                    FROM tenant t
+                    JOIN organization_config config ON config.organization_id = t.organization_id
+                    WHERE t.id = m.tenant_id
                 ) reporting
                 WHERE rt.date < reporting.current_day_start
                 GROUP BY 1, 2, 3
@@ -160,15 +160,15 @@ public static class MaterializedViewOrchestrator
                 FROM response_time rt
                          JOIN monitor m ON rt.monitor_id = m.id
                 CROSS JOIN LATERAL (
-                    SELECT COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
+                    SELECT t.organization_id AS organization_id,
+                           COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
                            date_trunc(
                                'day',
                                CURRENT_TIMESTAMP AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC')
                            ) AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC') AS current_day_start
-                    FROM organization_config config
-                    WHERE config.organization_id = (
-                        SELECT t.organization_id FROM tenant t WHERE t.id = m.tenant_id
-                    )
+                    FROM tenant t
+                    JOIN organization_config config ON config.organization_id = t.organization_id
+                    WHERE t.id = m.tenant_id
                 ) reporting
                 WHERE rt.date < reporting.current_day_start
                   AND NOT EXISTS (
@@ -193,15 +193,15 @@ public static class MaterializedViewOrchestrator
                 FROM monitor_availability
                 JOIN monitor ON monitor.id = monitor_availability.monitor_id
                 CROSS JOIN LATERAL (
-                    SELECT COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
+                    SELECT t.organization_id AS organization_id,
+                           COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
                            date_trunc(
                                'day',
                                CURRENT_TIMESTAMP AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC')
                            ) AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC') AS current_day_start
-                    FROM organization_config config
-                    WHERE config.organization_id = (
-                        SELECT t.organization_id FROM tenant t WHERE t.id = monitor.tenant_id
-                    )
+                    FROM tenant t
+                    JOIN organization_config config ON config.organization_id = t.organization_id
+                    WHERE t.id = monitor.tenant_id
                 ) reporting
                 WHERE monitor_availability.date >= (reporting.current_day_start - '730 days'::interval)
                   AND monitor_availability.date < reporting.current_day_start
@@ -223,15 +223,15 @@ public static class MaterializedViewOrchestrator
                 FROM monitor_availability ma
                          JOIN monitor m ON ma.monitor_id = m.id
                 CROSS JOIN LATERAL (
-                    SELECT COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
+                    SELECT t.organization_id AS organization_id,
+                           COALESCE(config.reporting_time_zone_id, 'UTC') AS time_zone_id,
                            date_trunc(
                                'day',
                                CURRENT_TIMESTAMP AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC')
                            ) AT TIME ZONE COALESCE(config.reporting_time_zone_id, 'UTC') AS current_day_start
-                    FROM organization_config config
-                    WHERE config.organization_id = (
-                        SELECT t.organization_id FROM tenant t WHERE t.id = m.tenant_id
-                    )
+                    FROM tenant t
+                    JOIN organization_config config ON config.organization_id = t.organization_id
+                    WHERE t.id = m.tenant_id
                 ) reporting
                 WHERE ma.date < reporting.current_day_start
                 GROUP BY 1, 2, 3

@@ -11,6 +11,20 @@ namespace Adwais.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // The rollups read global_config columns that this migration drops.
+            // Deployments with existing views must drop them here; the view
+            // orchestrator recreates them on startup.
+            migrationBuilder.Sql("""
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_financial_daily_global_rollup CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_financial_daily_tenant_rollup CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_daily_latency_global_rollup CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_daily_latency_tenant_rollup CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_daily_latency_monitor_rollup CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_daily_availability_global_rollup CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_daily_availability_tenant_rollup CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS v_mat_daily_availability_monitor_rollup CASCADE;
+                """);
+
             migrationBuilder.CreateTable(
                 name: "organization_config",
                 columns: table => new

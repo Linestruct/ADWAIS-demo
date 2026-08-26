@@ -129,6 +129,50 @@ Run on a disposable database copy only:
 - No cross-organization data leak observed anywhere.
 - Findings filed with reproduction steps, severity (CRITICAL/HIGH/MEDIUM/LOW), and location.
 
+## Unit coverage map
+
+Almost every scenario has an automated unit test now. The table lists the backing suites. Scenarios marked "smoke only" depend on SQL, a running scheduler, a browser, or a real database and remain in the plan for that reason.
+
+| Scenario | Unit coverage |
+|---|---|
+| 2.1 unprovisioned user | LocalUserClaimsTransformationTests |
+| 2.2 short-form role scrub | LocalUserClaimsTransformationTests |
+| 2.3 identity claim scrub | LocalUserClaimsTransformationTests |
+| 2.4 single-org default | LocalUserClaimsTransformationTests, AccessScopeResolverTests |
+| 2.5 multi-org header switching | LocalUserClaimsTransformationTests |
+| 2.6 other-org header rejected | LocalUserClaimsTransformationTests |
+| 2.7 malformed headers | LocalUserClaimsTransformationTests (`TransformAsync_MalformedScopeHeaders_AreTreatedAsAbsent`) |
+| 2.8 tenant viewer pinning | AccessScopeResolverTests |
+| 2.9 kiosk token org claim | TokenServiceTests, CurrentAccessServiceTests |
+| 2.10 legacy kiosk token | CurrentAccessServiceTests (`Resolve_AdminRoleWithoutPlatformOrOrgClaim_ReturnsNull`) |
+| 2.11 dev mock gated to Development | AuthenticationExtensionsTests (`ProductionEnvironment_DoesNotRegisterDevMockScheme`) |
+| 3.1-3.4 profile fields | UserControllerTests |
+| 3.5-3.11 user administration | UserServiceTests |
+| 4.1-4.6 tenant administration | TenantControllerTests |
+| 5.1-5.2 unassigned listing | MonitorOrchestrationServiceTests (`GetUnassignedMonitorsAsync_ShouldReturnOnlyCallerOrganizationBucket`) |
+| 5.3 cross-org assign 403 | MonitorOrchestrationServiceTests |
+| 5.4 unassign to own bucket | MonitorOrchestrationServiceTests (`UnassignMonitorAsync_ShouldMoveMonitorToItsOrganizationBucket`) |
+| 5.5 tenant delete reassignment | MonitorOrchestrationServiceTests (`ReassignAllTenantMonitorsToSystemAsync_ShouldReassignMatchingMonitors`) |
+| 5.6 duplicate external ids across orgs | MonitorSynchronizationJobTests (`ExecuteAsync_IdenticalExternalIdsAcrossOrganizations_LandInRespectiveBuckets`) |
+| 5.7 missing bucket fails loudly | MonitorSynchronizationJobTests (`ExecuteAsync_OrganizationWithoutBucket_ThrowsLoudly`) |
+| 5.8 buckets excluded from fleet | MonitorOrchestrationServiceTests (`GetMonitorsAsync_FleetListing_ExcludesUnassignedBuckets`) |
+| 5.9 view SQL excludes buckets | Smoke only |
+| 6.1-6.2 financial isolation | FinancialServiceTests |
+| 6.3 platform sums org rows once | FinancialServiceTests (`GetNetGrowthAdditionAsync_PlatformDaily_SumsOrganizationRollupRowsOnce`) |
+| 6.4-6.6 timezone, retention, day merge | Smoke only |
+| 7.1 intranet isolation | BulletinPostServiceTests, CalendarEventServiceTests, FeedServiceTests |
+| 7.2 ICS feed scoping | CalendarFeedServiceTests |
+| 7.3 sync events carry org id | CalendarSubscriptionServiceTests |
+| 7.4-7.6 bulletin webhook key and org validation | WebhooksControllerTests, BulletinPostServiceTests |
+| 7.7 cross-org bulletin create 403 | BulletinPostServiceTests |
+| 8.1 weather platform scope error | WeatherServiceTests |
+| 8.2 per-org cache keys | WeatherServiceTests (`GetCurrentWeatherAsync_UsesDistinctCacheKeysPerOrganization`) |
+| 8.3-8.5 config and job intervals | GlobalConfigServiceTests; live scheduling remains smoke only |
+| 9.1 exception mapping table | GlobalExceptionHandlerTests |
+| 9.2-9.3 SPA 403 vs 401 | `apps/web/src/apiClient.test.ts` |
+| 9.4-9.5 Hangfire access | DashboardSessionControllerTests, AdminDashboardAuthorizationFilterTests; cookie expiry smoke only |
+| 10 migration rehearsal | Smoke only |
+
 ## Out of scope
 
 Frontend Phase 3 (org selector, org settings screens). Per-org IdPs. Tenant viewer UI.

@@ -120,6 +120,20 @@ public class TenantControllerScopedTests
     }
 
     [Fact]
+    public async Task DeleteTenant_SystemBucket_ReturnsBadRequest()
+    {
+        var bucket = new Tenant { Id = Guid.NewGuid(), Name = "Bucket", OrganizationId = _org1, OrderProvider = "litium", IsSystem = true };
+        _dbContext.Tenants.Add(bucket);
+        await _dbContext.SaveChangesAsync();
+
+        var controller = new TenantController(_dbContext, _monitorServiceMock.Object, [_orderSourceMock.Object], _currentAccessMock.Object);
+        var result = await controller.DeleteTenant(bucket.Id);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Cannot delete an unassigned monitor bucket.", badRequest.Value);
+    }
+
+    [Fact]
     public async Task UpdateTenant_CrossOrg_ReturnsNotFound()
     {
         var otherOrgTenant = new Tenant { Id = Guid.NewGuid(), Name = "Org2 Tenant", OrganizationId = _org2, OrderProvider = "litium" };

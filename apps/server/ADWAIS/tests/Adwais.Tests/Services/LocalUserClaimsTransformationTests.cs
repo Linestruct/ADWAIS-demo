@@ -498,6 +498,43 @@ public class LocalUserClaimsTransformationTests
     }
 
     [Fact]
+    public async Task TransformAsync_MalformedScopeHeaders_AreTreatedAsAbsent()
+    {
+        var userId = Guid.NewGuid();
+        var ownOrg = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                ExternalSubjectId = "scope-garbage-user",
+                Name = "Garbage Headers",
+                Email = "garbage@example.com",
+                Role = UserRole.Employee
+            });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                OrganizationId = ownOrg,
+                TenantId = null,
+                Role = UserRole.Employee
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _httpContext.Request.Headers[AccessRequestHeaders.OrganizationId] = "not-a-guid";
+        _httpContext.Request.Headers[AccessRequestHeaders.TenantId] = "also-not-a-guid";
+
+        var result = await _transformation.TransformAsync(CreatePrincipal("scope-garbage-user", "garbage@example.com", "Garbage Headers"));
+
+        var orgClaims = result.FindAll(AccessClaimTypes.OrganizationId).Select(c => c.Value).ToList();
+        Assert.Single(orgClaims);
+        Assert.Equal(ownOrg.ToString(), orgClaims[0]);
+        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.TenantId));
+    }
+
+    [Fact]
     public async Task TransformAsync_MultiOrgMemberWithoutHeader_DefaultsToFirstOrg()
     {
         var userId = Guid.NewGuid();

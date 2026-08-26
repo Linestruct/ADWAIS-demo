@@ -83,6 +83,74 @@ public class WeatherServiceTests
     }
 
     [Fact]
+    public async Task GetCurrentWeatherAsync_UsesDistinctCacheKeysPerOrganization()
+    {
+        // Arrange
+        var orgA = Guid.NewGuid();
+        var orgB = Guid.NewGuid();
+        var configDto = CreateConfig("Karlstad");
+        _configServiceMock.Setup(c => c.GetConfigAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(configDto);
+
+        object? cacheEntry = null;
+        var cacheKeys = new List<string>();
+        _cacheMock.Setup(c => c.TryGetValue(It.IsAny<object>(), out cacheEntry)).Returns(false);
+        _cacheMock.Setup(c => c.CreateEntry(It.IsAny<object>()))
+            .Callback((object key) => cacheKeys.Add(key.ToString()!))
+            .Returns(Mock.Of<ICacheEntry>());
+
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        var geocodingResponse = new
+        {
+            results = new[] { new { name = "Karlstad", latitude = 59.4, longitude = 13.5 } }
+        };
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains("geocoding-api")),
+                ItExpr.IsAny<CancellationToken>())
+            .Returns((HttpRequestMessage _, CancellationToken _) => Task.FromResult(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(geocodingResponse))
+            }));
+        var forecastResponse = new
+        {
+            current = new
+            {
+                temperature_2m = 18.5,
+                apparent_temperature = 17.2,
+                precipitation_probability = 65,
+                precipitation = 0.4,
+                weather_code = 1
+            }
+        };
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains("api.open-meteo.com/v1/forecast")),
+                ItExpr.IsAny<CancellationToken>())
+            .Returns((HttpRequestMessage _, CancellationToken _) => Task.FromResult(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(forecastResponse))
+            }));
+
+        var httpClient = new HttpClient(handlerMock.Object);
+
+        // Act
+        var serviceA = new WeatherService(httpClient, _configServiceMock.Object, _cacheMock.Object, OrgAccess(orgA));
+        var serviceB = new WeatherService(httpClient, _configServiceMock.Object, _cacheMock.Object, OrgAccess(orgB));
+        await serviceA.GetCurrentWeatherAsync();
+        await serviceB.GetCurrentWeatherAsync();
+
+        // Assert
+        Assert.Equal(2, cacheKeys.Count);
+        Assert.Equal($"weather:current:{orgA}", cacheKeys[0]);
+        Assert.Equal($"weather:current:{orgB}", cacheKeys[1]);
+    }
+
+    [Fact]
     public async Task GetCurrentWeatherAsync_ShouldFetchForecast_WhenLocationIsConfigured()
     {
         // Arrange

@@ -111,6 +111,24 @@ public class AuthenticationExtensionsTests
     }
 
     [Fact]
+    public async Task ProductionEnvironment_DoesNotRegisterDevMockScheme()
+    {
+        var services = new ServiceCollection();
+        services.AddAppAuthentication(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = "Production"
+            })
+            .Build());
+
+        await using var provider = services.BuildServiceProvider();
+        var schemeProvider = provider.GetRequiredService<IAuthenticationSchemeProvider>();
+        var schemes = await schemeProvider.GetAllSchemesAsync();
+
+        Assert.DoesNotContain(schemes, scheme => scheme.Name == "DevMock");
+    }
+
+    [Fact]
     public void UsesAlwaysSecureDashboardCookieOutsideDevelopment()
     {
         var services = new ServiceCollection();

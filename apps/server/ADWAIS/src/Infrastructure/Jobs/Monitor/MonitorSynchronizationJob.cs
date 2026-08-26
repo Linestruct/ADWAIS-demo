@@ -20,6 +20,9 @@ public class MonitorSynchronizationJob(
     IMemoryCache cache,
     IRecurringJobManager recurringJobManager)
 {
+    protected virtual string? CurrentSyncCron => JobStorage.Current.GetConnection().GetRecurringJobs()
+        .SingleOrDefault(j => j.Id == "sync-monitoring-fleet")?.Cron;
+
     public async Task ExecuteAsync()
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
@@ -133,8 +136,7 @@ public class MonitorSynchronizationJob(
             : Math.Max(1, lowestUpstreamInterval.Value / 60);
         recurringJobManager.AddOrUpdate<MonitorSynchronizationJob>("sync-monitoring-fleet", job => job.ExecuteAsync(), Cron.MinuteInterval(lowestIntervalMins));
 
-        var cronExpression = JobStorage.Current.GetConnection().GetRecurringJobs()
-            .SingleOrDefault(j => j.Id == "sync-monitoring-fleet")?.Cron;
+        var cronExpression = CurrentSyncCron;
 
         TimeSpan cacheDuration = TimeSpan.FromMinutes(6);
 

@@ -595,6 +595,33 @@ public class MonitorOrchestrationServiceTests
     }
 
     [Fact]
+    public async Task GetMonitorsAsync_FleetListing_ExcludesUnassignedBuckets()
+    {
+        // Arrange
+        var bucketId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = bucketId, Name = "Bucket", OrganizationId = _defaultOrgId, IsSystem = true });
+        _dbContext.Monitors.Add(new UptimeMonitor { Id = 65, TenantId = bucketId, Name = "BucketMonitor", Url = "https://url.com" });
+        await _dbContext.SaveChangesAsync();
+
+        var period = new ResolvedPeriod(
+            DateTimeOffset.UtcNow.AddDays(-7),
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(-30),
+            DateTimeOffset.UtcNow.AddDays(-23),
+            7,
+            false,
+            false);
+
+        // Act
+        var fleet = await _service.GetMonitorsAsync(period, ct: CancellationToken.None);
+        var unassigned = await _service.GetUnassignedMonitorsAsync(period, CancellationToken.None);
+
+        // Assert
+        Assert.DoesNotContain(fleet, m => m.Name == "BucketMonitor");
+        Assert.Contains(unassigned, m => m.Name == "BucketMonitor");
+    }
+
+    [Fact]
     public async Task PauseMonitorAsync_ShouldCallPause_AndSetDisabledInDb()
     {
         // Arrange

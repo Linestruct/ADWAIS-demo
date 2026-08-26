@@ -362,6 +362,31 @@ public class UserControllerTests
     }
 
     [Fact]
+    public async Task GetMe_ShouldReturnOrgIdWithNullName_WhenOrganizationRowIsMissing()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var subjectId = "auth0|orphan-org";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Orphan User", Role = UserRole.Employee };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Null(returnedUser.OrganizationName);
+    }
+
+    [Fact]
     public async Task GetMe_ShouldReturnUnauthorized_WhenClaimsAreInvalid()
     {
         // Arrange

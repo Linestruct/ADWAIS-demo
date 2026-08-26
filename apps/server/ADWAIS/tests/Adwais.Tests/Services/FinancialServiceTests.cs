@@ -34,7 +34,12 @@ public class FinancialServiceTests : IDisposable
         _currentAccessMock = new Mock<ICurrentAccess>();
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(null, null, [UserRole.Admin]));
-        _service = new FinancialService(_dbContext, Mock.Of<IReportingCalendar>(), _currentAccessMock.Object);
+        var reportingCalendarMock = new Mock<IReportingCalendar>();
+        reportingCalendarMock.Setup(calendar => calendar.GetTimeZoneAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TimeZoneInfo.Utc);
+        reportingCalendarMock.Setup(calendar => calendar.GetStartOfDayUtc(It.IsAny<DateTimeOffset>(), It.IsAny<TimeZoneInfo>()))
+            .Returns((DateTimeOffset instant, TimeZoneInfo _) => new DateTimeOffset(instant.Date, TimeSpan.Zero));
+        _service = new FinancialService(_dbContext, reportingCalendarMock.Object, _currentAccessMock.Object);
 
         var currentStart = DateTimeOffset.UtcNow.AddHours(-2);
         _period = new ResolvedPeriod(
@@ -204,6 +209,36 @@ public class FinancialServiceTests : IDisposable
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             _service.GetKpisAsync(_period, tenantId: otherTenantId, ct: CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetNetGrowthAdditionAsync_PlatformDaily_SumsOrganizationRollupRowsOnce()
+    {
+        // Arrange
+        var currentStart = DateTimeOffset.UtcNow.Date.AddDays(-2);
+        var currentEnd = DateTimeOffset.UtcNow.Date;
+        var dailyPeriod = new ResolvedPeriod(
+            currentStart,
+            currentEnd,
+            currentStart.AddDays(-1),
+            currentStart,
+            2,
+            isHourly: false,
+            includeActualTime: false);
+        var otherOrgId = Guid.NewGuid();
+        _dbContext.DailyGlobalRollups.AddRange(
+            new DailyFinancialGlobalRollup { CreatedDate = currentStart, OrganizationId = _defaultOrgId, GlobalRevenue = 100, GlobalVolume = 10 },
+            new DailyFinancialGlobalRollup { CreatedDate = currentStart, OrganizationId = otherOrgId, GlobalRevenue = 50, GlobalVolume = 5 },
+            new DailyFinancialGlobalRollup { CreatedDate = currentStart.AddDays(1), OrganizationId = _defaultOrgId, GlobalRevenue = 30, GlobalVolume = 3 });
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var points = await _service.GetNetGrowthAdditionAsync(dailyPeriod, ct: CancellationToken.None);
+
+        // Assert
+        Assert.Equal(2, points.Count);
+        Assert.Equal(150m, points[0].NetGrowthAddition);
+        Assert.Equal(-120m, points[1].NetGrowthAddition);
     }
 
     [Fact]

@@ -55,7 +55,7 @@ public class TenantController(
             var query = context.Tenants
                 .AsNoTracking()
                 .Include(t => t.Monitors)
-                .Where(t => t.Id == id.Value);
+                .Where(t => t.Id == id.Value && !t.IsSystem);
 
             if (filter.OrganizationId is { } orgId)
             {
@@ -71,6 +71,7 @@ public class TenantController(
         var listQuery = context.Tenants
             .AsNoTracking()
             .Include(t => t.Monitors)
+            .Where(t => !t.IsSystem)
             .AsQueryable();
 
         if (filter.OrganizationId is { } filterOrgId)
@@ -188,6 +189,10 @@ public class TenantController(
         if (filter.OrganizationId is { } orgId && tenant.OrganizationId != orgId)
         {
             return NotFound();
+        }
+        if (tenant.IsSystem)
+        {
+            return BadRequest("Cannot edit an unassigned monitor bucket.");
         }
         if (request.Name is not null)
         {

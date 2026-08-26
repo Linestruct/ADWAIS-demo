@@ -134,6 +134,55 @@ public class TenantControllerScopedTests
     }
 
     [Fact]
+    public async Task GetTenants_ExcludesUnassignedBuckets()
+    {
+        var realTenant = new Tenant { Id = Guid.NewGuid(), Name = "Real Store", OrganizationId = _org1, OrderProvider = "litium" };
+        var bucket = new Tenant { Id = Guid.NewGuid(), Name = "System (unassigned monitors)", OrganizationId = _org1, OrderProvider = "litium", IsSystem = true };
+        _dbContext.Tenants.AddRange(realTenant, bucket);
+        await _dbContext.SaveChangesAsync();
+
+        var controller = new TenantController(_dbContext, _monitorServiceMock.Object, [_orderSourceMock.Object], _currentAccessMock.Object);
+        var result = await controller.GetTenants(null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var list = Assert.IsAssignableFrom<IEnumerable<TenantResponseDto>>(ok.Value).ToList();
+        Assert.Single(list);
+        Assert.Equal(realTenant.Id, list[0].Id);
+    }
+
+    [Fact]
+    public async Task GetTenants_ById_OnBucket_ReturnsEmpty()
+    {
+        var bucket = new Tenant { Id = Guid.NewGuid(), Name = "System (unassigned monitors)", OrganizationId = _org1, OrderProvider = "litium", IsSystem = true };
+        _dbContext.Tenants.Add(bucket);
+        await _dbContext.SaveChangesAsync();
+
+        var controller = new TenantController(_dbContext, _monitorServiceMock.Object, [_orderSourceMock.Object], _currentAccessMock.Object);
+        var result = await controller.GetTenants(bucket.Id);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var list = Assert.IsAssignableFrom<IEnumerable<TenantResponseDto>>(ok.Value).ToList();
+        Assert.Empty(list);
+    }
+
+    [Fact]
+    public async Task UpdateTenant_SystemBucket_ReturnsBadRequest()
+    {
+        var bucket = new Tenant { Id = Guid.NewGuid(), Name = "System (unassigned monitors)", OrganizationId = _org1, OrderProvider = "litium", IsSystem = true };
+        _dbContext.Tenants.Add(bucket);
+        await _dbContext.SaveChangesAsync();
+
+        var controller = new TenantController(_dbContext, _monitorServiceMock.Object, [_orderSourceMock.Object], _currentAccessMock.Object);
+        var result = await controller.UpdateTenant(bucket.Id, new UpdateTenantRequestDto { Name = "Renamed" });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+
+        var dbBucket = await _dbContext.Tenants.FindAsync(bucket.Id);
+        Assert.NotNull(dbBucket);
+        Assert.Equal("System (unassigned monitors)", dbBucket.Name);
+    }
+
+    [Fact]
     public async Task UpdateTenant_CrossOrg_ReturnsNotFound()
     {
         var otherOrgTenant = new Tenant { Id = Guid.NewGuid(), Name = "Org2 Tenant", OrganizationId = _org2, OrderProvider = "litium" };

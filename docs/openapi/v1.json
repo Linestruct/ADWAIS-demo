@@ -3163,7 +3163,7 @@
         "tags": [
           "Tenant"
         ],
-        "summary": "Deletes a tenant and reassigns its monitors to the system tenant.",
+        "summary": "Deletes a tenant and reassigns its monitors to its organization's unassigned bucket.",
         "parameters": [
           {
             "name": "id",
@@ -5444,6 +5444,9 @@
             "type": "string",
             "nullable": true
           },
+          "isSystem": {
+            "type": "boolean"
+          },
           "orders": {
             "type": "array",
             "items": {
@@ -6315,6 +6318,23 @@
           },
           "role": {
             "$ref": "#/components/schemas/UserRole"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "organizationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isPlatformAdmin": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

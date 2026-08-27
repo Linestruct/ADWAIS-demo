@@ -146,25 +146,27 @@ export function UserDetailView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      <SettingsPanel className="flex-1 max-h-none">
-        {isLoading && (
+      {isLoading && (
+        <SettingsPanel className="flex-1 max-h-none">
           <SettingsPanelHeader
             title="Edit User"
             subtitle="Loading..."
             icon={<UserIcon size={24} />}
             onBack={() => void navigate({ to: '/settings/users' })}
           />
-        )}
-        {!isLoading && !user && <div className="p-8 text-center text-error">User not found.</div>}
-        {!isLoading && user && (
-          <>
+        </SettingsPanel>
+      )}
+      {!isLoading && !user && <div className="p-8 text-center text-error">User not found.</div>}
+      {!isLoading && user && (
+        <div className="grid flex-1 grid-cols-1 landscape-contained:grid-cols-2 gap-4 min-h-0 min-w-0">
+          <SettingsPanel className="flex-1 max-h-none min-w-0">
             <UserDetailForm key={user.id} user={user} isAdmin={isAdmin} />
-            <div className="mx-auto w-full max-w-2xl px-6 pb-6">
-              <MembershipsPanel userId={user.id} isAdmin={isAdmin} isPlatformAdmin={scope.isPlatformAdmin} />
-            </div>
-          </>
-        )}
-      </SettingsPanel>
+          </SettingsPanel>
+          <div className="flex min-h-0 min-w-0 flex-col">
+            <MembershipsPanel userId={user.id} isAdmin={isAdmin} isPlatformAdmin={scope.isPlatformAdmin} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

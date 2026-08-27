@@ -1,6 +1,6 @@
 # Multi-organization frontend plan
 
-Status: in progress. Backend prerequisites B1 to B3 are implemented and tested (393 backend tests). W1 (client regeneration, required DTO members, scope-aware shared types), W2 (scope-aware `useCurrentUser` plus `OrgBoundary`), and W3 (sentinel removal across the six files) are done. W4 (organization settings sections in Settings > Configuration) is done: platform fields render only for platform admins; staff see and edit their own organization's parameters through the B1 endpoints. W7 (membership administration on the user detail page) is done: rows, add, remove, platform rows, refusal toast. Remaining: W5 runtime picker and switching, W6 kiosk polish.
+Status: complete. Backend prerequisites B1 to B3 are implemented and tested (393 backend tests). W1 (client regeneration, required DTO members, scope-aware shared types), W2 (scope-aware `useCurrentUser` plus `OrgBoundary`), and W3 (sentinel removal across the six files) are done. W4 (organization settings sections in Settings > Configuration) is done: platform fields render only for platform admins; staff see and edit their own organization's parameters through the B1 endpoints. W5 (runtime picker and switching) is done: `useOrgSelection` persists to sessionStorage, `apiFetch` sends `X-ADWAIS-ORG-ID` on every request except identity and organization list endpoints, tenants and monitors queries key by organization, and a revoked selection clears itself on 403. W6 (kiosk polish) is done: kiosk identities resolve the organization name from `/api/users/me` and show it in the header. W7 (membership administration on the user detail page) is done: rows, add, remove, platform rows, refusal toast.
 
 ## Goal
 
@@ -159,3 +159,4 @@ Tenant viewer screens (phase four). Visual redesign. Server-side pagination chan
 
 - `SystemEventService` never populates `SystemEvent.OrganizationId`; events are deployment-wide. Attribution is a future backend task if org-filtered event lists become necessary.
 - Cross-tab sync of the selected organization (localStorage plus storage events) is deferred; W5 uses sessionStorage.
+- Financial and fleet query keys are not organization-segmented yet. Their requests carry the scope header, so a switch followed by an immediate read can briefly show the previous organization's cached rows until the 60-second refetch. Key the `financialKeys` factory by the selected organization when switching on those pages becomes a priority.

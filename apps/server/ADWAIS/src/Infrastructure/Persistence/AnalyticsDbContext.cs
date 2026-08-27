@@ -99,7 +99,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(e => e.Source).HasMaxLength(100);
-            entity.Property(e => e.Level).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.Level).StoreAsString().HasMaxLength(50);
             entity.HasOne(e => e.Tenant)
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
@@ -120,7 +120,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(t => t.OrganizationId).IsRequired();
             entity.Property(t => t.Name).HasMaxLength(255);
             entity.Property(t => t.Type)
-                .HasConversion<string>()
+                .StoreAsString()
                 .HasMaxLength(50)
                 .HasDefaultValue(TenantType.Mixed);
             entity.Property(t => t.OrderProvider)
@@ -164,7 +164,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.ToTable("orders");
             entity.HasKey(o => o.Id);
             entity.Property(o => o.OrderState)
-                .HasConversion<string>()
+                .StoreAsString()
                 .HasMaxLength(255);
             entity.Property(o => o.OrderNumber).HasMaxLength(255);
             entity.Property(o => o.Provider).HasMaxLength(100).IsRequired();
@@ -368,13 +368,13 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             {
                 table.HasCheckConstraint(
                     "ck_user_access_role",
-                    "\"role\" IN ('Admin', 'Viewer', 'Employee', 'TenantViewer')");
+                    DbEnum.CheckConstraintSql<Adwais.Domain.Enums.UserRole>("role"));
             });
             entity.HasKey(access => access.Id);
             entity.Property(access => access.Id)
                 .HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(access => access.Role)
-                .HasConversion<string>()
+                .StoreAsString()
                 .HasMaxLength(50)
                 .IsRequired();
             entity.Property(access => access.CreatedAt)
@@ -523,10 +523,10 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             {
                 table.HasCheckConstraint(
                     "ck_calendar_event_event_type",
-                    "\"event_type\" IN ('General', 'Meeting', 'Fika', 'Social', 'Birthday', 'GoLive', 'ExternalSync')");
+                    DbEnum.CheckConstraintSql<Adwais.Domain.Enums.EventType>("event_type"));
                 table.HasCheckConstraint(
                     "ck_calendar_event_recurrence",
-                    "\"recurrence\" IN ('None', 'Daily', 'Weekly', 'Monthly', 'Yearly')");
+                    DbEnum.CheckConstraintSql<Adwais.Domain.Enums.RecurrenceType>("recurrence"));
             });
             entity.HasKey(oe => oe.Id);
             entity.Property(oe => oe.Id).HasDefaultValueSql("uuid_generate_v4()");
@@ -534,12 +534,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(oe => oe.Description).IsRequired(false);
             entity.Property(oe => oe.Location).HasMaxLength(255).IsRequired(false);
             entity.Property(oe => oe.EventType)
-                .HasConversion<string>()
+                .StoreAsString()
                 .HasMaxLength(20)
                 .IsRequired()
                 .HasDefaultValue(EventType.General);
             entity.Property(oe => oe.Recurrence)
-                .HasConversion<string>()
+                .StoreAsString()
                 .HasMaxLength(20)
                 .IsRequired()
                 .HasDefaultValue(RecurrenceType.None);

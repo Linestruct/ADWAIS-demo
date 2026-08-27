@@ -15,7 +15,7 @@ import { MembershipsPanel } from '../../components/settings/users/MembershipsPan
 import { getTagColor, getTagStyle } from '../../utils/tagHelper';
 import type { UserRole, UserResponseDto } from '@types';
 
-function UserDetailForm({ user, isAdmin }: { user: UserResponseDto, isAdmin: boolean }) {
+function UserDetailForm({ user, isAdmin, isPlatformAdmin }: { user: UserResponseDto, isAdmin: boolean, isPlatformAdmin: boolean }) {
   const navigate = useNavigate();
   const updateUser = useUpdateUserMutation();
   const deleteUser = useDeleteUserMutation();
@@ -100,35 +100,39 @@ function UserDetailForm({ user, isAdmin }: { user: UserResponseDto, isAdmin: boo
         </SettingsPanelHeader>
 
       <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-2xl space-y-6">
-          <FormField
-            id="user-email"
-            label="Email Address"
-            value={draft.email}
-            disabled
-            helperText="Email addresses cannot be changed."
-          />
+        <div className="grid grid-cols-1 items-start gap-10 xl:grid-cols-2">
+          <div className="space-y-6">
+            <FormField
+              id="user-email"
+              label="Email Address"
+              value={draft.email}
+              disabled
+              helperText="Email addresses cannot be changed."
+            />
 
-          <FormField
-            id="user-name"
-            label="Full Name"
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            disabled={!isAdmin}
-          />
+            <FormField
+              id="user-name"
+              label="Full Name"
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              disabled={!isAdmin}
+            />
 
-          <FormField
-            as="select"
-            id="user-role"
-            label="Role"
-            value={draft.role}
-            onChange={(e) => setDraft({ ...draft, role: e.target.value as UserRole })}
-            disabled={!isAdmin}
-          >
-            <option value="Admin">Admin</option>
-            <option value="Viewer">Viewer</option>
-            <option value="Employee">Employee</option>
-          </FormField>
+            <FormField
+              as="select"
+              id="user-role"
+              label="Role"
+              value={draft.role}
+              onChange={(e) => setDraft({ ...draft, role: e.target.value as UserRole })}
+              disabled={!isAdmin}
+            >
+              <option value="Admin">Admin</option>
+              <option value="Viewer">Viewer</option>
+              <option value="Employee">Employee</option>
+            </FormField>
+          </div>
+
+          <MembershipsPanel userId={user.id} isAdmin={isAdmin} isPlatformAdmin={isPlatformAdmin} />
         </div>
       </div>
     </>
@@ -146,27 +150,18 @@ export function UserDetailView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      {isLoading && (
-        <SettingsPanel className="flex-1 max-h-none">
+      <SettingsPanel className="flex-1 max-h-none">
+        {isLoading && (
           <SettingsPanelHeader
             title="Edit User"
             subtitle="Loading..."
             icon={<UserIcon size={24} />}
             onBack={() => void navigate({ to: '/settings/users' })}
           />
-        </SettingsPanel>
-      )}
-      {!isLoading && !user && <div className="p-8 text-center text-error">User not found.</div>}
-      {!isLoading && user && (
-        <div className="grid flex-1 grid-cols-1 landscape-contained:grid-cols-2 gap-4 min-h-0 min-w-0">
-          <SettingsPanel className="flex-1 max-h-none min-w-0">
-            <UserDetailForm key={user.id} user={user} isAdmin={isAdmin} />
-          </SettingsPanel>
-          <div className="flex min-h-0 min-w-0 flex-col">
-            <MembershipsPanel userId={user.id} isAdmin={isAdmin} isPlatformAdmin={scope.isPlatformAdmin} />
-          </div>
-        </div>
-      )}
+        )}
+        {!isLoading && !user && <div className="p-8 text-center text-error">User not found.</div>}
+        {!isLoading && user && <UserDetailForm key={user.id} user={user} isAdmin={isAdmin} isPlatformAdmin={scope.isPlatformAdmin} />}
+      </SettingsPanel>
     </div>
   );
 }

@@ -5,7 +5,4 @@
  * OpenAPI spec version: 1.0
  */
 
-/**
- * @nullable
- */
-export type OrganizationConfigDtoMonitoringProviderSettings = {[key: string]: string | null} | null;
+export type OrganizationConfigDtoMonitoringProviderSettings = {[key: string]: string | null};

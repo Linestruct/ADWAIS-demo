@@ -7,11 +7,11 @@
 import type { UserRole } from './userRole';
 
 export interface UserMembershipResponseDto {
-  id?: string;
-  userId?: string;
+  id: string;
+  userId: string;
   /** @nullable */
   organizationId?: string | null;
   /** @nullable */
   organizationName?: string | null;
-  role?: UserRole;
+  role: UserRole;
 }

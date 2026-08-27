@@ -9,20 +9,18 @@ import type { OrganizationConfigDtoMonitoringProviderSettings } from './organiza
 export interface OrganizationConfigDto {
   /** @nullable */
   weatherLocation?: string | null;
-  weatherFetchIntervalMinutes?: number;
-  /** @nullable */
-  reportingTimeZoneId?: string | null;
-  /** @nullable */
-  monitoringProvider?: string | null;
-  /** @nullable */
-  monitoringProviderSettings?: OrganizationConfigDtoMonitoringProviderSettings;
-  /** @nullable */
-  monitoringProviderConfiguredSecretKeys?: string[] | null;
-  orderFetchIntervalMinutes?: number;
-  uptimeFetchIntervalMinutes?: number;
-  latencyFetchIntervalMinutes?: number;
-  userStatsFetchIntervalMinutes?: number;
-  feedFetchIntervalHours?: number;
+  weatherFetchIntervalMinutes: number;
+  /** @minLength 1 */
+  reportingTimeZoneId: string;
+  /** @minLength 1 */
+  monitoringProvider: string;
+  monitoringProviderSettings: OrganizationConfigDtoMonitoringProviderSettings;
+  monitoringProviderConfiguredSecretKeys: string[];
+  orderFetchIntervalMinutes: number;
+  uptimeFetchIntervalMinutes: number;
+  latencyFetchIntervalMinutes: number;
+  userStatsFetchIntervalMinutes: number;
+  feedFetchIntervalHours: number;
   /** @nullable */
   monitorsCount?: number | null;
   /** @nullable */

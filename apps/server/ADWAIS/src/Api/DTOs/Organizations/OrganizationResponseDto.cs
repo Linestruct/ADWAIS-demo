@@ -2,8 +2,10 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using System.ComponentModel.DataAnnotations;
+
 namespace Adwais.Api.DTOs.Organizations;
 
 public record OrganizationResponseDto(
-    Guid Id,
-    string Name);
+    [property: Required] Guid Id,
+    [property: Required] string Name);

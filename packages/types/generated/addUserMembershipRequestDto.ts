@@ -9,5 +9,5 @@ import type { UserRole } from './userRole';
 export interface AddUserMembershipRequestDto {
   /** @nullable */
   organizationId?: string | null;
-  role?: UserRole;
+  role: UserRole;
 }

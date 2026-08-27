@@ -2,13 +2,14 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using System.ComponentModel.DataAnnotations;
 using Adwais.Domain.Enums;
 
 namespace Adwais.Api.DTOs.Users;
 
 public record UserMembershipResponseDto(
-    Guid Id,
-    Guid UserId,
+    [property: Required] Guid Id,
+    [property: Required] Guid UserId,
     Guid? OrganizationId,
     string? OrganizationName,
-    UserRole Role);
+    [property: Required] UserRole Role);

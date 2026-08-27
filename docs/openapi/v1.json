@@ -3993,6 +3993,9 @@
         "additionalProperties": false
       },
       "AddUserMembershipRequestDto": {
+        "required": [
+          "role"
+        ],
         "type": "object",
         "properties": {
           "organizationId": {
@@ -5363,6 +5366,18 @@
         "additionalProperties": false
       },
       "OrganizationConfigDto": {
+        "required": [
+          "feedFetchIntervalHours",
+          "latencyFetchIntervalMinutes",
+          "monitoringProvider",
+          "monitoringProviderConfiguredSecretKeys",
+          "monitoringProviderSettings",
+          "orderFetchIntervalMinutes",
+          "reportingTimeZoneId",
+          "uptimeFetchIntervalMinutes",
+          "userStatsFetchIntervalMinutes",
+          "weatherFetchIntervalMinutes"
+        ],
         "type": "object",
         "properties": {
           "weatherLocation": {
@@ -5374,27 +5389,25 @@
             "format": "int32"
           },
           "reportingTimeZoneId": {
-            "type": "string",
-            "nullable": true
+            "minLength": 1,
+            "type": "string"
           },
           "monitoringProvider": {
-            "type": "string",
-            "nullable": true
+            "minLength": 1,
+            "type": "string"
           },
           "monitoringProviderSettings": {
             "type": "object",
             "additionalProperties": {
               "type": "string",
               "nullable": true
-            },
-            "nullable": true
+            }
           },
           "monitoringProviderConfiguredSecretKeys": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "nullable": true
+            }
           },
           "orderFetchIntervalMinutes": {
             "type": "integer",
@@ -5438,6 +5451,10 @@
         "additionalProperties": false
       },
       "OrganizationResponseDto": {
+        "required": [
+          "id",
+          "name"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -5445,8 +5462,8 @@
             "format": "uuid"
           },
           "name": {
-            "type": "string",
-            "nullable": true
+            "minLength": 1,
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -6812,6 +6829,11 @@
         "additionalProperties": false
       },
       "UserMembershipResponseDto": {
+        "required": [
+          "id",
+          "role",
+          "userId"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -6838,6 +6860,11 @@
         "additionalProperties": false
       },
       "UserResponseDto": {
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
         "type": "object",
         "properties": {
           "id": {
@@ -6845,8 +6872,8 @@
             "format": "uuid"
           },
           "name": {
-            "type": "string",
-            "nullable": true
+            "minLength": 1,
+            "type": "string"
           },
           "email": {
             "type": "string",

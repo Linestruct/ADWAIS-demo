@@ -26,6 +26,7 @@ import type {
 import type {
   AccumulatedRevenuePointResponseDto,
   ActivateKioskRequestDto,
+  AddUserMembershipRequestDto,
   BackgroundJobStatusDto,
   BulletinPostResponseDto,
   CalendarEventDto,
@@ -75,6 +76,8 @@ import type {
   NetGrowthAdditionPointResponseDto,
   OrderBinResponseDto,
   OrderDto,
+  OrganizationConfigDto,
+  OrganizationResponseDto,
   PortfolioImpactResponseDto,
   PostApiIngestionBackfillParams,
   PostApiMonitorsParams,
@@ -92,9 +95,11 @@ import type {
   UpdateFetchIntervalsRequestDto,
   UpdateGlobalConfigRequestDto,
   UpdateMonitorRequestDto,
+  UpdateOrganizationConfigRequestDto,
   UpdateTenantRequestDto,
   UpdateUserRequestDto,
   UptimeMonitorDto,
+  UserMembershipResponseDto,
   UserResponseDto,
   WeatherDto
 } from '../../../../../packages/types/generated';
@@ -7250,6 +7255,530 @@ export function useGetApiMonitorsIdLatency<TData = Awaited<ReturnType<typeof get
 
 
 
+export type getApiOrganizationsIdConfigResponse200TextPlain = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type getApiOrganizationsIdConfigResponse200ApplicationJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type getApiOrganizationsIdConfigResponse200TextJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type getApiOrganizationsIdConfigResponseSuccess = (getApiOrganizationsIdConfigResponse200TextPlain | getApiOrganizationsIdConfigResponse200ApplicationJson | getApiOrganizationsIdConfigResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type getApiOrganizationsIdConfigResponse = (getApiOrganizationsIdConfigResponseSuccess)
+
+export const getGetApiOrganizationsIdConfigUrl = (id: string,) => {
+
+
+
+
+  return `/api/organizations/${id}/config`
+}
+
+export const getApiOrganizationsIdConfig = async (id: string, options?: RequestInit): Promise<getApiOrganizationsIdConfigResponse> => {
+
+  return customClient<getApiOrganizationsIdConfigResponse>(getGetApiOrganizationsIdConfigUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiOrganizationsIdConfigQueryKey = (id: string,) => {
+    return [
+    `/api/organizations/${id}/config`
+    ] as const;
+    }
+
+
+export const getGetApiOrganizationsIdConfigQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsIdConfigQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>> = ({ signal }) => getApiOrganizationsIdConfig(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiOrganizationsIdConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>>
+export type GetApiOrganizationsIdConfigQueryError = unknown
+
+
+export function useGetApiOrganizationsIdConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsIdConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsIdConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetApiOrganizationsIdConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsIdConfig>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiOrganizationsIdConfigQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type patchApiOrganizationsIdConfigResponse200TextPlain = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type patchApiOrganizationsIdConfigResponse200ApplicationJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type patchApiOrganizationsIdConfigResponse200TextJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type patchApiOrganizationsIdConfigResponseSuccess = (patchApiOrganizationsIdConfigResponse200TextPlain | patchApiOrganizationsIdConfigResponse200ApplicationJson | patchApiOrganizationsIdConfigResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type patchApiOrganizationsIdConfigResponse = (patchApiOrganizationsIdConfigResponseSuccess)
+
+export const getPatchApiOrganizationsIdConfigUrl = (id: string,) => {
+
+
+
+
+  return `/api/organizations/${id}/config`
+}
+
+export const patchApiOrganizationsIdConfig = async (id: string,
+    updateOrganizationConfigRequestDto?: UpdateOrganizationConfigRequestDto, options?: RequestInit): Promise<patchApiOrganizationsIdConfigResponse> => {
+
+  return customClient<patchApiOrganizationsIdConfigResponse>(getPatchApiOrganizationsIdConfigUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateOrganizationConfigRequestDto)
+  }
+);}
+
+
+
+
+export const getPatchApiOrganizationsIdConfigMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsIdConfig>>, TError,{id: string;data?: UpdateOrganizationConfigRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsIdConfig>>, TError,{id: string;data?: UpdateOrganizationConfigRequestDto}, TContext> => {
+
+const mutationKey = ['patchApiOrganizationsIdConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchApiOrganizationsIdConfig>>, {id: string;data?: UpdateOrganizationConfigRequestDto}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchApiOrganizationsIdConfig(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchApiOrganizationsIdConfigMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiOrganizationsIdConfig>>>
+    export type PatchApiOrganizationsIdConfigMutationBody = UpdateOrganizationConfigRequestDto | undefined
+    export type PatchApiOrganizationsIdConfigMutationError = unknown
+
+    export const usePatchApiOrganizationsIdConfig = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsIdConfig>>, TError,{id: string;data?: UpdateOrganizationConfigRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchApiOrganizationsIdConfig>>,
+        TError,
+        {id: string;data?: UpdateOrganizationConfigRequestDto},
+        TContext
+      > => {
+      return useMutation(getPatchApiOrganizationsIdConfigMutationOptions(options), queryClient);
+    }
+
+export type getApiOrganizationsMeConfigResponse200TextPlain = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type getApiOrganizationsMeConfigResponse200ApplicationJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type getApiOrganizationsMeConfigResponse200TextJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type getApiOrganizationsMeConfigResponseSuccess = (getApiOrganizationsMeConfigResponse200TextPlain | getApiOrganizationsMeConfigResponse200ApplicationJson | getApiOrganizationsMeConfigResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type getApiOrganizationsMeConfigResponse = (getApiOrganizationsMeConfigResponseSuccess)
+
+export const getGetApiOrganizationsMeConfigUrl = () => {
+
+
+
+
+  return `/api/organizations/me/config`
+}
+
+export const getApiOrganizationsMeConfig = async ( options?: RequestInit): Promise<getApiOrganizationsMeConfigResponse> => {
+
+  return customClient<getApiOrganizationsMeConfigResponse>(getGetApiOrganizationsMeConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiOrganizationsMeConfigQueryKey = () => {
+    return [
+    `/api/organizations/me/config`
+    ] as const;
+    }
+
+
+export const getGetApiOrganizationsMeConfigQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsMeConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>> = ({ signal }) => getApiOrganizationsMeConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiOrganizationsMeConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>>
+export type GetApiOrganizationsMeConfigQueryError = unknown
+
+
+export function useGetApiOrganizationsMeConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsMeConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsMeConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetApiOrganizationsMeConfig<TData = Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsMeConfig>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiOrganizationsMeConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type patchApiOrganizationsMeConfigResponse200TextPlain = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type patchApiOrganizationsMeConfigResponse200ApplicationJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type patchApiOrganizationsMeConfigResponse200TextJson = {
+  data: OrganizationConfigDto
+  status: 200
+}
+
+export type patchApiOrganizationsMeConfigResponseSuccess = (patchApiOrganizationsMeConfigResponse200TextPlain | patchApiOrganizationsMeConfigResponse200ApplicationJson | patchApiOrganizationsMeConfigResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type patchApiOrganizationsMeConfigResponse = (patchApiOrganizationsMeConfigResponseSuccess)
+
+export const getPatchApiOrganizationsMeConfigUrl = () => {
+
+
+
+
+  return `/api/organizations/me/config`
+}
+
+export const patchApiOrganizationsMeConfig = async (updateOrganizationConfigRequestDto?: UpdateOrganizationConfigRequestDto, options?: RequestInit): Promise<patchApiOrganizationsMeConfigResponse> => {
+
+  return customClient<patchApiOrganizationsMeConfigResponse>(getPatchApiOrganizationsMeConfigUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateOrganizationConfigRequestDto)
+  }
+);}
+
+
+
+
+export const getPatchApiOrganizationsMeConfigMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsMeConfig>>, TError,{data?: UpdateOrganizationConfigRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsMeConfig>>, TError,{data?: UpdateOrganizationConfigRequestDto}, TContext> => {
+
+const mutationKey = ['patchApiOrganizationsMeConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchApiOrganizationsMeConfig>>, {data?: UpdateOrganizationConfigRequestDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  patchApiOrganizationsMeConfig(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchApiOrganizationsMeConfigMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiOrganizationsMeConfig>>>
+    export type PatchApiOrganizationsMeConfigMutationBody = UpdateOrganizationConfigRequestDto | undefined
+    export type PatchApiOrganizationsMeConfigMutationError = unknown
+
+    export const usePatchApiOrganizationsMeConfig = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsMeConfig>>, TError,{data?: UpdateOrganizationConfigRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchApiOrganizationsMeConfig>>,
+        TError,
+        {data?: UpdateOrganizationConfigRequestDto},
+        TContext
+      > => {
+      return useMutation(getPatchApiOrganizationsMeConfigMutationOptions(options), queryClient);
+    }
+
+export type getApiOrganizationsResponse200TextPlain = {
+  data: OrganizationResponseDto[]
+  status: 200
+}
+
+export type getApiOrganizationsResponse200ApplicationJson = {
+  data: OrganizationResponseDto[]
+  status: 200
+}
+
+export type getApiOrganizationsResponse200TextJson = {
+  data: OrganizationResponseDto[]
+  status: 200
+}
+
+export type getApiOrganizationsResponseSuccess = (getApiOrganizationsResponse200TextPlain | getApiOrganizationsResponse200ApplicationJson | getApiOrganizationsResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type getApiOrganizationsResponse = (getApiOrganizationsResponseSuccess)
+
+export const getGetApiOrganizationsUrl = () => {
+
+
+
+
+  return `/api/organizations`
+}
+
+export const getApiOrganizations = async ( options?: RequestInit): Promise<getApiOrganizationsResponse> => {
+
+  return customClient<getApiOrganizationsResponse>(getGetApiOrganizationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiOrganizationsQueryKey = () => {
+    return [
+    `/api/organizations`
+    ] as const;
+    }
+
+
+export const getGetApiOrganizationsQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizations>>> = ({ signal }) => getApiOrganizations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiOrganizationsQueryResult = NonNullable<Awaited<ReturnType<typeof getApiOrganizations>>>
+export type GetApiOrganizationsQueryError = unknown
+
+
+export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizations>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizations>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizations>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizations>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiOrganizationsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export type getApiSystemEventResponse200TextPlain = {
   data: SystemEvent[]
   status: 200
@@ -8030,7 +8559,7 @@ export const getDeleteApiTenantsIdUrl = (id: string,) => {
 }
 
 /**
- * @summary Deletes a tenant and reassigns its monitors to the system tenant.
+ * @summary Deletes a tenant and reassigns its monitors to its organization's unassigned bucket.
  */
 export const deleteApiTenantsId = async (id: string, options?: RequestInit): Promise<deleteApiTenantsIdResponse> => {
 
@@ -8078,7 +8607,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteApiTenantsIdMutationError = unknown
 
     /**
- * @summary Deletes a tenant and reassigns its monitors to the system tenant.
+ * @summary Deletes a tenant and reassigns its monitors to its organization's unassigned bucket.
  */
 export const useDeleteApiTenantsId = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiTenantsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
@@ -8805,6 +9334,312 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteApiUsersIdMutationOptions(options), queryClient);
+    }
+
+export type getApiUsersIdMembershipsResponse200TextPlain = {
+  data: UserMembershipResponseDto[]
+  status: 200
+}
+
+export type getApiUsersIdMembershipsResponse200ApplicationJson = {
+  data: UserMembershipResponseDto[]
+  status: 200
+}
+
+export type getApiUsersIdMembershipsResponse200TextJson = {
+  data: UserMembershipResponseDto[]
+  status: 200
+}
+
+export type getApiUsersIdMembershipsResponseSuccess = (getApiUsersIdMembershipsResponse200TextPlain | getApiUsersIdMembershipsResponse200ApplicationJson | getApiUsersIdMembershipsResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type getApiUsersIdMembershipsResponse = (getApiUsersIdMembershipsResponseSuccess)
+
+export const getGetApiUsersIdMembershipsUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/memberships`
+}
+
+/**
+ * @summary Lists the membership rows of a user. Reach follows the service rules:
+organization admins see only their own organization's rows.
+ */
+export const getApiUsersIdMemberships = async (id: string, options?: RequestInit): Promise<getApiUsersIdMembershipsResponse> => {
+
+  return customClient<getApiUsersIdMembershipsResponse>(getGetApiUsersIdMembershipsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiUsersIdMembershipsQueryKey = (id: string,) => {
+    return [
+    `/api/users/${id}/memberships`
+    ] as const;
+    }
+
+
+export const getGetApiUsersIdMembershipsQueryOptions = <TData = Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiUsersIdMembershipsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiUsersIdMemberships>>> = ({ signal }) => getApiUsersIdMemberships(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiUsersIdMembershipsQueryResult = NonNullable<Awaited<ReturnType<typeof getApiUsersIdMemberships>>>
+export type GetApiUsersIdMembershipsQueryError = unknown
+
+
+export function useGetApiUsersIdMemberships<TData = Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiUsersIdMemberships>>,
+          TError,
+          Awaited<ReturnType<typeof getApiUsersIdMemberships>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiUsersIdMemberships<TData = Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiUsersIdMemberships>>,
+          TError,
+          Awaited<ReturnType<typeof getApiUsersIdMemberships>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiUsersIdMemberships<TData = Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Lists the membership rows of a user. Reach follows the service rules:
+organization admins see only their own organization's rows.
+ */
+
+export function useGetApiUsersIdMemberships<TData = Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiUsersIdMemberships>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiUsersIdMembershipsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type postApiUsersIdMembershipsResponse200TextPlain = {
+  data: UserMembershipResponseDto
+  status: 200
+}
+
+export type postApiUsersIdMembershipsResponse200ApplicationJson = {
+  data: UserMembershipResponseDto
+  status: 200
+}
+
+export type postApiUsersIdMembershipsResponse200TextJson = {
+  data: UserMembershipResponseDto
+  status: 200
+}
+
+export type postApiUsersIdMembershipsResponseSuccess = (postApiUsersIdMembershipsResponse200TextPlain | postApiUsersIdMembershipsResponse200ApplicationJson | postApiUsersIdMembershipsResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type postApiUsersIdMembershipsResponse = (postApiUsersIdMembershipsResponseSuccess)
+
+export const getPostApiUsersIdMembershipsUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/memberships`
+}
+
+/**
+ * @summary Adds a membership row for a user. Reach follows the service rules:
+organization admins may only add inside their own organization.
+ */
+export const postApiUsersIdMemberships = async (id: string,
+    addUserMembershipRequestDto?: AddUserMembershipRequestDto, options?: RequestInit): Promise<postApiUsersIdMembershipsResponse> => {
+
+  return customClient<postApiUsersIdMembershipsResponse>(getPostApiUsersIdMembershipsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addUserMembershipRequestDto)
+  }
+);}
+
+
+
+
+export const getPostApiUsersIdMembershipsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiUsersIdMemberships>>, TError,{id: string;data?: AddUserMembershipRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof postApiUsersIdMemberships>>, TError,{id: string;data?: AddUserMembershipRequestDto}, TContext> => {
+
+const mutationKey = ['postApiUsersIdMemberships'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postApiUsersIdMemberships>>, {id: string;data?: AddUserMembershipRequestDto}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postApiUsersIdMemberships(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostApiUsersIdMembershipsMutationResult = NonNullable<Awaited<ReturnType<typeof postApiUsersIdMemberships>>>
+    export type PostApiUsersIdMembershipsMutationBody = AddUserMembershipRequestDto | undefined
+    export type PostApiUsersIdMembershipsMutationError = unknown
+
+    /**
+ * @summary Adds a membership row for a user. Reach follows the service rules:
+organization admins may only add inside their own organization.
+ */
+export const usePostApiUsersIdMemberships = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiUsersIdMemberships>>, TError,{id: string;data?: AddUserMembershipRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postApiUsersIdMemberships>>,
+        TError,
+        {id: string;data?: AddUserMembershipRequestDto},
+        TContext
+      > => {
+      return useMutation(getPostApiUsersIdMembershipsMutationOptions(options), queryClient);
+    }
+
+export type deleteApiUsersIdMembershipsMembershipIdResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteApiUsersIdMembershipsMembershipIdResponseSuccess = (deleteApiUsersIdMembershipsMembershipIdResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deleteApiUsersIdMembershipsMembershipIdResponse = (deleteApiUsersIdMembershipsMembershipIdResponseSuccess)
+
+export const getDeleteApiUsersIdMembershipsMembershipIdUrl = (id: string,
+    membershipId: string,) => {
+
+
+
+
+  return `/api/users/${id}/memberships/${membershipId}`
+}
+
+/**
+ * @summary Removes a membership row from a user. The caller cannot remove their
+own platform-admin membership.
+ */
+export const deleteApiUsersIdMembershipsMembershipId = async (id: string,
+    membershipId: string, options?: RequestInit): Promise<deleteApiUsersIdMembershipsMembershipIdResponse> => {
+
+  return customClient<deleteApiUsersIdMembershipsMembershipIdResponse>(getDeleteApiUsersIdMembershipsMembershipIdUrl(id,membershipId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteApiUsersIdMembershipsMembershipIdMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiUsersIdMembershipsMembershipId>>, TError,{id: string;membershipId: string}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteApiUsersIdMembershipsMembershipId>>, TError,{id: string;membershipId: string}, TContext> => {
+
+const mutationKey = ['deleteApiUsersIdMembershipsMembershipId'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteApiUsersIdMembershipsMembershipId>>, {id: string;membershipId: string}> = (props) => {
+          const {id,membershipId} = props ?? {};
+
+          return  deleteApiUsersIdMembershipsMembershipId(id,membershipId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteApiUsersIdMembershipsMembershipIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiUsersIdMembershipsMembershipId>>>
+
+    export type DeleteApiUsersIdMembershipsMembershipIdMutationError = unknown
+
+    /**
+ * @summary Removes a membership row from a user. The caller cannot remove their
+own platform-admin membership.
+ */
+export const useDeleteApiUsersIdMembershipsMembershipId = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiUsersIdMembershipsMembershipId>>, TError,{id: string;membershipId: string}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteApiUsersIdMembershipsMembershipId>>,
+        TError,
+        {id: string;membershipId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteApiUsersIdMembershipsMembershipIdMutationOptions(options), queryClient);
     }
 
 export type getApiWeatherResponse200TextPlain = {

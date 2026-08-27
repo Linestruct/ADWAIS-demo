@@ -12,4 +12,5 @@ export const UserRole = {
   Admin: 'Admin',
   Viewer: 'Viewer',
   Employee: 'Employee',
+  TenantViewer: 'TenantViewer',
 } as const;

@@ -4,9 +4,11 @@
  * Adwais.Api
  * OpenAPI spec version: 1.0
  */
+import type { Organization } from './organization';
 
 export interface FeedSource {
   id?: string;
+  organizationId?: string;
   /** @nullable */
   name: string | null;
   /** @nullable */
@@ -18,4 +20,5 @@ export interface FeedSource {
   lastSuccessAt?: string | null;
   /** @nullable */
   lastSyncError?: string | null;
+  organization?: Organization;
 }

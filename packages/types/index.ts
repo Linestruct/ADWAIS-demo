@@ -114,6 +114,10 @@ export type UserResponseDto = {
   name: string;
   email: string | null;
   role: string;
+  organizationId?: string | null;
+  organizationName?: string | null;
+  tenantId?: string | null;
+  isPlatformAdmin?: boolean;
 };
 
 export type GlobalConfigDto = Generated.GlobalConfigResponseDto;

@@ -4,12 +4,10 @@
  * Adwais.Api
  * OpenAPI spec version: 1.0
  */
+import type { UserRole } from './userRole';
 
-export interface CreateBulletinPostWebhookRequest {
-  /** @nullable */
-  title: string | null;
-  /** @nullable */
-  body: string | null;
+export interface AddUserMembershipRequestDto {
   /** @nullable */
   organizationId?: string | null;
+  role?: UserRole;
 }

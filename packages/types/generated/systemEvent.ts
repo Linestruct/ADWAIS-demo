@@ -4,6 +4,7 @@
  * Adwais.Api
  * OpenAPI spec version: 1.0
  */
+import type { Organization } from './organization';
 import type { SystemEventLevel } from './systemEventLevel';
 import type { Tenant } from './tenant';
 
@@ -20,4 +21,7 @@ export interface SystemEvent {
   /** @nullable */
   tenantId?: string | null;
   tenant?: Tenant;
+  /** @nullable */
+  organizationId?: string | null;
+  organization?: Organization;
 }

@@ -6,18 +6,15 @@
  */
 import type { UserRole } from './userRole';
 
-export interface UserResponseDto {
+export interface User {
   id?: string;
   /** @nullable */
-  name?: string | null;
+  externalSubjectId?: string | null;
   /** @nullable */
   email?: string | null;
-  role?: UserRole;
   /** @nullable */
-  organizationId?: string | null;
+  name: string | null;
+  role: UserRole;
   /** @nullable */
-  organizationName?: string | null;
-  /** @nullable */
-  tenantId?: string | null;
-  isPlatformAdmin?: boolean;
+  calendarFeedToken?: string | null;
 }

@@ -64,6 +64,13 @@ export function useCurrentUser() {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
+  const kioskQuery = useQuery<UserProfile>({
+    queryKey: ['current-user', 'kiosk'],
+    queryFn: () => apiFetch<UserProfile>('/api/users/me'),
+    enabled: !!kioskToken,
+    retry: false,
+  });
+
   // Calculate profile and role dynamically on render
   if (hasOidcUser) {
     const user = oidcQuery.data || null;
@@ -76,15 +83,18 @@ export function useCurrentUser() {
   }
 
   if (kioskToken) {
+    const serverProfile = kioskQuery.data;
     const user: UserProfile = {
       id: kioskUser?.sub || 'kiosk',
       name: (kioskUser?.name as string | undefined) || 'Kiosk Device',
       role: kioskRole || 'Viewer',
-      organizationId: kioskOrganizationId,
-      isPlatformAdmin: kioskIsPlatformAdmin,
+      organizationId: serverProfile?.organizationId ?? kioskOrganizationId,
+      organizationName: serverProfile?.organizationName ?? null,
+      tenantId: serverProfile?.tenantId ?? null,
+      isPlatformAdmin: serverProfile?.isPlatformAdmin ?? kioskIsPlatformAdmin,
     };
     return {
-      isLoading: false,
+      isLoading: kioskQuery.isLoading,
       user,
       role: kioskRole || 'Viewer',
       scope: deriveScope(user),

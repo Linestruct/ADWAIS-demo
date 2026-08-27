@@ -105,6 +105,31 @@ describe('useCurrentUser', () => {
     });
   });
 
+  it('resolves the kiosk organization name from the identity endpoint when present', async () => {
+    mockAuthState.isAuthenticated = false;
+    mockKioskToken.mockReturnValue('kiosk-token');
+    mockParseJwt.mockReturnValue({
+      sub: 'device-7',
+      name: 'Hall Display',
+      role: 'Viewer',
+      org_id: 'org-2',
+    });
+    mockApiFetch.mockResolvedValue({
+      id: 'device-7',
+      name: 'Hall Display',
+      role: 'Viewer',
+      organizationId: 'org-2',
+      organizationName: 'Beta',
+      tenantId: null,
+      isPlatformAdmin: false,
+    } satisfies UserProfile);
+
+    const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.scope.organizationName).toBe('Beta'));
+    expect(result.current.user).toMatchObject({ organizationName: 'Beta', tenantId: null });
+  });
+
   it('returns an empty scope when signed out', () => {
     const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
 

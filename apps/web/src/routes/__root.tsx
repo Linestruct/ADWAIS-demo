@@ -49,7 +49,7 @@ function RootComponent() {
   const timeframeDomain: PersistentDomain | null = isFinancialPage ? '/financial' : isFleetPage ? '/fleet-status' : null;
 
   const kioskToken = getKioskToken();
-  const userLabel = user?.name || auth?.user?.profile?.name || (kioskToken ? 'Kiosk' : null);
+  const userLabel = user?.name || auth?.user?.profile?.name || (kioskToken ? (user?.organizationName ? `Kiosk · ${user.organizationName}` : 'Kiosk') : null);
   const isAuthRoute = location.pathname === '/login' || location.pathname.startsWith('/kiosk');
 
   return (

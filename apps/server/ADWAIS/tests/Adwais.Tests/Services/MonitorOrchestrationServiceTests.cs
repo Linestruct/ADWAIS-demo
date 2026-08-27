@@ -20,6 +20,7 @@ using Adwais.Infrastructure.Persistence;
 using Adwais.Application.Services;
 using Adwais.Application.Common.Models;
 using Adwais.Application.DTOs.Monitoring;
+using Adwais.Application.DTOs.Monitoring.Upstream;
 using Adwais.Application.DTOs.GlobalConfig;
 
 namespace Adwais.Tests.Services;
@@ -619,6 +620,63 @@ public class MonitorOrchestrationServiceTests
         // Assert
         Assert.DoesNotContain(fleet, m => m.Name == "BucketMonitor");
         Assert.Contains(unassigned, m => m.Name == "BucketMonitor");
+    }
+
+    [Fact]
+    public async Task CreateUnassignedMonitorAsync_OrgScope_CreatesInOwnOrganizationBucket()
+    {
+        // Arrange
+        var bucketId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = bucketId, Name = "Bucket", OrganizationId = _defaultOrgId, IsSystem = true });
+        await _dbContext.SaveChangesAsync();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Admin]));
+        _uptimeRobotServiceMock.Setup(s => s.CreateMonitorAsync(_defaultOrgId, "New", "https://new.example.com", "HTTP(S)"))
+            .ReturnsAsync(new MonitoringProviderMonitor("ext-1", "HTTP(s)", "New", "https://new.example.com", "UP", DateTimeOffset.UtcNow, 300, []));
+
+        // Act
+        var monitor = await _service.CreateUnassignedMonitorAsync("New", "https://new.example.com", "HTTP(S)", null, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(monitor);
+        Assert.Equal(bucketId, monitor.TenantId);
+    }
+
+    [Fact]
+    public async Task CreateUnassignedMonitorAsync_PlatformScope_UsesDefaultOrganizationBucket()
+    {
+        // Arrange
+        var bucketId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant
+        {
+            Id = bucketId,
+            Name = "Bucket",
+            OrganizationId = Adwais.Application.Common.Interfaces.IApplicationDbContext.DefaultOrganizationGuid,
+            IsSystem = true
+        });
+        await _dbContext.SaveChangesAsync();
+        _uptimeRobotServiceMock.Setup(s => s.CreateMonitorAsync(
+                Adwais.Application.Common.Interfaces.IApplicationDbContext.DefaultOrganizationGuid,
+                "New",
+                "https://new.example.com",
+                "HTTP(S)"))
+            .ReturnsAsync(new MonitoringProviderMonitor("ext-2", "HTTP(S)", "New", "https://new.example.com", "UP", DateTimeOffset.UtcNow, 300, []));
+
+        // Act
+        var monitor = await _service.CreateUnassignedMonitorAsync("New", "https://new.example.com", "HTTP(S)", null, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(monitor);
+        Assert.Equal(bucketId, monitor.TenantId);
+    }
+
+    [Fact]
+    public async Task CreateUnassignedMonitorAsync_DeniedScope_ThrowsUnauthorizedAccess()
+    {
+        _currentAccessMock.Setup(access => access.Scope).Returns((Adwais.Application.Common.Access.AccessScope?)null);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _service.CreateUnassignedMonitorAsync("New", "https://new.example.com", "HTTP(S)", null, CancellationToken.None));
     }
 
     [Fact]

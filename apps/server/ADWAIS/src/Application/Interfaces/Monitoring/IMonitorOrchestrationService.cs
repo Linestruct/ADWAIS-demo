@@ -70,6 +70,12 @@ public interface IMonitorOrchestrationService
     Task<UptimeMonitor> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null);
 
     /// <summary>
+    /// Creates a new uptime monitor in the caller's organization unassigned bucket.
+    /// Platform admins without an organization scope use the default organization.
+    /// </summary>
+    Task<UptimeMonitor> CreateUnassignedMonitorAsync(string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null);
+
+    /// <summary>
     /// Assigns an existing monitor to a specific tenant.
     /// </summary>
     Task AssignMonitorAsync(int monitorId, Guid tenantId, CancellationToken ct = default);

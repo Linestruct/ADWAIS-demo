@@ -544,6 +544,19 @@ public class MonitorOrchestrationService(
         return filtered.ToList();
     }
 
+    public async Task<UptimeMonitor> CreateUnassignedMonitorAsync(string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
+    {
+        var filter = OrganizationFilter.From(currentAccess.Scope);
+        if (filter.Denied)
+        {
+            throw new UnauthorizedAccessException("The current scope cannot create monitors.");
+        }
+
+        var organizationId = filter.OrganizationId ?? IApplicationDbContext.DefaultOrganizationGuid;
+        var bucketId = await ResolveOrganizationBucketIdAsync(organizationId, ct);
+        return await CreateMonitorAsync(bucketId, name, url, type, uptimeSla, ct, latencyDegradedFloor);
+    }
+
     public async Task<UptimeMonitor> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
     {
         var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);

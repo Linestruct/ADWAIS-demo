@@ -213,12 +213,14 @@ public class MonitorController(
     [HttpPost]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<UptimeMonitorDto>> CreateMonitor(
-        [FromQuery] Guid tenantId,
+        [FromQuery] Guid? tenantId,
         [FromBody] CreateMonitorRequestDto request,
         CancellationToken ct = default)
     {
         if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-        var m = await _monitorService.CreateMonitorAsync(tenantId, request.Name, request.Url, request.Type, request.UptimeSla, ct, request.LatencyDegradedFloor);
+        var m = tenantId.HasValue
+            ? await _monitorService.CreateMonitorAsync(tenantId.Value, request.Name, request.Url, request.Type, request.UptimeSla, ct, request.LatencyDegradedFloor)
+            : await _monitorService.CreateUnassignedMonitorAsync(request.Name, request.Url, request.Type, request.UptimeSla, ct, request.LatencyDegradedFloor);
         return CreatedAtAction(nameof(GetMonitors), new { id = m.Id }, ToDto(m));
     }
 

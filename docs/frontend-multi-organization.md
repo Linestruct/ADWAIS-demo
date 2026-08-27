@@ -84,14 +84,16 @@ Tests: update `SettingsNavigation.test.tsx`, `SettingsListLoading.test.tsx`; add
 
 Split Settings > Configuration into platform-wide and per-org sections:
 
-- Platform section keeps `GlobalConfigDto` fields, visible to platform admins only.
-- New Organization section: name display, reporting timezone, weather location and interval, monitoring provider and masked keys, fetch intervals. Wired to B1 endpoints through regenerated hooks (`useGetApiOrganizationsByOrgIdConfig` naming family).
-- Staff admins edit their own org without picking anything; the page derives the org from scope.
+- Platform section keeps only the deployment-wide fields: system event retention. The old global copies of provider, timezone, weather, and intervals were removed; the global config endpoints now serve retention only (`GlobalConfigResponseDto` slimmed).
+- Organization section: name display, reporting timezone, weather location and interval, monitoring provider and masked keys, fetch intervals, order and monitoring fetch toggles, external calendar subscriptions. Wired to B1 endpoints through the regenerated hooks.
+- Staff admins edit their own org without picking anything; the page derives the org from scope. Platform admins address the org selected in the top-bar picker.
 - Reuse the existing save and dirty-state patterns from `configuration.tsx`; add per-field masking rules matching the global config page.
 
-Files: `pages/Settings/configuration.tsx` plus new `components/settings/organization/*`.
+Files: `pages/Settings/configuration.tsx` plus `components/settings/organization/*`, `components/settings/configuration/GlobalConfigurationForm.tsx` (retention only), `components/settings/configuration/CalendarSubscriptionsPanel.tsx` (moved into the org section; the backend already scopes subscriptions per org).
 
 Tests: component tests per section with mocked hooks; verify staff cannot reach platform fields.
+
+Note: the backend fetch toggles moved from `global_config` to `organization_config` in `MoveFetchTogglesToOrganizationConfig`; the per-org dispatcher jobs read the org flags (commit `80b2077`).
 
 ### W5 Organization picker and runtime scope switching
 

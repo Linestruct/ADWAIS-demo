@@ -29,6 +29,7 @@ Verified against the tree on 2026-08-26:
 |---|---|---|
 | B1 | `OrganizationConfigController` | GET plus PATCH at `api/organizations/{id}/config` and `api/me/config`. Scopes: staff read their own org; admins write their own org; platform admins address any org. Reuses `IOrganizationConfigService`. Updates reschedule jobs exactly like `GlobalConfigController` does today. |
 | B2 | `GET /api/organizations` | Ids and names. Platform admins get every organization; everyone else gets only organizations from their own membership rows. Feeds the picker for both platform and multi-org staff users, and the kiosk header display fallback. |
+| B3 | Membership administration endpoints | List, add, and remove `UserAccess` rows per user. Reach rules mirror the rest of the API: org admins manage memberships inside their own organization; platform admins address any organization and may create or remove platform-admin rows (null organization). Removing a platform admin's last platform-admin row is refused. Role changes stay on the existing user PATCH. |
 
 Both ship before step 1 of the frontend sequence because client regeneration consumes them.
 
@@ -116,6 +117,20 @@ Tests: selection persistence, header propagation through `queryFn`, cache separa
 
 Small: show `organizationName` on the kiosk welcome strip when present. Remove any reliance on demo tokens referencing the old sentinel. Files: kiosk layout components, `useKioskAuth.ts` untouched unless types change.
 
+### W7 Membership administration
+
+The only write path to `UserAccess` today is user creation, which mints one membership in the caller's organization. Nothing can add, remove, or inspect memberships afterwards. Without W7, joining a second organization, moving a user between organizations, or promoting a platform admin is impossible.
+
+Extend the users area:
+
+- `UserDetail.tsx` gains a memberships panel listing the user's rows: organization name, role, and a remove action per row, plus an add form (organization picker from B2 within the caller's reach, role select).
+- Reach follows B3: org admins see and manage only their own organization's memberships; platform admins see all rows and can add platform-admin memberships.
+- The user list page stays as is; membership details load on the detail page on demand.
+
+Files: `pages/Settings/UserDetail.tsx`, new `components/settings/users/MembershipsPanel.tsx`, hooks against B3 routes.
+
+Tests: reach rules per caller type (org admin cannot see other-org rows; platform admin can), add and remove flows, refusal path when removing the last platform-admin row.
+
 ## Sequence and effort
 
 | Step | Contents | Depends on | Estimate |
@@ -125,9 +140,10 @@ Small: show `organizationName` on the kiosk welcome strip when present. Remove a
 | 3 | W3 sentinel removal across six files | 1, 2 | one day |
 | 4 | W4 organization settings sections | 1, 2 | one day |
 | 5 | W5 platform selector | 1, 2, B2 | half day |
-| 6 | W6 kiosk polish | 1, 2 | two hours |
+| 6 | W7 membership administration | 1, B3 | half day |
+| 7 | W6 kiosk polish | 1, 2 | two hours |
 
-Two and a half to three days sequential. Steps 4 and 5 are independent once step 3 lands.
+Three to three and a half days sequential. Steps 4, 5, and 6 are independent once step 3 lands.
 
 ## Verification
 
@@ -138,3 +154,8 @@ Two and a half to three days sequential. Steps 4 and 5 are independent once step
 ## Out of scope
 
 Tenant viewer screens (phase four). Visual redesign. Server-side pagination changes. Merging duplicated view-model filter logic beyond what W3 requires.
+
+## Backlog notes
+
+- `SystemEventService` never populates `SystemEvent.OrganizationId`; events are deployment-wide. Attribution is a future backend task if org-filtered event lists become necessary.
+- Cross-tab sync of the selected organization (localStorage plus storage events) is deferred; W5 uses sessionStorage.

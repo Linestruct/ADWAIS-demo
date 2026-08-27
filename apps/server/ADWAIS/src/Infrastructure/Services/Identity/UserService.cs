@@ -189,4 +189,116 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
     private async Task<bool> IsMemberOfOrganizationAsync(Guid userId, Guid organizationId, CancellationToken ct)
         => await _dbContext.UserAccesses
             .AnyAsync(access => access.UserId == userId && access.OrganizationId == organizationId, ct);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UserAccess>> GetUserMembershipsAsync(Guid userId, CancellationToken ct)
+    {
+        var filter = Filter;
+        if (filter.Denied)
+        {
+            return [];
+        }
+
+        var query = _dbContext.UserAccesses
+            .AsNoTracking()
+            .Include(access => access.Organization)
+            .Where(access => access.UserId == userId);
+        if (filter.OrganizationId is { } orgId)
+        {
+            query = query.Where(access => access.OrganizationId == orgId);
+        }
+
+        return await query.ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<UserAccess> AddUserMembershipAsync(Guid userId, Guid? organizationId, UserRole role, CancellationToken ct)
+    {
+        var filter = Filter;
+        if (filter.Denied)
+        {
+            throw new UnauthorizedAccessException("The current scope cannot manage memberships.");
+        }
+        if (role == UserRole.TenantViewer)
+        {
+            throw new ArgumentException("Tenant viewer memberships require a tenant and are not supported yet.");
+        }
+
+        var userExists = await _dbContext.Users.AnyAsync(user => user.Id == userId, ct);
+        if (!userExists)
+        {
+            throw new KeyNotFoundException($"User {userId} not found.");
+        }
+
+        if (organizationId is null)
+        {
+            if (filter.OrganizationId is not null)
+            {
+                throw new UnauthorizedAccessException("Only platform admins can create platform admin memberships.");
+            }
+        }
+        else
+        {
+            if (filter.OrganizationId is { } orgId && orgId != organizationId.Value)
+            {
+                throw new UnauthorizedAccessException($"Cannot manage memberships outside organization {orgId}.");
+            }
+            var organizationExists = await _dbContext.Organizations
+                .AnyAsync(org => org.Id == organizationId.Value, ct);
+            if (!organizationExists)
+            {
+                throw new KeyNotFoundException($"Organization {organizationId.Value} not found.");
+            }
+        }
+
+        var duplicate = await _dbContext.UserAccesses
+            .AnyAsync(access => access.UserId == userId && access.OrganizationId == organizationId, ct);
+        if (duplicate)
+        {
+            throw new ArgumentException("The user already belongs to that organization.");
+        }
+
+        var membership = new UserAccess
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            OrganizationId = organizationId,
+            Role = role,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.UserAccesses.Add(membership);
+        await _dbContext.SaveChangesAsync(ct);
+        return membership;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RemoveUserMembershipAsync(Guid targetUserId, Guid membershipId, Guid callerUserId, CancellationToken ct)
+    {
+        var filter = Filter;
+        if (filter.Denied)
+        {
+            return false;
+        }
+
+        var membership = await _dbContext.UserAccesses
+            .SingleOrDefaultAsync(access => access.Id == membershipId, ct);
+        if (membership == null)
+        {
+            return false;
+        }
+
+        if (filter.OrganizationId is { } orgId && membership.OrganizationId != orgId)
+        {
+            return false;
+        }
+
+        if (membership.OrganizationId is null && targetUserId == callerUserId)
+        {
+            throw new UnauthorizedAccessException("You cannot remove your own platform admin membership.");
+        }
+
+        _dbContext.UserAccesses.Remove(membership);
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
+    }
 }

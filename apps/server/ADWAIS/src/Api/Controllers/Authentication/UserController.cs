@@ -2,10 +2,12 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using System.Security.Claims;
 using Adwais.Api.DTOs.Users;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
+using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -151,4 +153,77 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Lists the membership rows of a user. Reach follows the service rules:
+    /// organization admins see only their own organization's rows.
+    /// </summary>
+    [HttpGet("{id:guid}/memberships")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult<IEnumerable<UserMembershipResponseDto>>> GetUserMemberships(Guid id, CancellationToken ct)
+    {
+        var user = await _userService.GetUserByIdAsync(id, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var memberships = await _userService.GetUserMembershipsAsync(id, ct);
+        return Ok(memberships.Select(MapMembership));
+    }
+
+    /// <summary>
+    /// Adds a membership row for a user. Reach follows the service rules:
+    /// organization admins may only add inside their own organization.
+    /// </summary>
+    [HttpPost("{id:guid}/memberships")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult<UserMembershipResponseDto>> AddUserMembership(
+        Guid id,
+        [FromBody] AddUserMembershipRequestDto request,
+        CancellationToken ct)
+    {
+        var user = await _userService.GetUserByIdAsync(id, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var membership = await _userService.AddUserMembershipAsync(id, request.OrganizationId, request.Role, ct);
+        return CreatedAtAction(nameof(GetUserMemberships), new { id }, MapMembership(membership));
+    }
+
+    /// <summary>
+    /// Removes a membership row from a user. The caller cannot remove their
+    /// own platform-admin membership.
+    /// </summary>
+    [HttpDelete("{id:guid}/memberships/{membershipId:guid}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> DeleteUserMembership(Guid id, Guid membershipId, CancellationToken ct)
+    {
+        var user = await _userService.GetUserByIdAsync(id, ct);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var callerUserId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var caller)
+            ? caller
+            : Guid.Empty;
+        var removed = await _userService.RemoveUserMembershipAsync(id, membershipId, callerUserId, ct);
+        if (!removed)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+
+    private static UserMembershipResponseDto MapMembership(UserAccess membership)
+        => new(
+            membership.Id,
+            membership.UserId,
+            membership.OrganizationId,
+            membership.Organization?.Name,
+            membership.Role);
 }

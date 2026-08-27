@@ -272,7 +272,7 @@ public class UserServiceTests
         Assert.Equal(UserRole.Admin, result.Role);
     }
 
-    [Fact]
+[Fact]
     public async Task UpdateUserAsync_ShouldUpdateScopedMembershipRole_ForOrgScope()
     {
         // Arrange
@@ -422,5 +422,303 @@ public class UserServiceTests
 
         // Assert
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetUserMembershipsAsync_PlatformAdmin_ReturnsAllMembershipRows()
+    {
+        // Arrange
+        var user = await SeedUserAsync("Member");
+        var orgA = Guid.NewGuid();
+        var orgB = Guid.NewGuid();
+        await SeedMembershipAsync(user.Id, orgA, UserRole.Admin);
+        await SeedMembershipAsync(user.Id, orgB, UserRole.Employee);
+
+        // Act
+        var memberships = (await _userService.GetUserMembershipsAsync(user.Id, CancellationToken.None)).ToList();
+
+        // Assert
+        Assert.Equal(2, memberships.Count);
+        Assert.Contains(memberships, m => m.OrganizationId == orgA && m.Role == UserRole.Admin);
+        Assert.Contains(memberships, m => m.OrganizationId == orgB && m.Role == UserRole.Employee);
+    }
+
+    [Fact]
+    public async Task GetUserMembershipsAsync_OrgScope_ReturnsOnlyCallerOrganizationRows()
+    {
+        // Arrange
+        var ownOrg = Guid.NewGuid();
+        var otherOrg = Guid.NewGuid();
+        var user = await SeedUserAsync("Member");
+        await SeedMembershipAsync(user.Id, ownOrg);
+        await SeedMembershipAsync(user.Id, otherOrg);
+        GivenOrgScope(ownOrg);
+
+        // Act
+        var memberships = (await _userService.GetUserMembershipsAsync(user.Id, CancellationToken.None)).ToList();
+
+        // Assert
+        Assert.Single(memberships);
+        Assert.Equal(ownOrg, memberships[0].OrganizationId);
+    }
+
+    [Fact]
+    public async Task GetUserMembershipsAsync_DeniedScope_ReturnsEmpty()
+    {
+        // Arrange
+        var user = await SeedUserAsync("Member");
+        await SeedMembershipAsync(user.Id, Guid.NewGuid());
+        GivenDeniedScope();
+
+        // Act
+        var memberships = await _userService.GetUserMembershipsAsync(user.Id, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(memberships);
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_OrgAdmin_AddsMembershipInCallerOrganization()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var user = await SeedUserAsync("New Member");
+        _dbContext.Organizations.Add(new Organization { Id = orgId, Name = "Org" });
+        _dbContext.SaveChanges();
+        GivenOrgScope(orgId);
+
+        // Act
+        var membership = await _userService.AddUserMembershipAsync(user.Id, orgId, UserRole.Employee, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(user.Id, membership.UserId);
+        Assert.Equal(orgId, membership.OrganizationId);
+        Assert.Equal(UserRole.Employee, membership.Role);
+
+        await using var verifyDb = new AnalyticsDbContext(_dbOptions);
+        Assert.True(await verifyDb.UserAccesses.AnyAsync(a => a.UserId == user.Id && a.OrganizationId == orgId));
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_OrgAdmin_TargetingOtherOrganization_ThrowsUnauthorizedAccess()
+    {
+        // Arrange
+        var user = await SeedUserAsync("New Member");
+        GivenOrgScope(Guid.NewGuid());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.Employee, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_OrgAdmin_CreatingPlatformRow_ThrowsUnauthorizedAccess()
+    {
+        // Arrange
+        var user = await SeedUserAsync("New Member");
+        GivenOrgScope(Guid.NewGuid());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _userService.AddUserMembershipAsync(user.Id, null, UserRole.Admin, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_PlatformAdmin_AddsMembershipInAnyOrganization()
+    {
+        // Arrange
+        var targetOrg = Guid.NewGuid();
+        var user = await SeedUserAsync("New Member");
+        _dbContext.Organizations.Add(new Organization { Id = targetOrg, Name = "Org" });
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var membership = await _userService.AddUserMembershipAsync(user.Id, targetOrg, UserRole.Admin, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(targetOrg, membership.OrganizationId);
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_PlatformAdmin_AddsPlatformAdminRow()
+    {
+        // Arrange
+        var user = await SeedUserAsync("New Platform Admin");
+
+        // Act
+        var membership = await _userService.AddUserMembershipAsync(user.Id, null, UserRole.Admin, CancellationToken.None);
+
+        // Assert
+        Assert.Null(membership.OrganizationId);
+        Assert.Equal(UserRole.Admin, membership.Role);
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_PlatformAdmin_UnknownOrganization_ThrowsKeyNotFound()
+    {
+        // Arrange
+        var user = await SeedUserAsync("New Member");
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.Employee, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_UnknownUser_ThrowsKeyNotFound()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            _userService.AddUserMembershipAsync(Guid.NewGuid(), Guid.NewGuid(), UserRole.Employee, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddUserMembershipAsync_TenantViewerRole_ThrowsArgumentException()
+    {
+        // Arrange
+        var user = await SeedUserAsync("New Viewer");
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.TenantViewer, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RemoveUserMembershipAsync_PlatformAdmin_RemovesRow()
+    {
+        // Arrange
+        var user = await SeedUserAsync("Member");
+        var membershipId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = membershipId,
+                UserId = user.Id,
+                OrganizationId = Guid.NewGuid(),
+                Role = UserRole.Employee,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var removed = await _userService.RemoveUserMembershipAsync(user.Id, membershipId, Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.True(removed);
+        await using var verifyDb = new AnalyticsDbContext(_dbOptions);
+        Assert.False(await verifyDb.UserAccesses.AnyAsync(a => a.Id == membershipId));
+    }
+
+    [Fact]
+    public async Task RemoveUserMembershipAsync_OrgAdmin_RemovesOwnOrganizationRow()
+    {
+        // Arrange
+        var ownOrg = Guid.NewGuid();
+        var user = await SeedUserAsync("Member");
+        var membershipId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = membershipId,
+                UserId = user.Id,
+                OrganizationId = ownOrg,
+                Role = UserRole.Employee,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+        GivenOrgScope(ownOrg);
+
+        // Act
+        var removed = await _userService.RemoveUserMembershipAsync(user.Id, membershipId, Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.True(removed);
+    }
+
+    [Fact]
+    public async Task RemoveUserMembershipAsync_OrgAdmin_OtherOrganizationRow_ReturnsFalse()
+    {
+        // Arrange
+        var otherOrg = Guid.NewGuid();
+        var user = await SeedUserAsync("Member");
+        var membershipId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = membershipId,
+                UserId = user.Id,
+                OrganizationId = otherOrg,
+                Role = UserRole.Employee,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+        GivenOrgScope(Guid.NewGuid());
+
+        // Act
+        var removed = await _userService.RemoveUserMembershipAsync(user.Id, membershipId, Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.False(removed);
+
+        await using var verifyDb = new AnalyticsDbContext(_dbOptions);
+        Assert.True(await verifyDb.UserAccesses.AnyAsync(a => a.Id == membershipId));
+    }
+
+    [Fact]
+    public async Task RemoveUserMembershipAsync_SelfPlatformAdminRow_ThrowsUnauthorizedAccess()
+    {
+        // Arrange
+        var platformUserId = Guid.NewGuid();
+        var membershipId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Users.Add(new User { Id = platformUserId, Name = "Platform Admin", Role = UserRole.Admin });
+            db.UserAccesses.Add(new UserAccess
+            {
+                Id = membershipId,
+                UserId = platformUserId,
+                OrganizationId = null,
+                Role = UserRole.Admin,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _userService.RemoveUserMembershipAsync(platformUserId, membershipId, platformUserId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RemoveUserMembershipAsync_UnknownMembership_ReturnsFalse()
+    {
+        // Arrange
+        var user = await SeedUserAsync("Member");
+
+        // Act
+        var removed = await _userService.RemoveUserMembershipAsync(user.Id, Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.False(removed);
+    }
+
+    [Fact]
+    public async Task RemoveUserMembershipAsync_DeniedScope_ReturnsFalse()
+    {
+        // Arrange
+        var user = await SeedUserAsync("Member");
+        GivenDeniedScope();
+
+        // Act
+        var removed = await _userService.RemoveUserMembershipAsync(user.Id, Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        // Assert
+        Assert.False(removed);
     }
 }

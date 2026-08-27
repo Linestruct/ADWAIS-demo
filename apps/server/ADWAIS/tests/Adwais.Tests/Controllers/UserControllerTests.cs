@@ -387,6 +387,132 @@ public class UserControllerTests
     }
 
     [Fact]
+    public async Task GetUserMemberships_ReturnsOkWithRows()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _userServiceMock.Setup(s => s.GetUserMembershipsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = Guid.NewGuid(), Role = UserRole.Admin },
+                new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = null, Role = UserRole.Admin }
+            ]);
+
+        // Act
+        var result = await _controller.GetUserMemberships(userId, CancellationToken.None);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var rows = Assert.IsAssignableFrom<IEnumerable<UserMembershipResponseDto>>(ok.Value).ToList();
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, row => Assert.Equal(userId, row.UserId));
+    }
+
+    [Fact]
+    public async Task GetUserMemberships_UserMissing_ReturnsNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.GetUserMemberships(userId, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NotFoundResult>(result.Result);
+        _userServiceMock.Verify(s => s.GetUserMembershipsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AddUserMembership_ReturnsCreatedWithRow()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        var membership = new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = orgId, Role = UserRole.Admin };
+        _userServiceMock.Setup(s => s.AddUserMembershipAsync(userId, orgId, UserRole.Admin, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(membership);
+
+        // Act
+        var result = await _controller.AddUserMembership(
+            userId,
+            new AddUserMembershipRequestDto(orgId, UserRole.Admin),
+            CancellationToken.None);
+
+        // Assert
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var dto = Assert.IsType<UserMembershipResponseDto>(created.Value);
+        Assert.Equal(membership.Id, dto.Id);
+        Assert.Equal(orgId, dto.OrganizationId);
+    }
+
+    [Fact]
+    public async Task AddUserMembership_UserMissing_ReturnsNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.AddUserMembership(
+            userId,
+            new AddUserMembershipRequestDto(Guid.NewGuid(), UserRole.Employee),
+            CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NotFoundResult>(result.Result);
+        _userServiceMock.Verify(s => s.AddUserMembershipAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<UserRole>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteUserMembership_ReturnsNoContent_WhenRemoved()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var membershipId = Guid.NewGuid();
+        var callerId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        GivenPrincipal([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, callerId.ToString())]);
+
+        // Act
+        var result = await _controller.DeleteUserMembership(userId, membershipId, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteUserMembership_ReturnsNotFound_WhenNotRemoved()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var membershipId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        GivenPrincipal([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())]);
+
+        // Act
+        var result = await _controller.DeleteUserMembership(userId, membershipId, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
     public async Task GetMe_ShouldReturnUnauthorized_WhenClaimsAreInvalid()
     {
         // Arrange

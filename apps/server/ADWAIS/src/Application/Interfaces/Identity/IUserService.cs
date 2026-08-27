@@ -65,4 +65,24 @@ public interface IUserService
     /// <param name="ct">The cancellation token.</param>
     /// <returns>True if the user was deleted successfully, otherwise false.</returns>
     Task<bool> DeleteUserAsync(Guid id, CancellationToken ct);
+
+    /// <summary>
+    /// Lists the membership rows of a user. Scoped: organization callers see
+    /// only their own organization's rows; platform admins see everything.
+    /// </summary>
+    Task<IReadOnlyList<UserAccess>> GetUserMembershipsAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// Adds a membership row for a user. Organization callers may only add
+    /// rows inside their own organization. Platform admins may add rows in any
+    /// organization and may create platform-admin rows (null organization).
+    /// </summary>
+    Task<UserAccess> AddUserMembershipAsync(Guid userId, Guid? organizationId, UserRole role, CancellationToken ct);
+
+    /// <summary>
+    /// Removes a membership row. Organization callers may only remove rows in
+    /// their own organization. A caller cannot remove their own platform-admin
+    /// row.
+    /// </summary>
+    Task<bool> RemoveUserMembershipAsync(Guid targetUserId, Guid membershipId, Guid callerUserId, CancellationToken ct);
 }

@@ -11,6 +11,7 @@ import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { SettingsPanelHeader } from '../../components/common/layout/SettingsPanelHeader';
 import { FormField } from '../../components/common/ui/FormField';
 import { Button } from '../../components/common/ui/Button';
+import { MembershipsPanel } from '../../components/settings/users/MembershipsPanel';
 import { getTagColor, getTagStyle } from '../../utils/tagHelper';
 import type { UserRole, UserResponseDto } from '@types';
 
@@ -138,7 +139,7 @@ export function UserDetailView() {
   const navigate = useNavigate();
   const { userId } = useParams({ strict: false }) as { userId: string };
   const { data: users, isLoading } = useUsersQuery();
-  const { role: currentUserRole } = useCurrentUser();
+  const { role: currentUserRole, scope } = useCurrentUser();
   const isAdmin = currentUserRole === 'Admin';
 
   const user = users?.find(u => u.id === userId);
@@ -155,7 +156,14 @@ export function UserDetailView() {
           />
         )}
         {!isLoading && !user && <div className="p-8 text-center text-error">User not found.</div>}
-        {!isLoading && user && <UserDetailForm key={user.id} user={user} isAdmin={isAdmin} />}
+        {!isLoading && user && (
+          <>
+            <UserDetailForm key={user.id} user={user} isAdmin={isAdmin} />
+            <div className="mx-auto w-full max-w-2xl px-6 pb-6">
+              <MembershipsPanel userId={user.id} isAdmin={isAdmin} isPlatformAdmin={scope.isPlatformAdmin} />
+            </div>
+          </>
+        )}
       </SettingsPanel>
     </div>
   );

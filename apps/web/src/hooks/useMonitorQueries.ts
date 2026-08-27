@@ -73,10 +73,7 @@ export function useCreateMonitorMutation(onSuccessCallback?: () => void) {
       payload: { name: string; url: string; type?: string | null; uptimeSla: number | null; latencyDegradedFloor?: number | null },
       options?: Parameters<typeof mutateRequest>[1]
     ) => 
-      mutateRequest({ 
-        params: { tenantId: '00000000-0000-0000-0000-000000000001' }, 
-        data: payload 
-      }, options), [mutateRequest]);
+      mutateRequest({ data: payload }, options), [mutateRequest]);
 
   return {
     ...mutation,

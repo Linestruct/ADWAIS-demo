@@ -20,10 +20,14 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
     tenantId
 }: TenantMonitorsPanelProps) {
     const navigate = useNavigate();
-    const { allMonitors, allUniqueTypes, allUniqueTags, assignMonitor, unassignMonitor, isAdmin } = useTenantsViewModel();
+    const { allMonitors, unassignedMonitors, allUniqueTypes, allUniqueTags, assignMonitor, unassignMonitor, isAdmin } = useTenantsViewModel();
     const isAssignPending = assignMonitor.isPending;
     const isUnassignPending = unassignMonitor.isPending;
-    const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+    const unassignedMonitorIds = useMemo(
+        () => new Set((unassignedMonitors || []).map(m => m.id)),
+        [unassignedMonitors]
+    );
 
     const [assignedSelected, setAssignedSelected] = useState<Set<number>>(new Set());
     const [availableSelected, setAvailableSelected] = useState<Set<number>>(new Set());
@@ -53,8 +57,8 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                 if (!matchName && !matchUrl) return false;
             }
             
-            if (monitorFilters.assignment === 'assigned' && (m.tenantId == null || m.tenantId === SYSTEM_TENANT_ID)) return false;
-            if (monitorFilters.assignment === 'unassigned' && (m.tenantId != null && m.tenantId !== SYSTEM_TENANT_ID)) return false;
+            if (monitorFilters.assignment === 'assigned' && unassignedMonitorIds.has(m.id)) return false;
+            if (monitorFilters.assignment === 'unassigned' && !unassignedMonitorIds.has(m.id)) return false;
 
             if (monitorFilters.status === 'enabled' && !m.uptimeMonitorEnabled) return false;
             if (monitorFilters.status === 'disabled' && m.uptimeMonitorEnabled) return false;
@@ -75,7 +79,7 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
         });
 
         return filtered;
-    }, [allMonitors, tenantId, availableSearch, monitorFilters, monitorSort]);
+    }, [allMonitors, unassignedMonitorIds, tenantId, availableSearch, monitorFilters, monitorSort]);
 
     const handleAssignSelected = () => {
         if (!isAdmin) return;

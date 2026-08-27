@@ -14,8 +14,6 @@ import { FormField } from '../../common/ui/FormField';
 import { getMonitorType, UPTIME_MONITOR_TYPES } from '../../../utils/monitorTypeHelper';
 import { getTagColor, getTagStyle } from "../../../utils/tagHelper.ts";
 
-const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000001';
-
 function normalizeStatus(status?: string | number): string {
   if (status === undefined || status === null) return 'UNKNOWN';
   const s = status.toString().toUpperCase().trim();
@@ -51,7 +49,7 @@ export function MonitorTile({
   isAdmin = false
 }: MonitorTileProps) {
   const updateMonitor = useUpdateMonitorMutation();
-  const isUnassigned = !m.tenantId || m.tenantId === SYSTEM_TENANT_ID;
+  const isUnassigned = !m.tenantId || !(tenants || []).some(t => t.id === m.tenantId);
 
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignTenantId, setAssignTenantId] = useState('');

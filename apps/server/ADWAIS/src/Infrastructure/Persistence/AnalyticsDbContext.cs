@@ -364,7 +364,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
 
         modelBuilder.Entity<UserAccess>(entity =>
         {
-            entity.ToTable("user_access");
+            entity.ToTable("user_access", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_user_access_role",
+                    "\"role\" IN ('Admin', 'Viewer', 'Employee', 'TenantViewer')");
+            });
             entity.HasKey(access => access.Id);
             entity.Property(access => access.Id)
                 .HasDefaultValueSql("uuid_generate_v4()");

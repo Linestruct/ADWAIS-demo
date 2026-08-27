@@ -109,16 +109,7 @@ export type BackgroundJobStatusDto = Required<Omit<Generated.BackgroundJobStatus
   exceptionMessage: string | null;
 };
 
-export type UserResponseDto = {
-  id: string;
-  name: string;
-  email: string | null;
-  role?: string | null;
-  organizationId?: string | null;
-  organizationName?: string | null;
-  tenantId?: string | null;
-  isPlatformAdmin?: boolean;
-};
+export type UserResponseDto = Generated.UserResponseDto;
 
 export type GlobalConfigDto = Generated.GlobalConfigResponseDto;
 

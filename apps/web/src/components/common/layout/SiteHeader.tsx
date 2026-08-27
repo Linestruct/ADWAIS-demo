@@ -10,6 +10,7 @@ import {NavLink} from './NavLink';
 import {ConnectivityStatus} from './ConnectivityStatus';
 import {UserAccountLink} from './UserAccountLink';
 import {BrandLogoLink} from './BrandLogoLink';
+import {OrgPicker} from './OrgPicker';
 import {useMediaQuery} from '../../../hooks/useMediaQuery';
 
 type SiteHeaderProps = {
@@ -77,6 +78,7 @@ export function SiteHeader({
           </nav>
 
           <div className="flex flex-1 shrink-0 items-center justify-end gap-2" data-header="controls">
+            <OrgPicker />
             <div className="flex items-center gap-8">
               <ConnectivityStatus isOnline={isOnline} isBackendOnline={isBackendOnline} variant="desktop" />
               <UserAccountLink label={userLabel} variant="desktop" />

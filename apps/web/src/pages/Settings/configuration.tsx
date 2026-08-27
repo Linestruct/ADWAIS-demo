@@ -4,6 +4,7 @@
 
 import { useGlobalConfigQuery, useFetchIntervalsQuery, useUpdateConfigMutation, useUpdateFetchIntervalsMutation } from '../../hooks/useJobSettingsQueries';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { useOrgSelection } from '../../hooks/useOrgSelection';
 import { useOrganizationConfigQuery, useUpdateOrganizationConfigMutation } from '../../hooks/useOrganizationQueries';
 import { GlobalConfigurationForm } from '../../components/settings/configuration/GlobalConfigurationForm';
 import { FetchIntervalsForm } from '../../components/settings/configuration/FetchIntervalsForm';
@@ -18,9 +19,13 @@ export function ConfigurationView() {
     const updateIntervals = useUpdateFetchIntervalsMutation();
     const { data: monitoringProviders = [] } = useMonitoringProviderDescriptorsQuery();
     const { role, scope } = useCurrentUser();
+    const { selectedOrgId, organizations } = useOrgSelection();
     const disabled = role !== 'Admin';
 
-    const orgId = scope.organizationId;
+    const orgId = scope.isPlatformAdmin
+        ? selectedOrgId
+        : selectedOrgId ?? scope.organizationId;
+    const orgName = organizations.find(org => org.id === orgId)?.name ?? scope.organizationName;
     const { data: orgConfig } = useOrganizationConfigQuery(orgId);
     const updateOrgConfig = useUpdateOrganizationConfigMutation(orgId);
 
@@ -37,7 +42,7 @@ export function ConfigurationView() {
                     <GlobalConfigurationForm config={config} updateConfig={updateConfig} providers={monitoringProviders} disabled={disabled} />
                 )}
                 {orgId && (
-                    <OrganizationConfigurationForm orgName={scope.organizationName} config={orgConfig} updateConfig={updateOrgConfig} providers={monitoringProviders} disabled={disabled} />
+                    <OrganizationConfigurationForm orgName={orgName} config={orgConfig} updateConfig={updateOrgConfig} providers={monitoringProviders} disabled={disabled} />
                 )}
             </div>
         </div>

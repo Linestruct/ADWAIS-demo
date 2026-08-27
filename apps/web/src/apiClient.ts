@@ -4,6 +4,7 @@
 
 import { isDemoMode, userManager } from './utils/oidcConfig';
 import { removeKioskToken } from './utils/auth';
+import { readStoredOrgId, writeStoredOrgId, notifyOrgSelectionReset } from './utils/orgSelection';
 
 export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Headers> {
   const headers = new Headers(customHeaders);
@@ -20,6 +21,25 @@ export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Heade
     headers.set('Authorization', `Bearer ${kioskToken}`);
   }
   return headers;
+}
+
+function withOrgSelectionHeader(headers: Headers, url: string): Headers {
+  if (headers.has('X-ADWAIS-ORG-ID')) return headers;
+  if (url.includes('/api/users/me') || url.includes('/api/organizations')) return headers;
+  if (localStorage.getItem('kiosk_token')) return headers;
+
+  const orgId = readStoredOrgId();
+  if (orgId) {
+    headers.set('X-ADWAIS-ORG-ID', orgId);
+  }
+  return headers;
+}
+
+function handleOrgSelectionRevocation(status: number): void {
+  if (status === 403 && readStoredOrgId()) {
+    writeStoredOrgId(null);
+    notifyOrgSelectionReset();
+  }
 }
 
 export async function handleSessionInvalidation() {
@@ -63,6 +83,7 @@ export async function checkSessionValidity() {
 export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const isBodyRequest = options?.method && ['POST', 'PUT', 'PATCH'].includes(options.method.toUpperCase());
   const headers = await getAuthHeaders(options?.headers);
+  withOrgSelectionHeader(headers, url);
 
   if (isBodyRequest && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -87,6 +108,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
         });
       }
     }
+    handleOrgSelectionRevocation(response.status);
 
     const errorBody = await response.text().catch(() => 'Unknown error');
     console.error(`API Fetch Error [${response.status}] ${url}:`, errorBody);
@@ -123,11 +145,12 @@ export async function customClient<T>(
   first: string | MutatorConfig,
   second?: RequestInit
 ): Promise<T> {
-  if (typeof first === 'string') {
+if (typeof first === 'string') {
     const url = first;
     const options = second;
     const isBodyRequest = options?.method && ['POST', 'PUT', 'PATCH'].includes(options.method.toUpperCase());
     const headers = await getAuthHeaders(options?.headers);
+    withOrgSelectionHeader(headers, url);
 
     if (isBodyRequest && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
@@ -152,6 +175,7 @@ export async function customClient<T>(
           });
         }
       }
+      handleOrgSelectionRevocation(response.status);
 
       const errorBody = await response.text().catch(() => 'Unknown error');
       console.error(`API Fetch Error [${response.status}] ${url}:`, errorBody);

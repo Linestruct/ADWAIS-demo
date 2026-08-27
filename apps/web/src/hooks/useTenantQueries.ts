@@ -12,11 +12,13 @@ import {
 } from '../api/generated/endpoints';
 import type { CreateTenantRequestDto, TenantResponseDto, UpdateTenantRequestDto } from '@types';
 import { toast } from 'sonner';
+import { useOrgSelection } from './useOrgSelection';
 
 export function useTenantsQuery() {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiTenants<TenantResponseDto[], Error>(undefined, {
     query: {
-      queryKey: ['tenants'],
+      queryKey: ['tenants', selectedOrgId],
       select: (res) => res.data as TenantResponseDto[]
     }
   });

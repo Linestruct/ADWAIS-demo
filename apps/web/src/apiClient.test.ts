@@ -4,6 +4,7 @@
 
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { apiFetch, getAuthHeaders } from './apiClient';
+import { ORG_SELECTION_KEY, ORG_SELECTION_RESET_EVENT } from './utils/orgSelection';
 import { userManager } from './utils/oidcConfig';
 import type { User } from 'oidc-client-ts';
 
@@ -31,8 +32,13 @@ beforeEach(() => {
   };
   vi.stubGlobal('localStorage', mockLocalStorage);
 
-  const mockSessionStorage = {
+  const mockSessionStorage: Storage = {
+    getItem: vi.fn().mockReturnValue(null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
     clear: vi.fn(),
+    length: 0,
+    key: vi.fn(),
   };
   vi.stubGlobal('sessionStorage', mockSessionStorage);
 
@@ -100,6 +106,67 @@ test('apiFetch redirects to /kiosk on 401 when on non-bypass route', async () =>
   await expect(apiFetch('http://test.local')).rejects.toThrow();
 
   expect(mockLocation.href).toBe('/kiosk');
+});
+
+test('apiFetch attaches the stored organization as X-ADWAIS-ORG-ID', async () => {
+  vi.mocked(sessionStorage.getItem).mockReturnValue('org-1');
+
+  await apiFetch('http://test.local/api/tenants');
+
+  const headers = vi.mocked(fetch).mock.calls[0][1]?.headers as Headers;
+  expect(headers.get('X-ADWAIS-ORG-ID')).toBe('org-1');
+});
+
+test('apiFetch never scopes the identity or organization list endpoints', async () => {
+  vi.mocked(sessionStorage.getItem).mockReturnValue('org-1');
+
+  await apiFetch('http://test.local/api/users/me');
+  await apiFetch('http://test.local/api/organizations');
+
+  for (const call of vi.mocked(fetch).mock.calls) {
+    const headers = call[1]?.headers as Headers;
+    expect(headers.get('X-ADWAIS-ORG-ID')).toBeNull();
+  }
+});
+
+test('apiFetch does not scope requests made with a kiosk token', async () => {
+  vi.mocked(localStorage.getItem).mockReturnValue('kiosk-token');
+  vi.mocked(sessionStorage.getItem).mockReturnValue('org-1');
+
+  await apiFetch('http://test.local/api/tenants');
+
+  const headers = vi.mocked(fetch).mock.calls[0][1]?.headers as Headers;
+  expect(headers.get('X-ADWAIS-ORG-ID')).toBeNull();
+});
+
+test('apiFetch clears a revoked organization selection on 403 and notifies the app', async () => {
+  const resetListener = vi.fn();
+  window.addEventListener(ORG_SELECTION_RESET_EVENT, resetListener);
+  vi.mocked(sessionStorage.getItem).mockReturnValue('org-1');
+
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false,
+    status: 403,
+    text: async () => 'Forbidden',
+  }));
+
+  await expect(apiFetch('http://test.local/api/tenants')).rejects.toThrow();
+
+  expect(sessionStorage.removeItem).toHaveBeenCalledWith(ORG_SELECTION_KEY);
+  expect(resetListener).toHaveBeenCalledOnce();
+  window.removeEventListener(ORG_SELECTION_RESET_EVENT, resetListener);
+});
+
+test('apiFetch leaves the selection alone on 403 when no organization was selected', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false,
+    status: 403,
+    text: async () => 'Forbidden',
+  }));
+
+  await expect(apiFetch('http://test.local/api/tenants')).rejects.toThrow();
+
+  expect(sessionStorage.removeItem).not.toHaveBeenCalled();
 });
 
 test('apiFetch does not redirect on 403 for /api/users/me when no OIDC user exists', async () => {

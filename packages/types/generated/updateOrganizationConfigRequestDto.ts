@@ -27,4 +27,8 @@ export interface UpdateOrganizationConfigRequestDto {
   userStatsFetchIntervalMinutes?: number | null;
   /** @nullable */
   feedFetchIntervalHours?: number | null;
+  /** @nullable */
+  orderFetchEnabled?: boolean | null;
+  /** @nullable */
+  monitoringFetchEnabled?: boolean | null;
 }

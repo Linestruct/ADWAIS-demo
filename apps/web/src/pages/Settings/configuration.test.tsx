@@ -22,6 +22,8 @@ const orgConfig: OrganizationConfigDto = {
   monitoringProvider: 'uptimerobot',
   monitoringProviderSettings: {},
   monitoringProviderConfiguredSecretKeys: [],
+  orderFetchEnabled: true,
+  monitoringFetchEnabled: true,
   orderFetchIntervalMinutes: 30,
   uptimeFetchIntervalMinutes: 5,
   latencyFetchIntervalMinutes: 5,
@@ -31,9 +33,7 @@ const orgConfig: OrganizationConfigDto = {
 
 vi.mock('../../hooks/useJobSettingsQueries', () => ({
   useGlobalConfigQuery: () => ({ data: undefined }),
-  useFetchIntervalsQuery: () => ({ data: undefined }),
   useUpdateConfigMutation: () => ({ mutateAsync: vi.fn() }),
-  useUpdateFetchIntervalsMutation: () => ({ mutateAsync: vi.fn() }),
 }));
 
 vi.mock('../../hooks/useIntegrationQueries', () => ({
@@ -58,10 +58,6 @@ vi.mock('../../hooks/useOrganizationQueries', () => ({
     return { data: orgConfig };
   },
   useUpdateOrganizationConfigMutation: () => ({ mutateAsync: vi.fn() }),
-}));
-
-vi.mock('../../components/settings/configuration/FetchIntervalsForm', () => ({
-  FetchIntervalsForm: () => null,
 }));
 
 vi.mock('../../components/settings/configuration/CalendarSubscriptionsPanel', () => ({

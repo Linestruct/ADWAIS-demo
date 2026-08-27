@@ -38,6 +38,20 @@ export function OrganizationConfigurationForm({ orgName, config, updateConfig, p
         {config ? (
           <div className="flex flex-col gap-2">
             <InlineEditField
+              label="Order Fetch Enabled"
+              value={config.orderFetchEnabled ?? true}
+              kind="checkbox"
+              disabled={disabled}
+              onCommit={(val) => updateConfig.mutateAsync({ orderFetchEnabled: val })}
+            />
+            <InlineEditField
+              label="Monitoring Fetch Enabled"
+              value={config.monitoringFetchEnabled ?? true}
+              kind="checkbox"
+              disabled={disabled}
+              onCommit={(val) => updateConfig.mutateAsync({ monitoringFetchEnabled: val })}
+            />
+            <InlineEditField
               label="Reporting Timezone"
               value={config.reportingTimeZoneId || 'Europe/Stockholm'}
               kind="text"

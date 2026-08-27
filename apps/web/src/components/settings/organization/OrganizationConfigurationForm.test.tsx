@@ -14,6 +14,8 @@ const config: OrganizationConfigDto = {
   monitoringProvider: 'uptimerobot',
   monitoringProviderSettings: { apiKey: 'secret-value', channelId: '123' },
   monitoringProviderConfiguredSecretKeys: ['apiKey'],
+  orderFetchEnabled: true,
+  monitoringFetchEnabled: true,
   orderFetchIntervalMinutes: 30,
   uptimeFetchIntervalMinutes: 5,
   latencyFetchIntervalMinutes: 5,
@@ -77,6 +79,17 @@ describe('OrganizationConfigurationForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Reporting Timezone' }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ reportingTimeZoneId: 'Europe/Paris' }));
+  });
+
+  it('commits the fetch toggles immediately', async () => {
+    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    renderForm({ updateConfig: { mutateAsync } });
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Order Fetch Enabled' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Monitoring Fetch Enabled' }));
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ orderFetchEnabled: false }));
+    expect(mutateAsync).toHaveBeenCalledWith({ monitoringFetchEnabled: false });
   });
 
   it('clears a configured secret key through the clear callback', async () => {

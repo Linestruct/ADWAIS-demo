@@ -16,6 +16,8 @@ export interface OrganizationConfigDto {
   monitoringProvider: string;
   monitoringProviderSettings: OrganizationConfigDtoMonitoringProviderSettings;
   monitoringProviderConfiguredSecretKeys: string[];
+  orderFetchEnabled: boolean;
+  monitoringFetchEnabled: boolean;
   orderFetchIntervalMinutes: number;
   uptimeFetchIntervalMinutes: number;
   latencyFetchIntervalMinutes: number;

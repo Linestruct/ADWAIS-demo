@@ -119,7 +119,6 @@ export function useUpdateConfigMutation() {
 export interface FetchIntervalsDto {
   latencyFetchIntervalMinutes: number;
   uptimeFetchIntervalMinutes: number;
-  statusFetchIntervalMinutes: number;
   orderFetchIntervalMinutes: number;
   userStatsFetchIntervalMinutes: number;
   feedFetchIntervalHours: number;

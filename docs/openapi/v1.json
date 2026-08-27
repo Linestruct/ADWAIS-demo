@@ -4671,80 +4671,9 @@
             "format": "date-time",
             "nullable": true
           },
-          "orderFetchEnabled": {
-            "type": "boolean"
-          },
-          "monitoringFetchEnabled": {
-            "type": "boolean"
-          },
-          "orderFetchIntervalMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "monitoringProviderSettings": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string",
-              "nullable": true
-            },
-            "nullable": true
-          },
-          "monitoringProviderConfiguredSecretKeys": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "uptimeFetchIntervalMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "latencyFetchIntervalMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "userStatsFetchIntervalMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
           "systemEventRetentionDays": {
             "type": "integer",
             "format": "int32"
-          },
-          "monitorsCount": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "monitorsLimit": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "activeSubscription": {
-            "type": "string",
-            "nullable": true
-          },
-          "feedFetchIntervalHours": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "weatherLocation": {
-            "type": "string",
-            "nullable": true
-          },
-          "weatherFetchIntervalMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "reportingTimeZoneId": {
-            "type": "string",
-            "nullable": true
-          },
-          "monitoringProvider": {
-            "type": "string",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -5369,9 +5298,11 @@
         "required": [
           "feedFetchIntervalHours",
           "latencyFetchIntervalMinutes",
+          "monitoringFetchEnabled",
           "monitoringProvider",
           "monitoringProviderConfiguredSecretKeys",
           "monitoringProviderSettings",
+          "orderFetchEnabled",
           "orderFetchIntervalMinutes",
           "reportingTimeZoneId",
           "uptimeFetchIntervalMinutes",
@@ -5408,6 +5339,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "orderFetchEnabled": {
+            "type": "boolean"
+          },
+          "monitoringFetchEnabled": {
+            "type": "boolean"
           },
           "orderFetchIntervalMinutes": {
             "type": "integer",
@@ -6241,47 +6178,9 @@
       "UpdateGlobalConfigRequestDto": {
         "type": "object",
         "properties": {
-          "orderFetchEnabled": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "monitoringFetchEnabled": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "monitoringProviderSettings": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string",
-              "nullable": true
-            },
-            "nullable": true
-          },
           "systemEventRetentionDays": {
             "type": "integer",
             "format": "int32",
-            "nullable": true
-          },
-          "feedFetchIntervalHours": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "weatherLocation": {
-            "type": "string",
-            "nullable": true
-          },
-          "weatherFetchIntervalMinutes": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "reportingTimeZoneId": {
-            "type": "string",
-            "nullable": true
-          },
-          "monitoringProvider": {
-            "type": "string",
             "nullable": true
           }
         },
@@ -6380,6 +6279,14 @@
           "feedFetchIntervalHours": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "orderFetchEnabled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "monitoringFetchEnabled": {
+            "type": "boolean",
             "nullable": true
           }
         },

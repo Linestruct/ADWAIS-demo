@@ -4,25 +4,8 @@
  * Adwais.Api
  * OpenAPI spec version: 1.0
  */
-import type { UpdateGlobalConfigRequestDtoMonitoringProviderSettings } from './updateGlobalConfigRequestDtoMonitoringProviderSettings';
 
 export interface UpdateGlobalConfigRequestDto {
   /** @nullable */
-  orderFetchEnabled?: boolean | null;
-  /** @nullable */
-  monitoringFetchEnabled?: boolean | null;
-  /** @nullable */
-  monitoringProviderSettings?: UpdateGlobalConfigRequestDtoMonitoringProviderSettings;
-  /** @nullable */
   systemEventRetentionDays?: number | null;
-  /** @nullable */
-  feedFetchIntervalHours?: number | null;
-  /** @nullable */
-  weatherLocation?: string | null;
-  /** @nullable */
-  weatherFetchIntervalMinutes?: number | null;
-  /** @nullable */
-  reportingTimeZoneId?: string | null;
-  /** @nullable */
-  monitoringProvider?: string | null;
 }

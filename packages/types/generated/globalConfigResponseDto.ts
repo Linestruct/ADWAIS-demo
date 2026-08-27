@@ -4,35 +4,10 @@
  * Adwais.Api
  * OpenAPI spec version: 1.0
  */
-import type { GlobalConfigResponseDtoMonitoringProviderSettings } from './globalConfigResponseDtoMonitoringProviderSettings';
 
 export interface GlobalConfigResponseDto {
   id?: number;
   /** @nullable */
   lastPolled?: string | null;
-  orderFetchEnabled?: boolean;
-  monitoringFetchEnabled?: boolean;
-  orderFetchIntervalMinutes?: number;
-  /** @nullable */
-  monitoringProviderSettings?: GlobalConfigResponseDtoMonitoringProviderSettings;
-  /** @nullable */
-  monitoringProviderConfiguredSecretKeys?: string[] | null;
-  uptimeFetchIntervalMinutes?: number;
-  latencyFetchIntervalMinutes?: number;
-  userStatsFetchIntervalMinutes?: number;
   systemEventRetentionDays?: number;
-  /** @nullable */
-  monitorsCount?: number | null;
-  /** @nullable */
-  monitorsLimit?: number | null;
-  /** @nullable */
-  activeSubscription?: string | null;
-  feedFetchIntervalHours?: number;
-  /** @nullable */
-  weatherLocation?: string | null;
-  weatherFetchIntervalMinutes?: number;
-  /** @nullable */
-  reportingTimeZoneId?: string | null;
-  /** @nullable */
-  monitoringProvider?: string | null;
 }

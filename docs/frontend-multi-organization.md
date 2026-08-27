@@ -1,6 +1,6 @@
 # Multi-organization frontend plan
 
-Status: proposed. Not started. Depends on two small backend additions listed under Prerequisites.
+Status: in progress. Backend prerequisites B1 to B3 are implemented and tested (393 backend tests). W1 (client regeneration, required DTO members, scope-aware shared types) and W2 (scope-aware `useCurrentUser` plus `OrgBoundary`) are done. W3 (sentinel removal across the six files) is done; the sentinel string no longer appears in `apps/web/src`. Remaining: W4 organization settings, W5 runtime picker and switching, W6 kiosk polish, W7 membership administration UI.
 
 ## Goal
 

@@ -12,7 +12,7 @@ export interface UserResponseDto {
   name: string;
   /** @nullable */
   email?: string | null;
-  role: UserRole;
+  role?: UserRole;
   /** @nullable */
   organizationId?: string | null;
   /** @nullable */

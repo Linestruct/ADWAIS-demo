@@ -46,7 +46,8 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             var user = await _userService.GetUserByExternalSubjectIdAsync(subjectId, ct);
             if (user != null)
             {
-                return Ok(await MapMeAsync(user.Id, user.Name, user.Email, user.Role, ct));
+                var effectiveRole = _currentAccess.Scope?.Roles.FirstOrDefault() ?? UserRole.Employee;
+                return Ok(await MapMeAsync(user.Id, user.Name, user.Email, effectiveRole, ct));
             }
         }
 
@@ -98,7 +99,12 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers(CancellationToken ct)
     {
         var users = await _userService.GetUsersAsync(ct);
-        var response = users.Select(u => new UserResponseDto(u.Id, u.Name, u.Email, u.Role));
+        var rolesByUserId = await ResolveMembershipRolesByUserIdAsync(users.Select(u => u.Id).ToArray(), ct);
+        var response = users.Select(u => new UserResponseDto(
+            u.Id,
+            u.Name,
+            u.Email,
+            rolesByUserId.TryGetValue(u.Id, out var role) ? role : null));
         return Ok(response);
     }
 
@@ -112,7 +118,8 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             return NotFound();
         }
 
-        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, user.Role));
+        var role = await ResolveMembershipRoleAsync(user.Id, ct);
+        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, role));
     }
 
     /// <summary>
@@ -124,8 +131,9 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserRequestDto request, CancellationToken ct)
     {
         var user = await _userService.CreateUserAsync(request.Email, request.Role, ct);
+        var role = await ResolveMembershipRoleAsync(user.Id, ct);
         return CreatedAtAction(nameof(GetUser), new { id = user.Id },
-            new UserResponseDto(user.Id, user.Name, user.Email, user.Role));
+            new UserResponseDto(user.Id, user.Name, user.Email, role));
     }
 
     [HttpPatch("{id:guid}")]
@@ -138,7 +146,8 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             return NotFound();
         }
 
-        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, user.Role));
+        var role = await ResolveMembershipRoleAsync(user.Id, ct);
+        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, role));
     }
 
     [HttpDelete("{id:guid}")]
@@ -226,4 +235,41 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             membership.OrganizationId,
             membership.Organization?.Name,
             membership.Role);
+
+    /// <summary>
+    /// Resolves the membership role a user holds in the caller's effective
+    /// organization. Null when the caller has no single organization context.
+    /// </summary>
+    private async Task<UserRole?> ResolveMembershipRoleAsync(Guid userId, CancellationToken ct)
+    {
+        var orgId = _currentAccess.Scope?.OrganizationId;
+        if (orgId is null)
+        {
+            return null;
+        }
+
+        return await _dbContext.UserAccesses
+            .AsNoTracking()
+            .Where(access => access.UserId == userId && access.OrganizationId == orgId)
+            .Select(access => (UserRole?)access.Role)
+            .SingleOrDefaultAsync(ct);
+    }
+
+    private async Task<Dictionary<Guid, UserRole?>> ResolveMembershipRolesByUserIdAsync(Guid[] userIds, CancellationToken ct)
+    {
+        var orgId = _currentAccess.Scope?.OrganizationId;
+        if (orgId is null)
+        {
+            return new Dictionary<Guid, UserRole?>();
+        }
+
+        var rows = await _dbContext.UserAccesses
+            .AsNoTracking()
+            .Where(access => userIds.Contains(access.UserId) && access.OrganizationId == orgId)
+            .Select(access => new { access.UserId, access.Role })
+            .ToListAsync(ct);
+        return rows
+            .GroupBy(entry => entry.UserId)
+            .ToDictionary(group => group.Key, group => (UserRole?)group.First().Role);
+    }
 }

@@ -63,8 +63,8 @@ public class UserControllerTests
         // Arrange
         var users = new List<User>
         {
-            new User { Id = Guid.NewGuid(), Name = "Alice", Role = UserRole.Admin },
-            new User { Id = Guid.NewGuid(), Name = "Bob", Role = UserRole.Employee }
+            new User { Id = Guid.NewGuid(), Name = "Alice" },
+            new User { Id = Guid.NewGuid(), Name = "Bob" }
         };
 
         _userServiceMock.Setup(s => s.GetUsersAsync(It.IsAny<CancellationToken>()))
@@ -85,7 +85,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, Name = "Alice", Role = UserRole.Admin };
+        var user = new User { Id = userId, Name = "Alice" };
 
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -122,7 +122,7 @@ public class UserControllerTests
     {
         // Arrange
         var request = new CreateUserRequestDto("new@example.com", UserRole.Employee);
-        var createdUser = new User { Id = Guid.NewGuid(), Name = "new@example.com", Email = "new@example.com", Role = UserRole.Employee };
+        var createdUser = new User { Id = Guid.NewGuid(), Name = "new@example.com", Email = "new@example.com" };
 
         _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, It.IsAny<CancellationToken>()))
             .ReturnsAsync(createdUser);
@@ -135,7 +135,7 @@ public class UserControllerTests
         var returnedUser = Assert.IsType<UserResponseDto>(createdResult.Value);
         Assert.Equal("new@example.com", returnedUser.Name);
         Assert.Equal("new@example.com", returnedUser.Email);
-        Assert.Equal(UserRole.Employee, returnedUser.Role);
+        Assert.Null(returnedUser.Role);
         _userServiceMock.Verify(s => s.CreateUserAsync(request.Email, request.Role, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -144,8 +144,20 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
         var request = new UpdateUserRequestDto("Updated User", UserRole.Admin);
-        var updatedUser = new User { Id = userId, Name = "Updated User", Role = UserRole.Admin };
+        var updatedUser = new User { Id = userId, Name = "Updated User" };
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+        _dbContext.UserAccesses.Add(new UserAccess
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            OrganizationId = orgId,
+            Role = UserRole.Employee,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await _dbContext.SaveChangesAsync();
 
         _userServiceMock.Setup(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()))
             .ReturnsAsync(updatedUser);
@@ -157,7 +169,7 @@ public class UserControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
         Assert.Equal("Updated User", returnedUser.Name);
-        Assert.Equal(UserRole.Admin, returnedUser.Role);
+        Assert.Equal(UserRole.Employee, returnedUser.Role);
         _userServiceMock.Verify(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -215,7 +227,7 @@ public class UserControllerTests
     {
         // Arrange
         var subjectId = "auth0|user-123";
-        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "OIDC User", Role = UserRole.Employee };
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "OIDC User" };
         
         _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -277,7 +289,7 @@ public class UserControllerTests
         // Arrange
         var orgId = Guid.NewGuid();
         var subjectId = "auth0|org-user";
-        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Org User", Role = UserRole.Employee };
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Org User" };
         _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _dbContext.Organizations.Add(new Organization { Id = orgId, Name = "Acme Consulting" });
@@ -305,7 +317,7 @@ public class UserControllerTests
     {
         // Arrange
         var subjectId = "auth0|platform-user";
-        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Platform User", Role = UserRole.Admin };
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Platform User" };
         _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _accessMock.Setup(access => access.Scope)
@@ -332,7 +344,7 @@ public class UserControllerTests
         var orgId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         var subjectId = "auth0|tenant-viewer";
-        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Viewer", Role = UserRole.TenantViewer };
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Viewer" };
         _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _accessMock.Setup(access => access.Scope)
@@ -367,7 +379,7 @@ public class UserControllerTests
         // Arrange
         var orgId = Guid.NewGuid();
         var subjectId = "auth0|orphan-org";
-        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Orphan User", Role = UserRole.Employee };
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Orphan User" };
         _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _accessMock.Setup(access => access.Scope)
@@ -391,7 +403,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        var user = new User { Id = userId, Name = "Member" };
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _userServiceMock.Setup(s => s.GetUserMembershipsAsync(userId, It.IsAny<CancellationToken>()))
@@ -432,7 +444,7 @@ public class UserControllerTests
         // Arrange
         var userId = Guid.NewGuid();
         var orgId = Guid.NewGuid();
-        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        var user = new User { Id = userId, Name = "Member" };
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         var membership = new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = orgId, Role = UserRole.Admin };
@@ -478,7 +490,7 @@ public class UserControllerTests
         var userId = Guid.NewGuid();
         var membershipId = Guid.NewGuid();
         var callerId = Guid.NewGuid();
-        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        var user = new User { Id = userId, Name = "Member" };
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, callerId, It.IsAny<CancellationToken>()))
@@ -498,7 +510,7 @@ public class UserControllerTests
         // Arrange
         var userId = Guid.NewGuid();
         var membershipId = Guid.NewGuid();
-        var user = new User { Id = userId, Name = "Member", Role = UserRole.Employee };
+        var user = new User { Id = userId, Name = "Member" };
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

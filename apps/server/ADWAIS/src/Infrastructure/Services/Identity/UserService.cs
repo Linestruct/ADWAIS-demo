@@ -89,8 +89,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
         {
             Id = Guid.NewGuid(),
             Email = email,
-            Name = email, // Set Name to Email initially as placeholder
-            Role = role
+            Name = email // Set Name to Email initially as placeholder
         };
 
         _dbContext.Users.Add(user);
@@ -133,7 +132,6 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
 
         if (role.HasValue)
         {
-            user.Role = role.Value;
             var memberships = await _dbContext.UserAccesses
                 .Where(access => access.UserId == user.Id
                     && (filter.OrganizationId == null || access.OrganizationId == filter.OrganizationId))

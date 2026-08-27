@@ -36,7 +36,6 @@ public class CalendarFeedServiceTests
             Id = Guid.NewGuid(),
             Name = "Feed User",
             Email = "feed@example.com",
-            Role = UserRole.Employee,
             CalendarFeedToken = token
         };
         await using var db = new AnalyticsDbContext(_dbOptions);
@@ -85,7 +84,6 @@ public class CalendarFeedServiceTests
             Id = Guid.NewGuid(),
             Name = "Memberless",
             Email = "memberless@example.com",
-            Role = UserRole.Employee,
             CalendarFeedToken = "token-without-scope"
         };
         await using (var db = new AnalyticsDbContext(_dbOptions))

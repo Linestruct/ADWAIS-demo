@@ -4,7 +4,6 @@
  * Adwais.Api
  * OpenAPI spec version: 1.0
  */
-import type { UserRole } from './userRole';
 
 export interface User {
   id?: string;
@@ -14,7 +13,6 @@ export interface User {
   email?: string | null;
   /** @nullable */
   name: string | null;
-  role: UserRole;
   /** @nullable */
   calendarFeedToken?: string | null;
 }

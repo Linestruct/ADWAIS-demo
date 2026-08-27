@@ -52,7 +52,7 @@ public class UserServiceTests
 
     private async Task<User> SeedUserAsync(string name = "User", UserRole role = UserRole.Employee)
     {
-        var user = new User { Id = Guid.NewGuid(), Name = name, Role = role };
+        var user = new User { Id = Guid.NewGuid(), Name = name };
         await using var db = new AnalyticsDbContext(_dbOptions);
         db.Users.Add(user);
         await db.SaveChangesAsync();
@@ -208,11 +208,11 @@ public class UserServiceTests
         Assert.NotEqual(Guid.Empty, user.Id);
         Assert.Equal("newuser@example.com", user.Email);
         Assert.Equal("newuser@example.com", user.Name);
-        Assert.Equal(UserRole.Admin, user.Role);
 
         await using var db = new AnalyticsDbContext(_dbOptions);
         var dbUser = await db.Users.SingleOrDefaultAsync(u => u.Id == user.Id);
         Assert.NotNull(dbUser);
+        Assert.Equal(UserRole.Admin, (await db.UserAccesses.SingleAsync(a => a.UserId == user.Id)).Role);
     }
 
     [Fact]
@@ -266,13 +266,12 @@ public class UserServiceTests
         // Act
         var result = await _userService.UpdateUserAsync(user.Id, "Updated Name", UserRole.Admin, CancellationToken.None);
 
-        // Assert
+// Assert
         Assert.NotNull(result);
         Assert.Equal("Updated Name", result.Name);
-        Assert.Equal(UserRole.Admin, result.Role);
     }
 
-[Fact]
+    [Fact]
     public async Task UpdateUserAsync_ShouldUpdateScopedMembershipRole_ForOrgScope()
     {
         // Arrange
@@ -287,7 +286,6 @@ public class UserServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(UserRole.Viewer, result.Role);
 
         await using var db = new AnalyticsDbContext(_dbOptions);
         var membership = await db.UserAccesses.SingleAsync(access => access.UserId == user.Id && access.OrganizationId == orgId);
@@ -398,7 +396,7 @@ public class UserServiceTests
     {
         // Arrange
         var subjectId = "auth0|user-123";
-        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "OIDC User", Role = UserRole.Employee };
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "OIDC User" };
         await using (var db = new AnalyticsDbContext(_dbOptions))
         {
             db.Users.Add(user);
@@ -678,7 +676,7 @@ public class UserServiceTests
         var membershipId = Guid.NewGuid();
         await using (var db = new AnalyticsDbContext(_dbOptions))
         {
-            db.Users.Add(new User { Id = platformUserId, Name = "Platform Admin", Role = UserRole.Admin });
+            db.Users.Add(new User { Id = platformUserId, Name = "Platform Admin" });
             db.UserAccesses.Add(new UserAccess
             {
                 Id = membershipId,

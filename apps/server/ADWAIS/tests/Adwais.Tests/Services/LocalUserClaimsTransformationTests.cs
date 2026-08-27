@@ -69,7 +69,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = subjectId,
                 Name = name,
                 Email = email,
-                Role = UserRole.Admin
             });
             await db.SaveChangesAsync();
         }
@@ -126,8 +125,7 @@ public class LocalUserClaimsTransformationTests
     {
         // Arrange
         var preProvisionedEmail = "pre@example.com";
-        var preProvisionedRole = UserRole.Admin;
-        
+
         await using (var db = new AnalyticsDbContext(_dbOptions))
         {
             db.Users.Add(new User
@@ -135,8 +133,7 @@ public class LocalUserClaimsTransformationTests
                 Id = Guid.NewGuid(),
                 ExternalSubjectId = null,
                 Name = preProvisionedEmail,
-                Email = preProvisionedEmail,
-                Role = preProvisionedRole
+                Email = preProvisionedEmail
             });
             await db.SaveChangesAsync();
         }
@@ -157,7 +154,6 @@ public class LocalUserClaimsTransformationTests
         Assert.NotNull(user);
         Assert.Equal(nameClaim, user.Name);
         Assert.Equal(preProvisionedEmail, user.Email);
-        Assert.Equal(UserRole.Admin, user.Role);
     }
 
     [Fact]
@@ -174,7 +170,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "old-entra-object-id",
                 Name = "Existing User",
                 Email = email,
-                Role = UserRole.Admin
             });
             await db.SaveChangesAsync();
         }
@@ -209,7 +204,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = subjectId,
                 Name = originalName,
                 Email = originalEmail,
-                Role = UserRole.Employee
             });
             await db.SaveChangesAsync();
         }
@@ -262,7 +256,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "membership-org-user",
                 Name = "Org User",
                 Email = "org@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -296,7 +289,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "membership-tenant-user",
                 Name = "Tenant User",
                 Email = "tenant@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -328,7 +320,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "membership-platform-user",
                 Name = "Platform User",
                 Email = "platform@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -362,7 +353,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "membership-role-user",
                 Name = "Role User",
                 Email = "role@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -396,7 +386,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "scope-scrub-user",
                 Name = "Scrub User",
                 Email = "scrub@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -440,7 +429,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "scope-admin-user",
                 Name = "Scope Admin",
                 Email = "scope-admin@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -476,7 +464,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "scope-member-user",
                 Name = "Scope Member",
                 Email = "scope-member@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -510,7 +497,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "scope-garbage-user",
                 Name = "Garbage Headers",
                 Email = "garbage@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.Add(new UserAccess
             {
@@ -564,7 +550,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "scope-multi-user",
                 Name = "Multi User",
                 Email = "multi@example.com",
-                Role = UserRole.Employee
             });
             db.UserAccesses.AddRange(
                 new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = firstOrg, TenantId = null, Role = UserRole.Viewer },
@@ -611,7 +596,6 @@ public class LocalUserClaimsTransformationTests
                 ExternalSubjectId = "no-scope-user",
                 Name = "No Scope User",
                 Email = "noscope@example.com",
-                Role = UserRole.Employee
             });
             await db.SaveChangesAsync();
         }

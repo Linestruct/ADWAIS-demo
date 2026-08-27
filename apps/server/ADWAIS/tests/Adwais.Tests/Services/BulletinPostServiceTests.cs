@@ -78,7 +78,7 @@ public class BulletinPostServiceTests
         var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
         var dbContext = new AnalyticsDbContext(options);
 
-        var user = new User { Id = Guid.NewGuid(), Name = "John Doe", Email = "john@example.com", Role = UserRole.Employee };
+        var user = new User { Id = Guid.NewGuid(), Name = "John Doe", Email = "john@example.com" };
         var post1 = new BulletinPost { Id = Guid.NewGuid(), UserId = user.Id, Title = "Title 1", Body = "Body 1", CreatedAt = DateTime.UtcNow.AddMinutes(-10) };
         var post2 = new BulletinPost { Id = Guid.NewGuid(), UserId = user.Id, Title = "Title 2", Body = "Body 2", CreatedAt = DateTime.UtcNow };
 
@@ -145,8 +145,8 @@ public class BulletinPostServiceTests
         var ownOrgId = Guid.NewGuid();
         var otherOrgId = Guid.NewGuid();
 
-        var ownUser = new User { Id = Guid.NewGuid(), Name = "Own", Email = "own@example.com", Role = UserRole.Employee };
-        var otherUser = new User { Id = Guid.NewGuid(), Name = "Other", Email = "other@example.com", Role = UserRole.Employee };
+        var ownUser = new User { Id = Guid.NewGuid(), Name = "Own", Email = "own@example.com" };
+        var otherUser = new User { Id = Guid.NewGuid(), Name = "Other", Email = "other@example.com" };
         var ownPost = new BulletinPost { Id = Guid.NewGuid(), UserId = ownUser.Id, Title = "Own", Body = "Body", CreatedAt = DateTime.UtcNow, OrganizationId = ownOrgId };
         var otherPost = new BulletinPost { Id = Guid.NewGuid(), UserId = otherUser.Id, Title = "Other", Body = "Body", CreatedAt = DateTime.UtcNow, OrganizationId = otherOrgId };
         dbContext.Users.AddRange(ownUser, otherUser);

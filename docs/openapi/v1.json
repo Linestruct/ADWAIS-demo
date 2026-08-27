@@ -6754,8 +6754,7 @@
       },
       "User": {
         "required": [
-          "name",
-          "role"
+          "name"
         ],
         "type": "object",
         "properties": {
@@ -6774,9 +6773,6 @@
           "name": {
             "type": "string",
             "nullable": true
-          },
-          "role": {
-            "$ref": "#/components/schemas/UserRole"
           },
           "calendarFeedToken": {
             "type": "string",
@@ -6862,8 +6858,7 @@
       "UserResponseDto": {
         "required": [
           "id",
-          "name",
-          "role"
+          "name"
         ],
         "type": "object",
         "properties": {

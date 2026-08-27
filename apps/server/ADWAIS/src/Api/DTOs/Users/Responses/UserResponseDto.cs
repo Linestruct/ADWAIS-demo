@@ -11,7 +11,7 @@ public record UserResponseDto(
     [property: Required] Guid Id,
     [property: Required] string Name,
     string? Email,
-    [property: Required] UserRole Role,
+    UserRole? Role,
     Guid? OrganizationId = null,
     string? OrganizationName = null,
     Guid? TenantId = null,

@@ -113,7 +113,7 @@ export type UserResponseDto = {
   id: string;
   name: string;
   email: string | null;
-  role: string;
+  role?: string | null;
   organizationId?: string | null;
   organizationName?: string | null;
   tenantId?: string | null;

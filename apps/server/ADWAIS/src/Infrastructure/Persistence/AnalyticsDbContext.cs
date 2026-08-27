@@ -285,11 +285,6 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .HasMaxLength(255)
                 .IsRequired();
 
-            entity.Property(u => u.Role)
-                .HasConversion<string>()
-                .HasMaxLength(50)
-                .IsRequired();
-
             entity.Property(u => u.Email)
                 .HasMaxLength(255)
                 .IsRequired(false);
@@ -315,7 +310,6 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             {
                 Id = SystemUserGuid,
                 Name = "System",
-                Role = UserRole.Employee,
                 Email = "system@adwais.local"
             });
         });

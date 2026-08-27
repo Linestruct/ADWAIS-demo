@@ -53,6 +53,8 @@ public class WeatherServiceTests
         MonitoringProvider: "uptimerobot",
         MonitoringProviderSettings: new Dictionary<string, string?>(),
         MonitoringProviderConfiguredSecretKeys: [],
+        OrderFetchEnabled: true,
+        MonitoringFetchEnabled: true,
         OrderFetchIntervalMinutes: 60,
         UptimeFetchIntervalMinutes: 60,
         LatencyFetchIntervalMinutes: 10,

@@ -50,7 +50,6 @@ public class UpdateGlobalMonitoringStatsJobTests
     private async Task SeedAsync(params OrganizationConfig[] configs)
     {
         await using var db = new AnalyticsDbContext(_dbOptions);
-        db.GlobalConfigs.Add(new GlobalConfig { Id = 1, MonitoringFetchEnabled = true });
         db.OrganizationConfigs.AddRange(configs);
         await db.SaveChangesAsync();
     }
@@ -74,11 +73,11 @@ public class UpdateGlobalMonitoringStatsJobTests
         // Arrange
         await using (var db = new AnalyticsDbContext(_dbOptions))
         {
-            db.GlobalConfigs.Add(new GlobalConfig { Id = 1, MonitoringFetchEnabled = false });
             db.OrganizationConfigs.Add(new OrganizationConfig
             {
                 OrganizationId = _orgA,
-                MonitoringProviderSettings = "{}"
+                MonitoringProviderSettings = "{}",
+                MonitoringFetchEnabled = false
             });
             await db.SaveChangesAsync();
         }

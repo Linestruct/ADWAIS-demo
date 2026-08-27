@@ -59,6 +59,14 @@ public class OrganizationConfigServiceTests
         return mock.Object;
     }
 
+    private static (OrganizationConfigService Service, Mock<IReportingRollupRefresher> Refresher) CreateService(
+        IApplicationDbContext context, ICurrentAccess access)
+    {
+        var refresher = new Mock<IReportingRollupRefresher>();
+        var service = new OrganizationConfigService(context, access, [CreateProvider()], refresher.Object);
+        return (service, refresher);
+    }
+
     [Fact]
     public async Task GetConfigAsync_WithOrgScope_ReturnsOrgConfig()
     {
@@ -72,7 +80,7 @@ public class OrganizationConfigServiceTests
         });
         await dbContext.SaveChangesAsync();
 
-        var service = new OrganizationConfigService(context, OrgAccess(orgId), [CreateProvider()]);
+        var (service, _) = CreateService(context, OrgAccess(orgId));
 
         var result = await service.GetConfigAsync(CancellationToken.None);
 
@@ -87,7 +95,7 @@ public class OrganizationConfigServiceTests
         var context = CreateDbContext(out var dbContext);
         var orgId = Guid.NewGuid();
 
-        var service = new OrganizationConfigService(context, OrgAccess(orgId), [CreateProvider()]);
+        var (service, _) = CreateService(context, OrgAccess(orgId));
 
         Assert.Null(await service.GetConfigAsync(CancellationToken.None));
     }
@@ -97,7 +105,7 @@ public class OrganizationConfigServiceTests
     {
         var context = CreateDbContext(out var dbContext);
 
-        var service = new OrganizationConfigService(context, PlatformAccess(), [CreateProvider()]);
+        var (service, _) = CreateService(context, PlatformAccess());
 
         Assert.Null(await service.GetConfigAsync(CancellationToken.None));
     }
@@ -108,7 +116,7 @@ public class OrganizationConfigServiceTests
         var context = CreateDbContext(out var dbContext);
         var orgId = Guid.NewGuid();
 
-        var service = new OrganizationConfigService(context, OrgAccess(orgId), [CreateProvider()]);
+        var (service, _) = CreateService(context, OrgAccess(orgId));
 
         var result = await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
             WeatherLocation: "Stockholm",
@@ -144,7 +152,7 @@ public class OrganizationConfigServiceTests
         });
         await dbContext.SaveChangesAsync();
 
-        var service = new OrganizationConfigService(context, OrgAccess(orgId), [CreateProvider()]);
+        var (service, _) = CreateService(context, OrgAccess(orgId));
 
         var result = await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
             WeatherLocation: "Goteborg",
@@ -172,7 +180,7 @@ public class OrganizationConfigServiceTests
         dbContext.OrganizationConfigs.Add(new OrganizationConfig { OrganizationId = orgId });
         await dbContext.SaveChangesAsync();
 
-        var service = new OrganizationConfigService(context, OrgAccess(orgId), [CreateProvider()]);
+        var (service, _) = CreateService(context, OrgAccess(orgId));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
@@ -189,5 +197,99 @@ public class OrganizationConfigServiceTests
 
         var persisted = await dbContext.OrganizationConfigs.SingleAsync(c => c.OrganizationId == orgId);
         Assert.Equal(IntegrationProviders.UptimeRobot, persisted.MonitoringProvider);
+    }
+
+    [Fact]
+    public async Task UpdateConfigAsync_UpdatesFetchToggles()
+    {
+        var context = CreateDbContext(out var dbContext);
+        var orgId = Guid.NewGuid();
+        dbContext.OrganizationConfigs.Add(new OrganizationConfig { OrganizationId = orgId });
+        await dbContext.SaveChangesAsync();
+
+        var (service, _) = CreateService(context, OrgAccess(orgId));
+
+        var result = await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
+            WeatherLocation: null,
+            WeatherFetchIntervalMinutes: null,
+            ReportingTimeZoneId: null,
+            MonitoringProvider: null,
+            MonitoringProviderSettings: null,
+            OrderFetchIntervalMinutes: null,
+            UptimeFetchIntervalMinutes: null,
+            LatencyFetchIntervalMinutes: null,
+            UserStatsFetchIntervalMinutes: null,
+            FeedFetchIntervalHours: null,
+            OrderFetchEnabled: false,
+            MonitoringFetchEnabled: false), CancellationToken.None);
+
+        Assert.False(result.OrderFetchEnabled);
+        Assert.False(result.MonitoringFetchEnabled);
+
+        var persisted = await dbContext.OrganizationConfigs.SingleAsync(c => c.OrganizationId == orgId);
+        Assert.False(persisted.OrderFetchEnabled);
+        Assert.False(persisted.MonitoringFetchEnabled);
+    }
+
+    [Fact]
+    public async Task UpdateConfigAsync_WhenReportingTimeZoneChanges_RefreshesFinancialRollups()
+    {
+        var context = CreateDbContext(out var dbContext);
+        var orgId = Guid.NewGuid();
+        dbContext.OrganizationConfigs.Add(new OrganizationConfig
+        {
+            OrganizationId = orgId,
+            ReportingTimeZoneId = "Europe/Stockholm"
+        });
+        await dbContext.SaveChangesAsync();
+
+        var (service, refresher) = CreateService(context, OrgAccess(orgId));
+
+        await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
+            WeatherLocation: null,
+            WeatherFetchIntervalMinutes: null,
+            ReportingTimeZoneId: "UTC",
+            MonitoringProvider: null,
+            MonitoringProviderSettings: null,
+            OrderFetchIntervalMinutes: null,
+            UptimeFetchIntervalMinutes: null,
+            LatencyFetchIntervalMinutes: null,
+            UserStatsFetchIntervalMinutes: null,
+            FeedFetchIntervalHours: null), CancellationToken.None);
+
+        refresher.Verify(
+            refresherMock => refresherMock.RefreshAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateConfigAsync_WhenReportingTimeZoneIsUnchanged_DoesNotRefreshRollups()
+    {
+        var context = CreateDbContext(out var dbContext);
+        var orgId = Guid.NewGuid();
+        dbContext.OrganizationConfigs.Add(new OrganizationConfig
+        {
+            OrganizationId = orgId,
+            ReportingTimeZoneId = "UTC"
+        });
+        await dbContext.SaveChangesAsync();
+
+        var (service, refresher) = CreateService(context, OrgAccess(orgId));
+
+        await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
+            WeatherLocation: null,
+            WeatherFetchIntervalMinutes: null,
+            ReportingTimeZoneId: "UTC",
+            MonitoringProvider: null,
+            MonitoringProviderSettings: null,
+            OrderFetchIntervalMinutes: null,
+            UptimeFetchIntervalMinutes: null,
+            LatencyFetchIntervalMinutes: null,
+            UserStatsFetchIntervalMinutes: null,
+            FeedFetchIntervalHours: null), CancellationToken.None);
+
+        refresher.Verify(
+            refresherMock => refresherMock.RefreshAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

@@ -16,4 +16,6 @@ public record UpdateOrganizationConfigRequestDto(
     int? UptimeFetchIntervalMinutes,
     int? LatencyFetchIntervalMinutes,
     int? UserStatsFetchIntervalMinutes,
-    int? FeedFetchIntervalHours);
+    int? FeedFetchIntervalHours,
+    bool? OrderFetchEnabled = null,
+    bool? MonitoringFetchEnabled = null);

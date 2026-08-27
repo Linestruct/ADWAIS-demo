@@ -14,6 +14,8 @@ public record OrganizationConfigDto(
     [property: Required] string MonitoringProvider,
     [property: Required] IReadOnlyDictionary<string, string?> MonitoringProviderSettings,
     [property: Required] IReadOnlyCollection<string> MonitoringProviderConfiguredSecretKeys,
+    [property: Required] bool OrderFetchEnabled,
+    [property: Required] bool MonitoringFetchEnabled,
     [property: Required] int OrderFetchIntervalMinutes,
     [property: Required] int UptimeFetchIntervalMinutes,
     [property: Required] int LatencyFetchIntervalMinutes,

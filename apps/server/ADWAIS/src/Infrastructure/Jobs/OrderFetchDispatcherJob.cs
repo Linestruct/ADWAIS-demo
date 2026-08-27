@@ -24,20 +24,20 @@ public class OrderFetchDispatcherJob(
     public async Task ExecuteAsync()
     {
         await using var db = await dbContextFactory.CreateDbContextAsync();
-        var config = await db.GlobalConfigs.SingleOrDefaultAsync();
 
-        if (config is null || !config.OrderFetchEnabled)
-        {
-            logger.LogInformation("Order fetching disabled globally. Skipping.");
-            return;
-        }
-
-        var now = DateTimeOffset.UtcNow;
+        var disabledOrgIds = await db.OrganizationConfigs
+            .Where(c => !c.OrderFetchEnabled)
+            .Select(c => c.OrganizationId)
+            .ToListAsync();
+        var disabledOrgIdSet = disabledOrgIds.ToHashSet();
 
         var tenants = await db.Tenants
             .Where(t => t.OrderFetchingEnabled && !t.IsSystem
                         && t.OrderProviderSettings != null)
             .ToListAsync();
+        tenants = tenants.Where(t => !disabledOrgIdSet.Contains(t.OrganizationId)).ToList();
+
+        var now = DateTimeOffset.UtcNow;
 
         var dispatched = 0;
 
@@ -75,7 +75,6 @@ public class OrderFetchDispatcherJob(
             dispatched++;
         }
 
-        config.LastPolled = now;
         await db.SaveChangesAsync();
 
         logger.LogInformation("Order fetch dispatch complete. Enqueued {Dispatched}/{Total} tenants.",

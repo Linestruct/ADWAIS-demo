@@ -26,14 +26,9 @@ public class MonitorSynchronizationJob(
     public async Task ExecuteAsync()
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-        var globalConfig = await dbContext.GlobalConfigs.SingleOrDefaultAsync();
-        if (globalConfig == null || !globalConfig.MonitoringFetchEnabled)
-        {
-            return;
-        }
 
         var orgConfigs = await dbContext.OrganizationConfigs
-            .Where(config => config.MonitoringProviderSettings != null)
+            .Where(config => config.MonitoringProviderSettings != null && config.MonitoringFetchEnabled)
             .ToListAsync();
 
         var liveStates = new List<(UptimeMonitor Monitor, string Status)>();

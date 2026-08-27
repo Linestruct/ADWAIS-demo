@@ -14,10 +14,9 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
         
-        var globalConfig = await dbContext.GlobalConfigs.SingleOrDefaultAsync();
         var hasConfiguredOrg = await dbContext.OrganizationConfigs
-            .AnyAsync(c => c.MonitoringProviderSettings != null);
-        if (globalConfig == null || !globalConfig.MonitoringFetchEnabled || !hasConfiguredOrg)
+            .AnyAsync(c => c.MonitoringProviderSettings != null && c.MonitoringFetchEnabled);
+        if (!hasConfiguredOrg)
         {
             return;
         }

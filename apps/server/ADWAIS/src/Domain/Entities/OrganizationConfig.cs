@@ -15,6 +15,8 @@ public class OrganizationConfig
     public string ReportingTimeZoneId { get; set; } = "Europe/Stockholm";
     public string MonitoringProvider { get; set; } = IntegrationProviders.UptimeRobot;
     public string? MonitoringProviderSettings { get; set; }
+    public bool OrderFetchEnabled { get; set; } = true;
+    public bool MonitoringFetchEnabled { get; set; } = true;
     public int OrderFetchIntervalMinutes { get; set; } = 60;
     public int UptimeFetchIntervalMinutes { get; set; } = 60;
     public int LatencyFetchIntervalMinutes { get; set; } = 10;

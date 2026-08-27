@@ -13,11 +13,10 @@ public class LatencyDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContex
     public async Task ExecuteAsync()
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-        var globalConfig = await dbContext.GlobalConfigs.SingleOrDefaultAsync();
         var hasConfiguredOrg = await dbContext.OrganizationConfigs
-            .AnyAsync(c => c.MonitoringProviderSettings != null);
+            .AnyAsync(c => c.MonitoringProviderSettings != null && c.MonitoringFetchEnabled);
 
-        if (globalConfig == null || !globalConfig.MonitoringFetchEnabled || !hasConfiguredOrg)
+        if (!hasConfiguredOrg)
         {
             return;
         }

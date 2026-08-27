@@ -77,27 +77,27 @@ public class GlobalConfigServiceTests
 
     private GlobalConfigService CreateService(AnalyticsDbContext dbContext, ICurrentAccess access)
     {
-        var orgConfigService = new OrganizationConfigService(dbContext, access, new[] { _monitoringProviderMock.Object });
-        return new GlobalConfigService(dbContext, _eventServiceMock.Object, _reportingRollupRefresherMock.Object, orgConfigService, access);
+        var orgConfigService = new OrganizationConfigService(
+            dbContext, access, new[] { _monitoringProviderMock.Object }, _reportingRollupRefresherMock.Object);
+        return new GlobalConfigService(dbContext, _eventServiceMock.Object, orgConfigService, access);
+    }
+
+    private static GlobalConfig SeedGlobalConfig(AnalyticsDbContext dbContext, int retentionDays = 2)
+    {
+        var config = new GlobalConfig
+        {
+            Id = 1,
+            SystemEventRetentionDays = retentionDays
+        };
+        dbContext.GlobalConfigs.Add(config);
+        return config;
     }
 
     [Fact]
-    public async Task GetConfigAsync_WithOrgScope_ReturnsMergedConfigDto()
+    public async Task GetConfigAsync_ReturnsRetentionAndMeta()
     {
         var dbContext = new AnalyticsDbContext(_options);
-        dbContext.GlobalConfigs.Add(new GlobalConfig
-        {
-            Id = 1,
-            OrderFetchEnabled = true,
-            MonitoringFetchEnabled = true,
-            SystemEventRetentionDays = 2
-        });
-        dbContext.OrganizationConfigs.Add(new OrganizationConfig
-        {
-            OrganizationId = _orgId,
-            WeatherLocation = "Karlstad",
-            FeedFetchIntervalHours = 3
-        });
+        SeedGlobalConfig(dbContext, retentionDays: 7);
         await dbContext.SaveChangesAsync();
 
         var service = CreateService(dbContext, OrgAccess());
@@ -106,123 +106,34 @@ public class GlobalConfigServiceTests
 
         Assert.NotNull(result);
         Assert.Equal(1, result.Id);
-        Assert.Equal("Karlstad", result.WeatherLocation);
-        Assert.Equal(3, result.FeedFetchIntervalHours);
-        Assert.True(result.OrderFetchEnabled);
+        Assert.Equal(7, result.SystemEventRetentionDays);
     }
 
     [Fact]
-    public async Task GetConfigAsync_WithPlatformScope_ReturnsDefaultsForOrgFields()
+    public async Task UpdateConfigAsync_UpdatesRetentionOnly()
     {
         var dbContext = new AnalyticsDbContext(_options);
-        dbContext.GlobalConfigs.Add(new GlobalConfig
-        {
-            Id = 1,
-            OrderFetchEnabled = true,
-            MonitoringFetchEnabled = true,
-            SystemEventRetentionDays = 2
-        });
-        await dbContext.SaveChangesAsync();
-
-        var service = CreateService(dbContext, PlatformAccess());
-
-        var result = await service.GetConfigAsync();
-
-        Assert.NotNull(result);
-        Assert.Null(result.WeatherLocation);
-        Assert.Equal(2, result.FeedFetchIntervalHours);
-        Assert.Equal(60, result.OrderFetchIntervalMinutes);
-    }
-
-    [Fact]
-    public async Task UpdateConfigAsync_UpdatesPlatformAndOrgFields()
-    {
-        var dbContext = new AnalyticsDbContext(_options);
-        dbContext.GlobalConfigs.Add(new GlobalConfig
-        {
-            Id = 1,
-            OrderFetchEnabled = true,
-            MonitoringFetchEnabled = true,
-            SystemEventRetentionDays = 2
-        });
-        dbContext.OrganizationConfigs.Add(new OrganizationConfig { OrganizationId = _orgId, FeedFetchIntervalHours = 2 });
+        SeedGlobalConfig(dbContext);
         await dbContext.SaveChangesAsync();
 
         var service = CreateService(dbContext, OrgAccess());
-        var request = new UpdateGlobalConfigRequestDto(FeedFetchIntervalHours: 4, OrderFetchEnabled: false);
+        var request = new UpdateGlobalConfigRequestDto(SystemEventRetentionDays: 30);
 
         var result = await service.UpdateConfigAsync(request);
 
-        Assert.Equal(4, result.FeedFetchIntervalHours);
-        Assert.False(result.OrderFetchEnabled);
+        Assert.Equal(30, result.SystemEventRetentionDays);
 
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
         Assert.NotNull(configDb);
-        Assert.False(configDb.OrderFetchEnabled);
-        var orgConfigDb = await dbCheck.OrganizationConfigs.SingleAsync(c => c.OrganizationId == _orgId);
-        Assert.Equal(4, orgConfigDb.FeedFetchIntervalHours);
-    }
-
-    [Fact]
-    public async Task UpdateConfigAsync_WhenReportingTimeZoneChanges_ShouldRefreshFinancialRollups()
-    {
-        var dbContext = new AnalyticsDbContext(_options);
-        dbContext.GlobalConfigs.Add(new GlobalConfig
-        {
-            Id = 1,
-            OrderFetchEnabled = true,
-            MonitoringFetchEnabled = true,
-            SystemEventRetentionDays = 2
-        });
-        dbContext.OrganizationConfigs.Add(new OrganizationConfig
-        {
-            OrganizationId = _orgId,
-            ReportingTimeZoneId = "Europe/Stockholm"
-        });
-        await dbContext.SaveChangesAsync();
-
-        var service = CreateService(dbContext, OrgAccess());
-
-        var result = await service.UpdateConfigAsync(
-            new UpdateGlobalConfigRequestDto(ReportingTimeZoneId: "UTC"));
-
-        Assert.Equal("UTC", result.ReportingTimeZoneId);
-        _reportingRollupRefresherMock.Verify(
-            refresher => refresher.RefreshAsync(It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateConfigAsync_WithPerOrgFieldsAndPlatformScope_Throws()
-    {
-        var dbContext = new AnalyticsDbContext(_options);
-        dbContext.GlobalConfigs.Add(new GlobalConfig
-        {
-            Id = 1,
-            OrderFetchEnabled = true,
-            MonitoringFetchEnabled = true,
-            SystemEventRetentionDays = 2
-        });
-        await dbContext.SaveChangesAsync();
-
-        var service = CreateService(dbContext, PlatformAccess());
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateConfigAsync(
-            new UpdateGlobalConfigRequestDto(WeatherLocation: "Karlstad")));
+        Assert.Equal(30, configDb.SystemEventRetentionDays);
     }
 
     [Fact]
     public async Task UpdateFeedIntervalAsync_ShouldPersistInterval()
     {
         var dbContext = new AnalyticsDbContext(_options);
-        dbContext.GlobalConfigs.Add(new GlobalConfig
-        {
-            Id = 1,
-            OrderFetchEnabled = true,
-            MonitoringFetchEnabled = true,
-            SystemEventRetentionDays = 2
-        });
+        SeedGlobalConfig(dbContext);
         await dbContext.SaveChangesAsync();
 
         var service = CreateService(dbContext, OrgAccess());

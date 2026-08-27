@@ -27,7 +27,6 @@ public class OrderFetchDispatcherJobTests
         var tenantId = Guid.NewGuid();
         await using (var db = new AnalyticsDbContext(options))
         {
-            db.GlobalConfigs.Add(new GlobalConfig { Id = 1, OrderFetchEnabled = true });
             db.Tenants.Add(new Tenant
             {
                 Id = tenantId,
@@ -56,5 +55,51 @@ public class OrderFetchDispatcherJobTests
         jobs.Verify(x => x.Create(
             It.Is<Job>(queued => queued.Type == typeof(IOrderIngestionService)),
             It.IsAny<IState>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_OrgWithOrderFetchDisabled_IsSkipped()
+    {
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(options))
+        {
+            db.OrganizationConfigs.Add(new OrganizationConfig
+            {
+                OrganizationId = orgId,
+                OrderFetchEnabled = false
+            });
+            db.Tenants.Add(new Tenant
+            {
+                Id = tenantId,
+                Name = "Disabled org tenant",
+                OrganizationId = orgId,
+                OrderProvider = "other-provider",
+                OrderProviderSettings = "{}",
+                OrderFetchingEnabled = true
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var factory = new Mock<IDbContextFactory<AnalyticsDbContext>>();
+        factory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new AnalyticsDbContext(options));
+        var jobs = new Mock<IBackgroundJobClient>();
+        jobs.Setup(x => x.Create(It.IsAny<Job>(), It.IsAny<IState>())).Returns("job-id");
+
+        var job = new OrderFetchDispatcherJob(
+            factory.Object,
+            jobs.Object,
+            Mock.Of<ILogger<OrderFetchDispatcherJob>>(),
+            Mock.Of<ISystemEventService>());
+
+        await job.ExecuteAsync();
+
+        jobs.Verify(x => x.Create(
+            It.Is<Job>(queued => queued.Type == typeof(IOrderIngestionService)),
+            It.IsAny<IState>()), Times.Never);
     }
 }

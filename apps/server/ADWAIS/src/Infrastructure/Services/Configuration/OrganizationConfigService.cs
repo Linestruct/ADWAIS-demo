@@ -18,11 +18,13 @@ namespace Adwais.Infrastructure.Services;
 public class OrganizationConfigService(
     IApplicationDbContext dbContext,
     ICurrentAccess currentAccess,
-    IEnumerable<IMonitoringProvider> monitoringProviders) : IOrganizationConfigService
+    IEnumerable<IMonitoringProvider> monitoringProviders,
+    IReportingRollupRefresher reportingRollupRefresher) : IOrganizationConfigService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly ICurrentAccess _currentAccess = currentAccess;
     private readonly IEnumerable<IMonitoringProvider> _monitoringProviders = monitoringProviders;
+    private readonly IReportingRollupRefresher _reportingRollupRefresher = reportingRollupRefresher;
 
     public async Task<OrganizationConfigDto?> GetConfigAsync(CancellationToken ct = default)
     {
@@ -66,7 +68,11 @@ public class OrganizationConfigService(
         }
         if (!string.IsNullOrWhiteSpace(request.WeatherLocation)) config.WeatherLocation = request.WeatherLocation.Trim();
         if (request.WeatherFetchIntervalMinutes.HasValue) config.WeatherFetchIntervalMinutes = request.WeatherFetchIntervalMinutes.Value;
+        var timezoneChanged = request.ReportingTimeZoneId is not null
+            && !string.Equals(config.ReportingTimeZoneId, request.ReportingTimeZoneId.Trim(), StringComparison.Ordinal);
         if (request.ReportingTimeZoneId is not null) config.ReportingTimeZoneId = request.ReportingTimeZoneId.Trim();
+        if (request.OrderFetchEnabled.HasValue) config.OrderFetchEnabled = request.OrderFetchEnabled.Value;
+        if (request.MonitoringFetchEnabled.HasValue) config.MonitoringFetchEnabled = request.MonitoringFetchEnabled.Value;
         if (request.OrderFetchIntervalMinutes.HasValue) config.OrderFetchIntervalMinutes = request.OrderFetchIntervalMinutes.Value;
         if (request.UptimeFetchIntervalMinutes.HasValue) config.UptimeFetchIntervalMinutes = request.UptimeFetchIntervalMinutes.Value;
         if (request.LatencyFetchIntervalMinutes.HasValue) config.LatencyFetchIntervalMinutes = request.LatencyFetchIntervalMinutes.Value;
@@ -74,6 +80,8 @@ public class OrganizationConfigService(
         if (request.FeedFetchIntervalHours.HasValue) config.FeedFetchIntervalHours = request.FeedFetchIntervalHours.Value;
 
         await _dbContext.SaveChangesAsync(ct);
+        // Once the config is persisted, finish rebuilding even if the HTTP request is cancelled.
+        if (timezoneChanged) await _reportingRollupRefresher.RefreshAsync(CancellationToken.None);
         return MapToDto(config);
     }
 
@@ -87,6 +95,8 @@ public class OrganizationConfigService(
             config.MonitoringProvider,
             provider.GetPublicSettings(config.MonitoringProviderSettings),
             provider.GetConfiguredSecretKeys(config.MonitoringProviderSettings),
+            config.OrderFetchEnabled,
+            config.MonitoringFetchEnabled,
             config.OrderFetchIntervalMinutes,
             config.UptimeFetchIntervalMinutes,
             config.LatencyFetchIntervalMinutes,

@@ -18,15 +18,9 @@ public class UpdateGlobalMonitoringStatsJob(
     public async Task ExecuteAsync()
     {
         await using var db = await dbContextFactory.CreateDbContextAsync();
-        var globalConfig = await db.GlobalConfigs.SingleOrDefaultAsync();
-
-        if (globalConfig == null || !globalConfig.MonitoringFetchEnabled)
-        {
-            return;
-        }
 
         var orgConfigs = await db.OrganizationConfigs
-            .Where(c => c.MonitoringProviderSettings != null)
+            .Where(c => c.MonitoringProviderSettings != null && c.MonitoringFetchEnabled)
             .ToListAsync();
 
         foreach (var orgConfig in orgConfigs)

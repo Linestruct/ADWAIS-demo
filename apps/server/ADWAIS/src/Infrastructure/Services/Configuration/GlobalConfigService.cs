@@ -23,13 +23,11 @@ namespace Adwais.Infrastructure.Services;
 public class GlobalConfigService(
     IApplicationDbContext dbContext,
     ISystemEventService eventService,
-    IReportingRollupRefresher reportingRollupRefresher,
     IOrganizationConfigService organizationConfigService,
     ICurrentAccess currentAccess) : IGlobalConfigService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly ISystemEventService _eventService = eventService;
-    private readonly IReportingRollupRefresher _reportingRollupRefresher = reportingRollupRefresher;
     private readonly IOrganizationConfigService _organizationConfigService = organizationConfigService;
     private readonly ICurrentAccess _currentAccess = currentAccess;
 
@@ -38,12 +36,7 @@ public class GlobalConfigService(
         var config = await _dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
         if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
-        var orgId = _currentAccess.Scope?.OrganizationId;
-        var orgConfig = orgId is null
-            ? null
-            : await _organizationConfigService.GetConfigAsync(orgId.Value, ct);
-
-        return MapToDto(config, orgConfig);
+        return MapToDto(config);
     }
 
     public async Task<GlobalConfigResponseDto> UpdateConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct = default)
@@ -51,33 +44,12 @@ public class GlobalConfigService(
         var config = await _dbContext.GlobalConfigs.SingleOrDefaultAsync(ct);
         if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
-        if (request.OrderFetchEnabled.HasValue) config.OrderFetchEnabled = request.OrderFetchEnabled.Value;
-        if (request.MonitoringFetchEnabled.HasValue) config.MonitoringFetchEnabled = request.MonitoringFetchEnabled.Value;
         if (request.SystemEventRetentionDays.HasValue) config.SystemEventRetentionDays = request.SystemEventRetentionDays.Value;
         await _dbContext.SaveChangesAsync(ct);
 
-        var orgId = _currentAccess.Scope?.OrganizationId;
-        var previousOrgConfig = orgId is null
-            ? null
-            : await _organizationConfigService.GetConfigAsync(orgId.Value, ct);
-        var reportingTimeZoneChanged = request.ReportingTimeZoneId is not null
-            && !string.Equals(previousOrgConfig?.ReportingTimeZoneId, request.ReportingTimeZoneId.Trim(), StringComparison.Ordinal);
-
-        var orgConfig = await UpdateOrgConfigAsync(request, ct);
-
-        if (request.FeedFetchIntervalHours.HasValue)
-        {
-            RecurringJob.AddOrUpdate<FeedAggregationJob>(
-                "aggregate-intranet-feeds",
-                job => job.ExecuteAsync(CancellationToken.None),
-                Cron.HourInterval(request.FeedFetchIntervalHours.Value));
-        }
-
         await _eventService.LogAsync(nameof(GlobalConfigService), "Global configuration updated.");
-        // Once the config is persisted, finish rebuilding even if the HTTP request is cancelled.
-        if (reportingTimeZoneChanged) await _reportingRollupRefresher.RefreshAsync(CancellationToken.None);
 
-        return MapToDto(config, orgConfig);
+        return MapToDto(config);
     }
 
     public async Task TriggerFeedFetchAsync(CancellationToken ct = default)
@@ -222,62 +194,8 @@ public class GlobalConfigService(
         };
     }
 
-    private async Task<OrganizationConfigDto> UpdateOrgConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct)
-    {
-        var orgId = _currentAccess.Scope?.OrganizationId;
-        var hasOrgFields = request.MonitoringProvider is not null
-            || request.MonitoringProviderSettings is not null
-            || request.WeatherLocation is not null
-            || request.WeatherFetchIntervalMinutes.HasValue
-            || request.ReportingTimeZoneId is not null
-            || request.FeedFetchIntervalHours.HasValue;
-        if (!hasOrgFields)
-        {
-            if (orgId is null) return DefaultOrgConfig();
-            return await _organizationConfigService.GetConfigAsync(orgId.Value, ct) ?? DefaultOrgConfig();
-        }
-
-        if (orgId is null)
-            throw new InvalidOperationException("Organization-scoped settings require an organization scope.");
-
-        return await _organizationConfigService.UpdateConfigAsync(orgId.Value, new UpdateOrganizationConfigRequestDto(
-            WeatherLocation: request.WeatherLocation,
-            WeatherFetchIntervalMinutes: request.WeatherFetchIntervalMinutes,
-            ReportingTimeZoneId: request.ReportingTimeZoneId,
-            MonitoringProvider: request.MonitoringProvider,
-            MonitoringProviderSettings: request.MonitoringProviderSettings,
-            OrderFetchIntervalMinutes: null,
-            UptimeFetchIntervalMinutes: null,
-            LatencyFetchIntervalMinutes: null,
-            UserStatsFetchIntervalMinutes: null,
-            FeedFetchIntervalHours: request.FeedFetchIntervalHours), ct);
-    }
-
-    private GlobalConfigResponseDto MapToDto(GlobalConfig config, OrganizationConfigDto? orgConfig)
-    {
-        var org = orgConfig ?? DefaultOrgConfig();
-        return new GlobalConfigResponseDto(
-            config.Id,
-            config.LastPolled,
-            config.OrderFetchEnabled,
-            config.MonitoringFetchEnabled,
-            org.OrderFetchIntervalMinutes,
-            org.MonitoringProviderSettings,
-            org.MonitoringProviderConfiguredSecretKeys,
-            org.UptimeFetchIntervalMinutes,
-            org.LatencyFetchIntervalMinutes,
-            org.UserStatsFetchIntervalMinutes,
-            config.SystemEventRetentionDays,
-            org.MonitorsCount,
-            org.MonitorsLimit,
-            org.ActiveSubscription,
-            org.FeedFetchIntervalHours,
-            org.WeatherLocation,
-            org.WeatherFetchIntervalMinutes,
-            org.ReportingTimeZoneId,
-            org.MonitoringProvider
-        );
-    }
+    private GlobalConfigResponseDto MapToDto(GlobalConfig config) =>
+        new(config.Id, config.LastPolled, config.SystemEventRetentionDays);
 
     private static OrganizationConfigDto DefaultOrgConfig() => new(
         WeatherLocation: null,
@@ -286,6 +204,8 @@ public class GlobalConfigService(
         MonitoringProvider: IntegrationProviders.UptimeRobot,
         MonitoringProviderSettings: new Dictionary<string, string?>(),
         MonitoringProviderConfiguredSecretKeys: [],
+        OrderFetchEnabled: true,
+        MonitoringFetchEnabled: true,
         OrderFetchIntervalMinutes: 60,
         UptimeFetchIntervalMinutes: 60,
         LatencyFetchIntervalMinutes: 10,

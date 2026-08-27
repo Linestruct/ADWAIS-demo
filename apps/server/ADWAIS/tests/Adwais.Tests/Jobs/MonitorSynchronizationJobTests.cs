@@ -103,12 +103,6 @@ public class MonitorSynchronizationJobTests
         await SeedOrganizationAsync(_orgA, "prov-a", bucketA);
         await SeedOrganizationAsync(_orgB, "prov-b", bucketB);
 
-        await using (var db = new AnalyticsDbContext(_dbOptions))
-        {
-            db.GlobalConfigs.Add(new GlobalConfig { Id = 1, MonitoringFetchEnabled = true });
-            await db.SaveChangesAsync();
-        }
-
         _providerA.Setup(p => p.GetMonitorsAsync(_orgA, null))
             .ReturnsAsync(new List<MonitoringProviderMonitor> { RemoteMonitor("dup-1") });
         _providerB.Setup(p => p.GetMonitorsAsync(_orgB, null))
@@ -134,12 +128,6 @@ public class MonitorSynchronizationJobTests
         await SeedOrganizationAsync(_orgA, "prov-a", bucketA);
         await SeedOrganizationAsync(_orgB, "prov-b", bucketB);
 
-        await using (var db = new AnalyticsDbContext(_dbOptions))
-        {
-            db.GlobalConfigs.Add(new GlobalConfig { Id = 1, MonitoringFetchEnabled = true });
-            await db.SaveChangesAsync();
-        }
-
         _providerA.Setup(p => p.GetMonitorsAsync(_orgA, null))
             .ReturnsAsync(new List<MonitoringProviderMonitor> { RemoteMonitor("new-a") });
         _providerB.Setup(p => p.GetMonitorsAsync(_orgB, null))
@@ -159,12 +147,6 @@ public class MonitorSynchronizationJobTests
     {
         // Arrange
         await SeedOrganizationAsync(_orgA, "prov-a", bucketId: null);
-
-        await using (var db = new AnalyticsDbContext(_dbOptions))
-        {
-            db.GlobalConfigs.Add(new GlobalConfig { Id = 1, MonitoringFetchEnabled = true });
-            await db.SaveChangesAsync();
-        }
 
         _providerA.Setup(p => p.GetMonitorsAsync(_orgA, null))
             .ReturnsAsync(new List<MonitoringProviderMonitor> { RemoteMonitor("orphan-1") });

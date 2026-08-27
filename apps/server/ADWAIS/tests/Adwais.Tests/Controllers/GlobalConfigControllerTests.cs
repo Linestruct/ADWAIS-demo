@@ -33,22 +33,7 @@ public class GlobalConfigControllerTests
         var responseDto = new GlobalConfigResponseDto(
             Id: 1,
             LastPolled: null,
-            OrderFetchEnabled: true,
-            MonitoringFetchEnabled: true,
-            OrderFetchIntervalMinutes: 60,
-            MonitoringProviderSettings: new Dictionary<string, string?>(),
-            MonitoringProviderConfiguredSecretKeys: [],
-            UptimeFetchIntervalMinutes: 60,
-            LatencyFetchIntervalMinutes: 10,
-            UserStatsFetchIntervalMinutes: 60,
-            SystemEventRetentionDays: 2,
-            MonitorsCount: null,
-            MonitorsLimit: null,
-            ActiveSubscription: null,
-            FeedFetchIntervalHours: 2,
-            WeatherLocation: "Karlstad",
-            WeatherFetchIntervalMinutes: 15,
-            ReportingTimeZoneId: "Europe/Stockholm"
+            SystemEventRetentionDays: 2
         );
 
         _configServiceMock.Setup(s => s.GetConfigAsync(It.IsAny<CancellationToken>()))
@@ -60,7 +45,7 @@ public class GlobalConfigControllerTests
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returned = Assert.IsType<GlobalConfigResponseDto>(okResult.Value);
-        Assert.Equal(2, returned.FeedFetchIntervalHours);
+        Assert.Equal(2, returned.SystemEventRetentionDays);
         _configServiceMock.Verify(s => s.GetConfigAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -68,26 +53,11 @@ public class GlobalConfigControllerTests
     public async Task UpdateConfig_ShouldReturnOkWithUpdatedConfig()
     {
         // Arrange
-        var request = new UpdateGlobalConfigRequestDto(FeedFetchIntervalHours: 6);
+        var request = new UpdateGlobalConfigRequestDto(SystemEventRetentionDays: 30);
         var responseDto = new GlobalConfigResponseDto(
             Id: 1,
             LastPolled: null,
-            OrderFetchEnabled: true,
-            MonitoringFetchEnabled: true,
-            OrderFetchIntervalMinutes: 60,
-            MonitoringProviderSettings: new Dictionary<string, string?>(),
-            MonitoringProviderConfiguredSecretKeys: [],
-            UptimeFetchIntervalMinutes: 60,
-            LatencyFetchIntervalMinutes: 10,
-            UserStatsFetchIntervalMinutes: 60,
-            SystemEventRetentionDays: 2,
-            MonitorsCount: null,
-            MonitorsLimit: null,
-            ActiveSubscription: null,
-            FeedFetchIntervalHours: 6,
-            WeatherLocation: "Karlstad",
-            WeatherFetchIntervalMinutes: 15,
-            ReportingTimeZoneId: "Europe/Stockholm"
+            SystemEventRetentionDays: 30
         );
 
         _configServiceMock.Setup(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()))
@@ -99,7 +69,7 @@ public class GlobalConfigControllerTests
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returned = Assert.IsType<GlobalConfigResponseDto>(okResult.Value);
-        Assert.Equal(6, returned.FeedFetchIntervalHours);
+        Assert.Equal(30, returned.SystemEventRetentionDays);
         _configServiceMock.Verify(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()), Times.Once);
     }
 

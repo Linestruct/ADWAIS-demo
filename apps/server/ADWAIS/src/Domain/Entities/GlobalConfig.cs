@@ -8,7 +8,5 @@ public class GlobalConfig
 {
     public int Id { get; set; }
     public DateTimeOffset? LastPolled { get; set; }
-    public bool OrderFetchEnabled { get; set; }
-    public bool MonitoringFetchEnabled { get; set; }
     public int SystemEventRetentionDays { get; set; }
 }

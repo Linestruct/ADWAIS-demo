@@ -261,14 +261,10 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                     "\"id\" = 1"));
             entity.HasKey(x => x.Id);
             entity.Property(x => x.SystemEventRetentionDays).HasDefaultValue(2);
-            entity.Property(x => x.OrderFetchEnabled).HasDefaultValue(true);
-            entity.Property(x => x.MonitoringFetchEnabled).HasDefaultValue(true);
 
             entity.HasData(new GlobalConfig
             {
                 Id = 1,
-                OrderFetchEnabled = true,
-                MonitoringFetchEnabled = true,
                 SystemEventRetentionDays = 2
             });
         });
@@ -350,6 +346,8 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                     .HasConversion(new EncryptedStringConverter(dataProtectionProvider));
             }
             entity.Property(config => config.WeatherFetchIntervalMinutes).HasDefaultValue(15);
+            entity.Property(config => config.OrderFetchEnabled).HasDefaultValue(true);
+            entity.Property(config => config.MonitoringFetchEnabled).HasDefaultValue(true);
             entity.Property(config => config.OrderFetchIntervalMinutes).HasDefaultValue(60);
             entity.Property(config => config.UptimeFetchIntervalMinutes).HasDefaultValue(60);
             entity.Property(config => config.LatencyFetchIntervalMinutes).HasDefaultValue(10);

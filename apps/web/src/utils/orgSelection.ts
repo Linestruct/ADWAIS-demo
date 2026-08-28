@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export const ORG_SELECTION_KEY = 'adwais.selectedOrgId';
-export const ORG_SELECTION_RESET_EVENT = 'adwais:org-selection-reset';
+export const ORG_SELECTION_CHECK_EVENT = 'adwais:org-selection-check';
 
 export function readStoredOrgId(): string | null {
   try {
@@ -25,6 +25,11 @@ export function writeStoredOrgId(orgId: string | null): void {
   }
 }
 
-export function notifyOrgSelectionReset(): void {
-  window.dispatchEvent(new Event(ORG_SELECTION_RESET_EVENT));
+/**
+ * Signals that a request was denied while an organization selection is
+ * active. The selection hook re-validates the selection against the
+ * reachable organizations and resets it only if it is no longer valid.
+ */
+export function notifyOrgSelectionCheck(): void {
+  window.dispatchEvent(new Event(ORG_SELECTION_CHECK_EVENT));
 }

@@ -4,7 +4,7 @@
 
 import { isDemoMode, userManager } from './utils/oidcConfig';
 import { removeKioskToken } from './utils/auth';
-import { readStoredOrgId, writeStoredOrgId, notifyOrgSelectionReset } from './utils/orgSelection';
+import { readStoredOrgId, notifyOrgSelectionCheck } from './utils/orgSelection';
 
 export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Headers> {
   const headers = new Headers(customHeaders);
@@ -25,7 +25,7 @@ export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Heade
 
 function withOrgSelectionHeader(headers: Headers, url: string): Headers {
   if (headers.has('X-ADWAIS-ORG-ID')) return headers;
-  if (url.includes('/api/users/me') || url.includes('/api/organizations')) return headers;
+  if (url.includes('/api/organizations')) return headers;
   if (localStorage.getItem('kiosk_token')) return headers;
 
   const orgId = readStoredOrgId();
@@ -37,8 +37,7 @@ function withOrgSelectionHeader(headers: Headers, url: string): Headers {
 
 function handleOrgSelectionRevocation(status: number): void {
   if (status === 403 && readStoredOrgId()) {
-    writeStoredOrgId(null);
-    notifyOrgSelectionReset();
+    notifyOrgSelectionCheck();
   }
 }
 

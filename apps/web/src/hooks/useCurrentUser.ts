@@ -8,6 +8,7 @@ import { AuthContext } from 'react-oidc-context';
 import { getKioskToken } from '../utils/auth';
 import { parseJwt } from '../utils/jwt';
 import { apiFetch } from '../apiClient';
+import { useOrgSelection } from './useOrgSelection';
 
 export interface UserProfile {
   id: string;
@@ -50,6 +51,7 @@ export function useCurrentUser() {
   const kioskToken = getKioskToken();
   const auth = useContext(AuthContext);
   const hasOidcUser = auth?.isAuthenticated === true;
+  const { selectedOrgId } = useOrgSelection();
 
   const kioskUser = kioskToken ? parseJwt(kioskToken) : null;
   const kioskRole = kioskUser?.role as 'Admin' | 'Employee' | 'Viewer' | undefined;
@@ -57,7 +59,7 @@ export function useCurrentUser() {
   const kioskIsPlatformAdmin = kioskUser?.is_platform_admin === 'true';
 
   const oidcQuery = useQuery<UserProfile>({
-    queryKey: ['current-user'],
+    queryKey: ['current-user', selectedOrgId],
     queryFn: () => apiFetch<UserProfile>('/api/users/me'),
     enabled: hasOidcUser,
     retry: false,

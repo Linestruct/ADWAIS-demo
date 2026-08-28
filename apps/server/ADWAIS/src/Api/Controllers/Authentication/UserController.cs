@@ -47,7 +47,12 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             if (user != null)
             {
                 var effectiveRole = _currentAccess.Scope?.Roles.FirstOrDefault() ?? UserRole.Employee;
-                return Ok(await MapMeAsync(user.Id, user.Name, user.Email, effectiveRole, ct));
+                var memberships = await _dbContext.UserAccesses
+                    .AsNoTracking()
+                    .Where(access => access.UserId == user.Id)
+                    .ToListAsync(ct);
+                var isPlatformAdmin = AccessScopeResolver.ResolveAllowed(memberships).IsPlatformAdmin;
+                return Ok(await MapMeAsync(user.Id, user.Name, user.Email, effectiveRole, isPlatformAdmin, ct));
             }
         }
 
@@ -63,14 +68,16 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
         if (!kioskRole.HasValue) return Unauthorized("User context is invalid or not registered.");
 
         var name = User.Identity?.Name ?? User.FindFirst("name")?.Value ?? "Kiosk Device";
-        return Ok(await MapMeAsync(Guid.Empty, name, null, kioskRole.Value, ct));
+        return Ok(await MapMeAsync(Guid.Empty, name, null, kioskRole.Value, false, ct));
     }
 
     /// <summary>
     /// Builds the profile payload with the effective scope attached. The scope
     /// fields are the single source the frontend uses for role and visibility.
+    /// The platform flag comes from the user's memberships, not the per-request
+    /// scope, so wearing an organization never strips platform status.
     /// </summary>
-    private async Task<UserResponseDto> MapMeAsync(Guid id, string name, string? email, UserRole role, CancellationToken ct)
+    private async Task<UserResponseDto> MapMeAsync(Guid id, string name, string? email, UserRole role, bool isPlatformAdmin, CancellationToken ct)
     {
         var scope = _currentAccess.Scope;
         string? organizationName = null;
@@ -91,7 +98,7 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             scope?.OrganizationId,
             organizationName,
             scope?.TenantId,
-            scope?.IsPlatformAdmin == true);
+            isPlatformAdmin);
     }
 
     [HttpGet]

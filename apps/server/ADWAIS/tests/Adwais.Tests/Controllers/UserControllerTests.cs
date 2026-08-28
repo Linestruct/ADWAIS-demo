@@ -320,6 +320,13 @@ public class UserControllerTests
         var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Platform User" };
         _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
+        _dbContext.UserAccesses.Add(new UserAccess
+        {
+            UserId = user.Id,
+            OrganizationId = null,
+            Role = UserRole.Admin
+        });
+        await _dbContext.SaveChangesAsync();
         _accessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(null, null, [UserRole.Admin]));
 
@@ -335,6 +342,40 @@ public class UserControllerTests
         Assert.True(returnedUser.IsPlatformAdmin);
         Assert.Null(returnedUser.OrganizationId);
         Assert.Null(returnedUser.OrganizationName);
+    }
+
+    [Fact]
+    public async Task GetMe_PlatformAdminWearingAnOrganization_KeepsPlatformStatus()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var subjectId = "auth0|wearing-user";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Wearing User" };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _dbContext.UserAccesses.Add(new UserAccess
+        {
+            UserId = user.Id,
+            OrganizationId = null,
+            Role = UserRole.Admin
+        });
+        _dbContext.Organizations.Add(new Organization { Id = orgId, Name = "Worn Org" });
+        await _dbContext.SaveChangesAsync();
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.True(returnedUser.IsPlatformAdmin);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Equal("Worn Org", returnedUser.OrganizationName);
     }
 
     [Fact]

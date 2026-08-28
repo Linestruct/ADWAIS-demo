@@ -4,7 +4,7 @@
 
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { apiFetch, getAuthHeaders } from './apiClient';
-import { ORG_SELECTION_KEY, ORG_SELECTION_RESET_EVENT } from './utils/orgSelection';
+import { ORG_SELECTION_CHECK_EVENT } from './utils/orgSelection';
 import { userManager } from './utils/oidcConfig';
 import type { User } from 'oidc-client-ts';
 
@@ -117,16 +117,22 @@ test('apiFetch attaches the stored organization as X-ADWAIS-ORG-ID', async () =>
   expect(headers.get('X-ADWAIS-ORG-ID')).toBe('org-1');
 });
 
-test('apiFetch never scopes the identity or organization list endpoints', async () => {
+test('apiFetch scopes the identity endpoint with the selected organization', async () => {
   vi.mocked(sessionStorage.getItem).mockReturnValue('org-1');
 
   await apiFetch('http://test.local/api/users/me');
+
+  const headers = vi.mocked(fetch).mock.calls[0][1]?.headers as Headers;
+  expect(headers.get('X-ADWAIS-ORG-ID')).toBe('org-1');
+});
+
+test('apiFetch never scopes the organization list endpoint', async () => {
+  vi.mocked(sessionStorage.getItem).mockReturnValue('org-1');
+
   await apiFetch('http://test.local/api/organizations');
 
-  for (const call of vi.mocked(fetch).mock.calls) {
-    const headers = call[1]?.headers as Headers;
-    expect(headers.get('X-ADWAIS-ORG-ID')).toBeNull();
-  }
+  const headers = vi.mocked(fetch).mock.calls[0][1]?.headers as Headers;
+  expect(headers.get('X-ADWAIS-ORG-ID')).toBeNull();
 });
 
 test('apiFetch does not scope requests made with a kiosk token', async () => {
@@ -139,9 +145,9 @@ test('apiFetch does not scope requests made with a kiosk token', async () => {
   expect(headers.get('X-ADWAIS-ORG-ID')).toBeNull();
 });
 
-test('apiFetch clears a revoked organization selection on 403 and notifies the app', async () => {
-  const resetListener = vi.fn();
-  window.addEventListener(ORG_SELECTION_RESET_EVENT, resetListener);
+test('apiFetch asks the app to re-validate the selection on 403 instead of clearing it', async () => {
+  const checkListener = vi.fn();
+  window.addEventListener(ORG_SELECTION_CHECK_EVENT, checkListener);
   vi.mocked(sessionStorage.getItem).mockReturnValue('org-1');
 
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -152,9 +158,9 @@ test('apiFetch clears a revoked organization selection on 403 and notifies the a
 
   await expect(apiFetch('http://test.local/api/tenants')).rejects.toThrow();
 
-  expect(sessionStorage.removeItem).toHaveBeenCalledWith(ORG_SELECTION_KEY);
-  expect(resetListener).toHaveBeenCalledOnce();
-  window.removeEventListener(ORG_SELECTION_RESET_EVENT, resetListener);
+  expect(sessionStorage.removeItem).not.toHaveBeenCalled();
+  expect(checkListener).toHaveBeenCalledOnce();
+  window.removeEventListener(ORG_SELECTION_CHECK_EVENT, checkListener);
 });
 
 test('apiFetch leaves the selection alone on 403 when no organization was selected', async () => {

@@ -33,6 +33,15 @@ vi.mock('../apiClient', () => ({
   apiFetch: (url: string) => mockApiFetch(url),
 }));
 
+const selectionState = vi.hoisted(() => ({ selectedOrgId: null as string | null }));
+vi.mock('./useOrgSelection', () => ({
+  useOrgSelection: () => ({
+    selectedOrgId: selectionState.selectedOrgId,
+    setSelectedOrgId: vi.fn(),
+    organizations: [],
+  }),
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -46,6 +55,7 @@ describe('useCurrentUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockKioskToken.mockReturnValue(null);
+    selectionState.selectedOrgId = null;
   });
 
   it('derives an org scope from the profile for OIDC users', async () => {
@@ -84,6 +94,36 @@ describe('useCurrentUser', () => {
 
     await waitFor(() => expect(result.current.scope.isPlatformAdmin).toBe(true));
     expect(result.current.scope.organizationId).toBeNull();
+  });
+
+  it('refetches the identity when the selected organization changes', async () => {
+    mockApiFetch.mockResolvedValue({
+      id: 'u3',
+      name: 'Switcher',
+      role: 'Viewer',
+      organizationId: 'org-1',
+      organizationName: 'Acme',
+      isPlatformAdmin: false,
+    } satisfies UserProfile);
+
+    const { result, rerender } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.scope.organizationId).toBe('org-1'));
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+
+    selectionState.selectedOrgId = 'org-2';
+    mockApiFetch.mockResolvedValue({
+      id: 'u3',
+      name: 'Switcher',
+      role: 'Admin',
+      organizationId: 'org-2',
+      organizationName: 'Beta',
+      isPlatformAdmin: false,
+    } satisfies UserProfile);
+    rerender();
+
+    await waitFor(() => expect(result.current.scope.organizationId).toBe('org-2'));
+    expect(result.current.scope.isAdmin).toBe(true);
   });
 
   it('derives the kiosk scope from token claims', () => {

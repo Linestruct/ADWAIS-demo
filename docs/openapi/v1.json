@@ -75,7 +75,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Triggers a refresh of the financial materialized views.",
+        "summary": "Triggers the coalesced materialized view refresh job.\r\nThe job only rebuilds the views when an organization has pending changes.",
         "responses": {
           "200": {
             "description": "OK"
@@ -88,7 +88,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Triggers a refresh of all monitoring materialized views (latency and availability).",
+        "summary": "Triggers the coalesced materialized view refresh job.\r\nThe job only rebuilds the views when an organization has pending changes.",
         "responses": {
           "200": {
             "description": "OK"
@@ -4674,6 +4674,10 @@
           "systemEventRetentionDays": {
             "type": "integer",
             "format": "int32"
+          },
+          "matViewRefreshIntervalMinutes": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -6179,6 +6183,11 @@
         "type": "object",
         "properties": {
           "systemEventRetentionDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "matViewRefreshIntervalMinutes": {
             "type": "integer",
             "format": "int32",
             "nullable": true

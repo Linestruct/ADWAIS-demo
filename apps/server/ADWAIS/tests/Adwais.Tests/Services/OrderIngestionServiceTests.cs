@@ -36,12 +36,14 @@ public class OrderIngestionServiceTests
         var orderSource = new LitiumOrderSource(httpClient);
         var loggerMock = new Mock<ILogger<OrderIngestionService>>();
         var eventServiceMock = new Mock<ISystemEventService>();
+        var trackerMock = new Mock<IViewRefreshTracker>();
 
         var service = new OrderIngestionService(
             dbContextFactoryMock.Object,
             new[] { orderSource },
             loggerMock.Object,
-            eventServiceMock.Object);
+            eventServiceMock.Object,
+            trackerMock.Object);
 
         return (service, httpHandlerMock, dbContext);
     }
@@ -67,7 +69,8 @@ public class OrderIngestionServiceTests
             dbContextFactoryMock.Object,
             new[] { orderSource.Object },
             loggerMock.Object,
-            eventServiceMock.Object);
+            eventServiceMock.Object,
+            new Mock<IViewRefreshTracker>().Object);
 
         var tenantId = Guid.NewGuid();
         await using (var dbContext = new AnalyticsDbContext(options))
@@ -294,5 +297,115 @@ public class OrderIngestionServiceTests
         Assert.Equal("https://example.com", source.GetPublicSettings(cleared)["endpointUrl"]);
         Assert.DoesNotContain("authorization", source.GetConfiguredSecretKeys(cleared));
         Assert.False(source.IsConfigured(cleared));
+    }
+
+    [Fact]
+    public async Task ExecuteIngestionAsync_WhenOrdersIngested_MarksOrgViewsDirty()
+    {
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var dbContextFactoryMock = new Mock<IDbContextFactory<AnalyticsDbContext>>();
+        dbContextFactoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new AnalyticsDbContext(options));
+
+        var orderSource = new Mock<IOrderSource>();
+        orderSource.SetupGet(source => source.Provider).Returns("litium");
+        orderSource.Setup(source => source.IsConfigured(It.IsAny<string?>())).Returns(true);
+        orderSource.Setup(source => source.FetchOrdersAsync(It.IsAny<string?>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new OrderSourceOrder(
+                    ExternalId: Guid.NewGuid().ToString(),
+                    OrderNumber: "ORD-1",
+                    CreatedDate: new DateTimeOffset(2026, 1, 2, 0, 0, 0, TimeSpan.Zero),
+                    State: Adwais.Domain.Enums.OrderState.Confirmed,
+                    TotalValueIncludingVat: 100m,
+                    TotalValueExcludingVat: 84m,
+                    Currency: "SEK")
+            });
+
+        var loggerMock = new Mock<ILogger<OrderIngestionService>>();
+        var eventServiceMock = new Mock<ISystemEventService>();
+        var trackerMock = new Mock<IViewRefreshTracker>();
+        var service = new OrderIngestionService(
+            dbContextFactoryMock.Object,
+            new[] { orderSource.Object },
+            loggerMock.Object,
+            eventServiceMock.Object,
+            trackerMock.Object);
+
+        var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        await using (var dbContext = new AnalyticsDbContext(options))
+        {
+            dbContext.Tenants.Add(new Adwais.Domain.Entities.Tenant
+            {
+                Id = tenantId,
+                Name = "Test Tenant",
+                OrganizationId = orgId
+            });
+            await dbContext.SaveChangesAsync();
+        }
+
+        var startDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var endDate = new DateTimeOffset(2026, 1, 31, 0, 0, 0, TimeSpan.Zero);
+
+        var ingested = await service.ExecuteIngestionAsync(tenantId, startDate, endDate);
+
+        Assert.Equal(1, ingested);
+        trackerMock.Verify(
+            tracker => tracker.MarkDirtyAsync(orgId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteIngestionAsync_WhenNothingIngested_DoesNotMarkDirty()
+    {
+        var options = new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var dbContextFactoryMock = new Mock<IDbContextFactory<AnalyticsDbContext>>();
+        dbContextFactoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new AnalyticsDbContext(options));
+
+        var orderSource = new Mock<IOrderSource>();
+        orderSource.SetupGet(source => source.Provider).Returns("litium");
+        orderSource.Setup(source => source.IsConfigured(It.IsAny<string?>())).Returns(true);
+        orderSource.Setup(source => source.FetchOrdersAsync(It.IsAny<string?>(), It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<OrderSourceOrder>());
+
+        var loggerMock = new Mock<ILogger<OrderIngestionService>>();
+        var eventServiceMock = new Mock<ISystemEventService>();
+        var trackerMock = new Mock<IViewRefreshTracker>();
+        var service = new OrderIngestionService(
+            dbContextFactoryMock.Object,
+            new[] { orderSource.Object },
+            loggerMock.Object,
+            eventServiceMock.Object,
+            trackerMock.Object);
+
+        var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        await using (var dbContext = new AnalyticsDbContext(options))
+        {
+            dbContext.Tenants.Add(new Adwais.Domain.Entities.Tenant
+            {
+                Id = tenantId,
+                Name = "Test Tenant",
+                OrganizationId = orgId
+            });
+            await dbContext.SaveChangesAsync();
+        }
+
+        var startDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var endDate = new DateTimeOffset(2026, 1, 31, 0, 0, 0, TimeSpan.Zero);
+
+        var ingested = await service.ExecuteIngestionAsync(tenantId, startDate, endDate);
+
+        Assert.Equal(0, ingested);
+        trackerMock.Verify(
+            tracker => tracker.MarkDirtyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

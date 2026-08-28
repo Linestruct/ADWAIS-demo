@@ -18,7 +18,8 @@ public class UpdateMonitorLatencyJob(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
     IEnumerable<IMonitoringProvider> monitoringProviders,
     IMemoryCache cache,
-    ISystemEventService eventService)
+    ISystemEventService eventService,
+    IViewRefreshTracker viewRefreshTracker)
 {
     public async Task ExecuteAsync(int monitorId, DateTimeOffset startDate, DateTimeOffset endDate)
     {
@@ -69,6 +70,10 @@ public class UpdateMonitorLatencyJob(
             monitor.LastLatencyUpdate = endDate;
             monitor.LastSyncError = null;
             await dbContext.SaveChangesAsync();
+            if (responseTime.Average.HasValue)
+            {
+                await viewRefreshTracker.MarkDirtyAsync(monitor.Tenant!.OrganizationId, CancellationToken.None);
+            }
         }
         catch (Exception ex)
         {

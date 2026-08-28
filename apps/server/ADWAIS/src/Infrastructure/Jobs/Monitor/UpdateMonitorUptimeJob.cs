@@ -15,7 +15,8 @@ namespace Adwais.Infrastructure.Jobs.Monitor;
 public class UpdateMonitorUptimeJob(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
     IEnumerable<IMonitoringProvider> monitoringProviders,
-    ISystemEventService eventService)
+    ISystemEventService eventService,
+    IViewRefreshTracker viewRefreshTracker)
 {
     public async Task ExecuteAsync(int monitorId, DateTimeOffset startDate, DateTimeOffset endDate)
     {
@@ -70,6 +71,7 @@ public class UpdateMonitorUptimeJob(
         
             currentStep = "Saving uptime and availability to database";
             await dbContext.SaveChangesAsync();
+            await viewRefreshTracker.MarkDirtyAsync(monitor.Tenant!.OrganizationId, CancellationToken.None);
         }
         catch (Exception ex)
         {

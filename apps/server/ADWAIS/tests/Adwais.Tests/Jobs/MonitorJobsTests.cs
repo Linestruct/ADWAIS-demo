@@ -91,7 +91,8 @@ public class MonitorJobsTests
             _dbContextFactoryMock.Object,
             new[] { _uptimeRobotServiceMock.Object },
             _cache,
-            _eventServiceMock.Object
+            _eventServiceMock.Object,
+            new Mock<IViewRefreshTracker>().Object
         );
 
         // Act
@@ -134,7 +135,8 @@ public class MonitorJobsTests
             _dbContextFactoryMock.Object,
             new[] { _uptimeRobotServiceMock.Object },
             _cache,
-            _eventServiceMock.Object);
+            _eventServiceMock.Object,
+            new Mock<IViewRefreshTracker>().Object);
 
         var now = DateTimeOffset.UtcNow;
         await job.ExecuteAsync(-1, now.AddHours(-1), now);
@@ -172,7 +174,8 @@ public class MonitorJobsTests
             _dbContextFactoryMock.Object,
             new[] { _uptimeRobotServiceMock.Object },
             _cache,
-            _eventServiceMock.Object
+            _eventServiceMock.Object,
+            new Mock<IViewRefreshTracker>().Object
         );
 
         // Act & Assert

@@ -175,7 +175,7 @@ public static class AuthenticationExtensions
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
                 if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
-                policy.RequireRole("Admin");
+                policy.RequireRole("Admin", "PlatformAdmin");
             });
 
             options.AddPolicy("StaffAccess", policy =>
@@ -183,7 +183,7 @@ public static class AuthenticationExtensions
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
                 if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
-                policy.RequireRole("Admin", "Employee");
+                policy.RequireRole("Admin", "Employee", "PlatformAdmin");
             });
 
             options.AddPolicy("KioskOrStaffAccess", policy =>
@@ -191,7 +191,7 @@ public static class AuthenticationExtensions
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
                 if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
-                policy.RequireRole("Admin", "Employee", "Viewer");
+                policy.RequireRole("Admin", "Employee", "Viewer", "PlatformAdmin");
             });
         });
 

@@ -2,13 +2,16 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using Adwais.Application.Interfaces;
 using Adwais.Infrastructure.Persistence;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Jobs.MaterializedViews;
 
-public class RefreshFinancialMaterializedViewJob(IDbContextFactory<AnalyticsDbContext> dbContextFactory)
+public class RefreshFinancialMaterializedViewJob(
+    IDbContextFactory<AnalyticsDbContext> dbContextFactory,
+    IViewRefreshTracker viewRefreshTracker)
 {
     public async Task ExecuteAsync()
     {
@@ -24,6 +27,9 @@ public class RefreshFinancialMaterializedViewJob(IDbContextFactory<AnalyticsDbCo
             "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_tenant_rollup;", ct);
         await dbContext.Database.ExecuteSqlRawAsync(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_global_rollup;", ct);
+
+        // The rebuild incorporated all pending changes; drop the pending marks.
+        await viewRefreshTracker.ClearDirtyAsync(ct);
     }
 }
 

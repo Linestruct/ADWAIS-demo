@@ -41,16 +41,6 @@ export function GlobalConfigurationForm({ config, updateConfig, disabled }: Glob
               validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
               onCommit={(val) => updateConfig.mutateAsync({ systemEventRetentionDays: val })}
             />
-            <InlineEditField
-              label="Materialized View Refresh Interval (Minutes)"
-              value={config.matViewRefreshIntervalMinutes ?? 60}
-              kind="number"
-              required
-              requirement="At least 5"
-              disabled={disabled}
-              validate={val => val >= 5 ? undefined : 'Enter a value of at least 5.'}
-              onCommit={(val) => updateConfig.mutateAsync({ matViewRefreshIntervalMinutes: val })}
-            />
           </div>
         ) : (
           <FormSkeleton>

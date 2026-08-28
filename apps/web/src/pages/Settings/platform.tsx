@@ -13,8 +13,8 @@ export function PlatformConfigurationView() {
     const { role } = useCurrentUser();
     const disabled = !isAdminRole(role);
 
-return (
-        <div className="flex flex-col gap-4 contained:h-full contained:min-h-0">
+    return (
+        <div className="grid grid-cols-1 landscape-contained:grid-cols-2 gap-4 contained:h-full contained:min-h-0">
             <GlobalConfigurationForm config={config} updateConfig={updateConfig} disabled={disabled} />
         </div>
     );

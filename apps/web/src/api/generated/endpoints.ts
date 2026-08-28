@@ -542,8 +542,7 @@ export const getPostApiJobTriggerRefreshHistoricOrderDataUrl = () => {
 }
 
 /**
- * @summary Triggers the coalesced materialized view refresh job.
-The job only rebuilds the views when an organization has pending changes.
+ * @summary Triggers a refresh of the financial materialized views.
  */
 export const postApiJobTriggerRefreshHistoricOrderData = async ( options?: RequestInit): Promise<postApiJobTriggerRefreshHistoricOrderDataResponse> => {
 
@@ -591,8 +590,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostApiJobTriggerRefreshHistoricOrderDataMutationError = unknown
 
     /**
- * @summary Triggers the coalesced materialized view refresh job.
-The job only rebuilds the views when an organization has pending changes.
+ * @summary Triggers a refresh of the financial materialized views.
  */
 export const usePostApiJobTriggerRefreshHistoricOrderData = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiJobTriggerRefreshHistoricOrderData>>, TError,void, TContext>, request?: SecondParameter<typeof customClient>}
@@ -626,8 +624,7 @@ export const getPostApiJobTriggerRefreshMonitoringDataUrl = () => {
 }
 
 /**
- * @summary Triggers the coalesced materialized view refresh job.
-The job only rebuilds the views when an organization has pending changes.
+ * @summary Triggers a refresh of all monitoring materialized views (latency and availability).
  */
 export const postApiJobTriggerRefreshMonitoringData = async ( options?: RequestInit): Promise<postApiJobTriggerRefreshMonitoringDataResponse> => {
 
@@ -675,8 +672,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostApiJobTriggerRefreshMonitoringDataMutationError = unknown
 
     /**
- * @summary Triggers the coalesced materialized view refresh job.
-The job only rebuilds the views when an organization has pending changes.
+ * @summary Triggers a refresh of all monitoring materialized views (latency and availability).
  */
 export const usePostApiJobTriggerRefreshMonitoringData = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiJobTriggerRefreshMonitoringData>>, TError,void, TContext>, request?: SecondParameter<typeof customClient>}

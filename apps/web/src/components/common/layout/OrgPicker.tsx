@@ -4,7 +4,7 @@
 
 import { useIsMutating } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
-import { FormField } from '../ui/FormField';
+import { Select } from '../ui/Select';
 import { useOrgSelection } from '../../../hooks/useOrgSelection';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
 
@@ -27,23 +27,21 @@ export function OrgPicker() {
   return (
     <div className="flex shrink-0 items-center gap-2">
       <Building2 size={16} className="text-white/70" aria-hidden="true" />
-      <FormField
-        as="select"
-        label="Active organization"
-        hideLabel
+      <Select
+        aria-label="Active organization"
         value={current}
         onChange={(e) => setSelectedOrgId(e.target.value === PLATFORM_OVERVIEW ? null : e.target.value)}
         disabled={isMutating > 0}
-        variant="outlined"
-        density="compact"
-        containerClassName="min-w-[140px]"
+        variant="filled"
+        size="md"
+        className="min-h-11 min-w-[140px]"
       >
         {options.map(option => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
-      </FormField>
+      </Select>
     </div>
   );
 }

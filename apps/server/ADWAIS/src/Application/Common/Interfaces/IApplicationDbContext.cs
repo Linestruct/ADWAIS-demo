@@ -38,6 +38,7 @@ public interface IApplicationDbContext : IDisposable, IAsyncDisposable
     DbSet<FeedSource> FeedSources { get; }
     DbSet<FeedItem> FeedItems { get; }
     DbSet<SystemEvent> SystemEvents { get; }
+    DbSet<MaterializedViewDirty> MaterializedViewDirty { get; }
     DbSet<Organization> Organizations { get; }
     DbSet<UserAccess> UserAccesses { get; }
 

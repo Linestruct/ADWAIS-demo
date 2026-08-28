@@ -8,6 +8,7 @@ using Adwais.Application.Services;
 using Adwais.Infrastructure.Caching;
 using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Services;
+using Adwais.Infrastructure.Services.Reporting;
 using Adwais.Infrastructure.Jobs.MaterializedViews;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -38,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IGlobalConfigService, GlobalConfigService>();
         services.AddScoped<IOrganizationConfigService, OrganizationConfigService>();
         services.AddScoped<IReportingCalendar, ReportingCalendar>();
+        services.AddScoped<IViewRefreshTracker, ViewRefreshTracker>();
         services.AddScoped<RefreshFinancialMaterializedViewJob>();
         services.AddScoped<RefreshMonitoringMaterializedViewJob>();
         services.AddScoped<IReportingRollupRefresher, ReportingRollupRefresher>();

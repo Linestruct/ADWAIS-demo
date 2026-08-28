@@ -45,6 +45,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     public DbSet<DailyAvailabilityGlobalRollup> DailyAvailabilityGlobalRollups => Set<DailyAvailabilityGlobalRollup>();
 
     public DbSet<SystemEvent> SystemEvents => Set<SystemEvent>();
+    public DbSet<MaterializedViewDirty> MaterializedViewDirty => Set<MaterializedViewDirty>();
     public DbSet<BulletinPost> BulletinPosts => Set<BulletinPost>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<CalendarSubscription> CalendarSubscriptions => Set<CalendarSubscription>();
@@ -253,6 +254,18 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.HasKey(r => new { r.Date, r.OrganizationId });
         });
         
+        // MaterializedViewDirty
+        modelBuilder.Entity<MaterializedViewDirty>(entity =>
+        {
+            entity.ToTable("materialized_view_dirty");
+            entity.HasKey(e => e.OrganizationId);
+            entity.Property(e => e.MarkedAt).IsRequired();
+            entity.HasOne<Organization>()
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // GlobalConfig
         modelBuilder.Entity<GlobalConfig>(entity => 
         {

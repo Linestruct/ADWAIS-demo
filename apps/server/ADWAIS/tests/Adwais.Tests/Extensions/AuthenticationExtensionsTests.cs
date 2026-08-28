@@ -80,7 +80,7 @@ public class AuthenticationExtensionsTests
         Assert.Contains(JwtBearerDefaults.AuthenticationScheme, staffPolicy.AuthenticationSchemes);
         Assert.Contains("KioskJwt", staffPolicy.AuthenticationSchemes);
         var staffRoles = Assert.Single(staffPolicy.Requirements.OfType<Microsoft.AspNetCore.Authorization.Infrastructure.RolesAuthorizationRequirement>());
-        Assert.Equal(new[] { "Admin", "Employee" }, staffRoles.AllowedRoles.Order().ToArray());
+        Assert.Equal(new[] { "Admin", "Employee", "PlatformAdmin" }, staffRoles.AllowedRoles.Order().ToArray());
 
         var kioskToken = new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(issuer: "ADWAIS"));
         var kioskMessage = new MessageReceivedContext(

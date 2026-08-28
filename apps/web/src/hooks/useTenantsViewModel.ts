@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useState, useMemo } from 'react';
+import { isAdminRole } from '../utils/roles';
 import { useTenantsQuery, useCreateTenantMutation, useDeleteTenantMutation } from './useTenantQueries';
 import { useMonitorsQuery, useUnassignedMonitorsQuery, useCreateMonitorMutation, useDeleteMonitorMutation, useControlMonitorMutation, useAssignMonitorMutation, useUnassignMonitorMutation } from './useMonitorQueries';
 import { useCurrentUser } from './useCurrentUser';
@@ -11,7 +12,7 @@ import { DEFAULT_UPTIME_MONITOR_TYPE } from '../utils/monitorTypeHelper';
 
 export function useTenantsViewModel() {
     const { role } = useCurrentUser();
-    const isAdmin = role === 'Admin';
+    const isAdmin = isAdminRole(role);
 
     const [isCreatingTenant, setIsCreatingTenant] = useState(false);
     const [newTenantDraft, setNewTenantDraft] = useState({ name: '', endpointUrl: '', imageUrl: '', authorization: '' });

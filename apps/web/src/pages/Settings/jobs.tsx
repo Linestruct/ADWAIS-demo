@@ -11,6 +11,7 @@ import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { ConsolePanel } from '../../components/common/layout/ConsolePanel';
 import { ConsoleLoadingRows } from '../../components/common/ui/ConsoleLoadingRows';
 import { useCurrentUser, type UserProfile } from '../../hooks/useCurrentUser';
+import { isAdminRole } from '../../utils/roles';
 import { formatDateTime } from '../../utils/dateTime';
 
 type ManualJobAccess = 'admin' | 'staff';
@@ -35,7 +36,7 @@ const manualJobs = [
 ] satisfies readonly ManualJob[];
 
 function canTriggerManualJob(role: UserProfile['role'] | null, access: ManualJobAccess) {
-    return role === 'Admin' || (role === 'Employee' && access === 'staff');
+    return isAdminRole(role) || (role === 'Employee' && access === 'staff');
 }
 
 export function BackgroundJobsView() {
@@ -97,7 +98,7 @@ export function BackgroundJobsView() {
                     isLoading={tenantsQuery.isLoading}
                     isError={tenantsQuery.isError}
                     triggerBackfill={triggerBackfill}
-                    disabled={role !== 'Admin'}
+                    disabled={!isAdminRole(role)}
                 />
             </div>
 

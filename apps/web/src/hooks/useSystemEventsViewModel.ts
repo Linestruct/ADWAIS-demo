@@ -5,6 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../apiClient';
 import { useCurrentUser } from './useCurrentUser';
+import { isAdminRole } from '../utils/roles';
 import type { SystemHealthDto } from '@types';
 
 export interface SystemEvent {
@@ -25,7 +26,7 @@ export interface SystemEvent {
 export function useSystemEventsViewModel() {
     const queryClient = useQueryClient();
     const { role } = useCurrentUser();
-    const isAdmin = role === 'Admin';
+    const isAdmin = isAdminRole(role);
 
     const healthQuery = useQuery<SystemHealthDto>({
         queryKey: ['system-health'],

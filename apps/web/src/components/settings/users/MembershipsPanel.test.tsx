@@ -81,6 +81,18 @@ describe('MembershipsPanel', () => {
     expect(screen.queryByRole('option', { name: /Platform \(no organization\)/ })).not.toBeInTheDocument();
   });
 
+  it('forces the platform admin role when adding a platform membership', async () => {
+    render(<MembershipsPanel userId="user-1" isAdmin isPlatformAdmin />);
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Organization' }));
+    fireEvent.click(screen.getByRole('option', { name: /Platform \(no organization\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Membership' }));
+
+    await waitFor(() =>
+      expect(state.add).toHaveBeenCalledWith({ organizationId: null, role: 'PlatformAdmin' }),
+    );
+  });
+
   it('removes a membership row', async () => {
     render(<MembershipsPanel userId="user-1" isAdmin isPlatformAdmin />);
 

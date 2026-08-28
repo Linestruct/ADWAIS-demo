@@ -17,6 +17,7 @@ import {
   useRegenerateCalendarTokenMutation
 } from '../../hooks/useCalendarQueries';
 import { toast } from 'sonner';
+import { isStaffRole, isAdminRole } from '../../utils/roles';
 import { EventType, RecurrenceType } from '@types';
 import type { CalendarEventDto } from '@types';
 import { getMockCalendarEvents } from './calendar/mockEvents';
@@ -89,10 +90,10 @@ export function Calendar() {
 
   // Queries
   const { data: meData } = useGetApiUsersMe();
-  const userRole = meData?.data?.role;
-  const isKioskDevice = !!getKioskToken() && userRole !== 'Admin' && userRole !== 'Employee';
-  const isWriter = !isKioskDevice && (userRole === 'Admin' || userRole === 'Employee');
-  const isAdmin = !isKioskDevice && userRole === 'Admin';
+  const userRole = (meData?.data?.role as string | null | undefined) ?? null;
+  const isKioskDevice = !!getKioskToken() && !isStaffRole(userRole);
+  const isWriter = !isKioskDevice && isStaffRole(userRole);
+  const isAdmin = !isKioskDevice && isAdminRole(userRole);
 
   // Fetch a larger window to support month/week view offsets cleanly
   const rangeBoundaries = useMemo(() => {

@@ -26,14 +26,14 @@ export function OrgPicker() {
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <Building2 size={16} className="text-white/70" aria-hidden="true" />
       <Select
         aria-label="Active organization"
+        leadingIcon={<Building2 size={24} className="text-white/70" aria-hidden="true" />}
         value={current}
         onChange={(e) => setSelectedOrgId(e.target.value === PLATFORM_OVERVIEW ? null : e.target.value)}
         disabled={isMutating > 0}
         variant="filled"
-        size="md"
+        size="lg"
         className="min-h-11 min-w-[140px]"
       >
         {options.map(option => (

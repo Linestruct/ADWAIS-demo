@@ -10,12 +10,13 @@ import { CalendarSubscriptionsPanel } from '../../components/settings/configurat
 import { OrganizationConfigurationForm } from '../../components/settings/organization/OrganizationConfigurationForm';
 import { useMonitoringProviderDescriptorsQuery } from '../../hooks/useIntegrationQueries';
 import { EmptyState } from '../../components/common/ui/EmptyState';
+import { isAdminRole } from '../../utils/roles';
 
 export function ConfigurationView() {
     const { data: monitoringProviders = [] } = useMonitoringProviderDescriptorsQuery();
     const { role, scope } = useCurrentUser();
     const { selectedOrgId, organizations } = useOrgSelection();
-    const disabled = role !== 'Admin';
+    const disabled = !isAdminRole(role);
 
     const orgId = scope.isPlatformAdmin
         ? selectedOrgId

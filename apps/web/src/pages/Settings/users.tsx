@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { isAdminRole } from '../../utils/roles';
 import { Users, Edit2, Trash2, UserPlus } from 'lucide-react';
 import { useUsersQuery, useCreateUserMutation, useDeleteUserMutation } from '../../hooks/useUserQueries';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -21,7 +22,7 @@ export function UsersView() {
     const createUser = useCreateUserMutation();
     const deleteUser = useDeleteUserMutation();
     const { role } = useCurrentUser();
-    const isAdmin = role === 'Admin';
+    const isAdmin = isAdminRole(role);
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 

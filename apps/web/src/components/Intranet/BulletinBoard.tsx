@@ -6,6 +6,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { isStaffRole } from '../../utils/roles';
 import {
   useDeleteApiIntranetBulletinPostsId,
   useGetApiIntranetBulletinPosts,
@@ -55,7 +56,7 @@ export function BulletinBoard() {
   const [mutationError, setMutationError] = useState<string | null>(null);
 
   const posts = postsQuery.data?.data ?? [];
-  const canCreate = role === 'Admin' || role === 'Employee';
+  const canCreate = isStaffRole(role);
   const canManage = (post: BulletinPostResponseDto) =>
     role === 'Admin' || (!!user?.id && user.id === post.author?.id);
 

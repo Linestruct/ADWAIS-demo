@@ -5,12 +5,13 @@
 import { useGlobalConfigQuery, useUpdateConfigMutation } from '../../hooks/useJobSettingsQueries';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { GlobalConfigurationForm } from '../../components/settings/configuration/GlobalConfigurationForm';
+import { isAdminRole } from '../../utils/roles';
 
 export function PlatformConfigurationView() {
     const { data: config } = useGlobalConfigQuery();
     const updateConfig = useUpdateConfigMutation();
     const { role } = useCurrentUser();
-    const disabled = role !== 'Admin';
+    const disabled = !isAdminRole(role);
 
     return (
         <div className="grid grid-cols-1 landscape-contained:grid-cols-2 gap-4 contained:h-full contained:min-h-0">

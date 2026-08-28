@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { isStaffRole } from '../../utils/roles';
 import { useContext } from 'react';
 import { AuthContext } from 'react-oidc-context';
 import { KeyRound, LogOut, MonitorSmartphone } from 'lucide-react';
@@ -23,7 +24,7 @@ export function AuthenticationSettings() {
   const [errorMsg, setErrorMsg] = useState('');
   
   const { role } = useCurrentUser();
-  const isStaff = role === 'Admin' || role === 'Employee';
+  const isStaff = isStaffRole(role);
 
   const activateMutation = useActivateKioskMutation(() => {
     setSuccessMsg('Kiosk activated successfully!');

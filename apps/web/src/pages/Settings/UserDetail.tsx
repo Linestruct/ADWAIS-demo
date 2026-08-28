@@ -13,6 +13,7 @@ import { FormField } from '../../components/common/ui/FormField';
 import { Button } from '../../components/common/ui/Button';
 import { MembershipsPanel } from '../../components/settings/users/MembershipsPanel';
 import { getTagColor, getTagStyle } from '../../utils/tagHelper';
+import { isAdminRole } from '../../utils/roles';
 import type { UserRole, UserResponseDto } from '@types';
 
 function UserDetailForm({ user, isAdmin, isPlatformAdmin }: { user: UserResponseDto, isAdmin: boolean, isPlatformAdmin: boolean }) {
@@ -144,7 +145,7 @@ export function UserDetailView() {
   const { userId } = useParams({ strict: false }) as { userId: string };
   const { data: users, isLoading } = useUsersQuery();
   const { role: currentUserRole, scope } = useCurrentUser();
-  const isAdmin = currentUserRole === 'Admin';
+  const isAdmin = isAdminRole(currentUserRole);
 
   const user = users?.find(u => u.id === userId);
 

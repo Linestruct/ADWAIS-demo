@@ -13,7 +13,7 @@ import { useOrgSelection } from './useOrgSelection';
 export interface UserProfile {
   id: string;
   name: string;
-  role: 'Admin' | 'Employee' | 'Viewer';
+  role: 'Admin' | 'Employee' | 'Viewer' | 'PlatformAdmin';
   organizationId?: string | null;
   organizationName?: string | null;
   tenantId?: string | null;
@@ -39,7 +39,7 @@ const EMPTY_SCOPE: AccessScope = {
 function deriveScope(profile: UserProfile | null): AccessScope {
   if (!profile) return EMPTY_SCOPE;
   return {
-    isAdmin: profile.role === 'Admin',
+    isAdmin: profile.role === 'Admin' || profile.role === 'PlatformAdmin',
     isPlatformAdmin: profile.isPlatformAdmin === true,
     organizationId: profile.organizationId ?? null,
     organizationName: profile.organizationName ?? null,
@@ -54,7 +54,7 @@ export function useCurrentUser() {
   const { selectedOrgId } = useOrgSelection();
 
   const kioskUser = kioskToken ? parseJwt(kioskToken) : null;
-  const kioskRole = kioskUser?.role as 'Admin' | 'Employee' | 'Viewer' | undefined;
+  const kioskRole = kioskUser?.role as 'Admin' | 'Employee' | 'Viewer' | 'PlatformAdmin' | undefined;
   const kioskOrganizationId = (kioskUser?.org_id as string | undefined) ?? null;
   const kioskIsPlatformAdmin = kioskUser?.is_platform_admin === 'true';
 

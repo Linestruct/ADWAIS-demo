@@ -32,14 +32,18 @@ export function MembershipsPanel({ userId, isAdmin, isPlatformAdmin }: Membershi
   const [organizationId, setOrganizationId] = useState('');
   const [role, setRole] = useState<UserRole>('Viewer');
 
+  const isPlatformRow = organizationId === PLATFORM_VALUE;
   const orgOptions = isPlatformAdmin
     ? [{ label: 'Platform (no organization)', value: PLATFORM_VALUE }, ...organizations.map(org => ({ label: org.name, value: org.id }))]
     : organizations.map(org => ({ label: org.name, value: org.id }));
+  const roleOptions = isPlatformRow
+    ? [{ label: 'Platform Admin', value: 'PlatformAdmin' as UserRole }]
+    : [{ label: 'Admin', value: 'Admin' as UserRole }, { label: 'Viewer', value: 'Viewer' as UserRole }, { label: 'Employee', value: 'Employee' as UserRole }];
 
   const handleAdd = () => {
     addMembership.mutate({
-      organizationId: organizationId === PLATFORM_VALUE ? null : organizationId,
-      role,
+      organizationId: isPlatformRow ? null : organizationId,
+      role: isPlatformRow ? 'PlatformAdmin' : role,
     });
   };
 
@@ -100,12 +104,14 @@ export function MembershipsPanel({ userId, isAdmin, isPlatformAdmin }: Membershi
               as="select"
               id="membership-role"
               label="Role"
-              value={role}
+              value={isPlatformRow ? 'PlatformAdmin' : role}
               onChange={(e) => setRole(e.target.value as UserRole)}
             >
-              <option value="Admin">Admin</option>
-              <option value="Viewer">Viewer</option>
-              <option value="Employee">Employee</option>
+              {roleOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </FormField>
             <Button
               onClick={handleAdd}

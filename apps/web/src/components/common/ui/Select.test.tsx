@@ -62,6 +62,16 @@ describe('Select', () => {
     expect(select).toHaveClass('h-6', 'w-auto', 'bg-transparent');
   });
 
+  it('renders a leading icon inside the trigger', () => {
+    render(
+      <Select aria-label="Organization" leadingIcon={<span data-testid="leading-icon" />}>
+        <option>Acme</option>
+      </Select>,
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Organization' })).toContainElement(screen.getByTestId('leading-icon'));
+  });
+
   it('renders a padded, rounded menu independently of its trigger width', () => {
     render(
       <Select aria-label="Period" size="sm" fullWidth={false}>

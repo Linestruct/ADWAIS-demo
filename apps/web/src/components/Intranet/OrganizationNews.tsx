@@ -8,6 +8,7 @@ import { CollectionPanel } from '../common/dashboard/CollectionPanel';
 import { EmptyState } from '../common/ui/EmptyState';
 import { ErrorAlert } from '../common/ui/ErrorAlert';
 import { useGetApiIntranetFeeds } from '../../api/generated/endpoints';
+import { useOrgSelection } from '../../hooks/useOrgSelection';
 import { formatDateTime } from '../../utils/dateTime';
 
 type OrganizationNewsProps = {
@@ -16,7 +17,11 @@ type OrganizationNewsProps = {
 };
 
 export function OrganizationNews({ authorName, title = 'Organization news' }: OrganizationNewsProps) {
-  const { data: response, isLoading, isError } = useGetApiIntranetFeeds({ PageSize: 20, AuthorName: authorName });
+  const { selectedOrgId } = useOrgSelection();
+  const { data: response, isLoading, isError } = useGetApiIntranetFeeds(
+    { PageSize: 20, AuthorName: authorName },
+    { query: { queryKey: ['intranet-feeds', selectedOrgId, authorName, 20] } },
+  );
   const feedItems = response?.data || [];
 
   const [selectedPostId, setSelectedPostId] = useState<string | undefined>(undefined);

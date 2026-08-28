@@ -15,6 +15,7 @@ import {
 } from '../../api/generated/endpoints';
 import type { BulletinPostResponseDto } from '@types';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { useOrgSelection } from '../../hooks/useOrgSelection';
 import { CollectionPanel } from '../common/dashboard/CollectionPanel';
 import { Button } from '../common/ui/Button';
 import { ErrorAlert } from '../common/ui/ErrorAlert';
@@ -38,7 +39,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 export function BulletinBoard() {
   const queryClient = useQueryClient();
   const { user, role } = useCurrentUser();
-  const postsQuery = useGetApiIntranetBulletinPosts();
+  const { selectedOrgId } = useOrgSelection();
+  const postsQuery = useGetApiIntranetBulletinPosts({
+    query: { queryKey: ['bulletin-posts', selectedOrgId] },
+  });
   const createMutation = usePostApiIntranetBulletinPosts();
   const updateMutation = usePatchApiIntranetBulletinPostsId();
   const deleteMutation = useDeleteApiIntranetBulletinPostsId();

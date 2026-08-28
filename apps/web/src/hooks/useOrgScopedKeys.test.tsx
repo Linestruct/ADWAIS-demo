@@ -10,6 +10,7 @@ import { useTenantsQuery } from './useTenantQueries';
 import { useMonitorsQuery, useUnassignedMonitorsQuery } from './useMonitorQueries';
 import { useFleetMonitors } from './useFleetQueries';
 import { useGlobalKpis } from './useFinancialQueries';
+import { useCalendarEventsQuery, useCalendarSubscriptionsQuery } from './useCalendarQueries';
 
 vi.mock('./useOrgSelection', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./useOrgSelection')>();
@@ -27,8 +28,10 @@ const state = vi.hoisted(() => ({ selectedOrgId: null as string | null }));
 
 vi.mock('../api/generated/endpoints', async () => {
   const { useQuery } = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
-  const hookFactory = () => (_params: unknown, options?: { query?: object }) =>
-    useQuery({ queryKey: ['unset'], ...(options?.query ?? {}) });
+  const hookFactory = () => (...args: unknown[]) => {
+    const options = args[args.length - 1] as { query?: object } | undefined;
+    return useQuery({ queryKey: ['unset'], ...(options?.query ?? {}) });
+  };
   return {
     useGetApiTenants: hookFactory(),
     useGetApiMonitors: hookFactory(),
@@ -36,6 +39,8 @@ vi.mock('../api/generated/endpoints', async () => {
     useGetApiMonitorsAnalytics: hookFactory(),
     useGetApiMonitorsAvailability: hookFactory(),
     useGetApiFinancialKpis: hookFactory(),
+    useGetApiIntranetEvents: hookFactory(),
+    useGetApiIntranetCalendarSubscriptions: hookFactory(),
   };
 });
 
@@ -54,6 +59,8 @@ describe('org-scoped query keys', () => {
     ['unassigned monitors', () => useUnassignedMonitorsQuery()],
     ['fleet monitors', () => useFleetMonitors('T30')],
     ['financial kpis', () => useGlobalKpis('T30')],
+    ['calendar events', () => useCalendarEventsQuery('2026-08-01', '2026-08-31')],
+    ['calendar subscriptions', () => useCalendarSubscriptionsQuery()],
   ] as [string, () => ReturnType<typeof useTenantsQuery>][])(
     'keys %s by the selected organization and refetches on switch',
     (_label, useHook) => {

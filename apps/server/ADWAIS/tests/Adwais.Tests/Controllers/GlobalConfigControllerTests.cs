@@ -33,7 +33,8 @@ public class GlobalConfigControllerTests
         var responseDto = new GlobalConfigResponseDto(
             Id: 1,
             LastPolled: null,
-            SystemEventRetentionDays: 2
+            SystemEventRetentionDays: 2,
+            MatViewRefreshIntervalMinutes: 60
         );
 
         _configServiceMock.Setup(s => s.GetConfigAsync(It.IsAny<CancellationToken>()))
@@ -57,7 +58,8 @@ public class GlobalConfigControllerTests
         var responseDto = new GlobalConfigResponseDto(
             Id: 1,
             LastPolled: null,
-            SystemEventRetentionDays: 30
+            SystemEventRetentionDays: 30,
+            MatViewRefreshIntervalMinutes: 60
         );
 
         _configServiceMock.Setup(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()))

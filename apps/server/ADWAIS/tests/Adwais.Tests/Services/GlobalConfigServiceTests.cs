@@ -87,7 +87,8 @@ public class GlobalConfigServiceTests
         var config = new GlobalConfig
         {
             Id = 1,
-            SystemEventRetentionDays = retentionDays
+            SystemEventRetentionDays = retentionDays,
+            MatViewRefreshIntervalMinutes = 60
         };
         dbContext.GlobalConfigs.Add(config);
         return config;
@@ -107,6 +108,7 @@ public class GlobalConfigServiceTests
         Assert.NotNull(result);
         Assert.Equal(1, result.Id);
         Assert.Equal(7, result.SystemEventRetentionDays);
+        Assert.Equal(60, result.MatViewRefreshIntervalMinutes);
     }
 
     [Fact]
@@ -127,6 +129,45 @@ public class GlobalConfigServiceTests
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
         Assert.NotNull(configDb);
         Assert.Equal(30, configDb.SystemEventRetentionDays);
+    }
+
+    [Fact]
+    public async Task UpdateConfigAsync_UpdatesMatViewRefreshIntervalAndPersists()
+    {
+        var dbContext = new AnalyticsDbContext(_options);
+        SeedGlobalConfig(dbContext);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext, OrgAccess());
+        var request = new UpdateGlobalConfigRequestDto(
+            SystemEventRetentionDays: 30,
+            MatViewRefreshIntervalMinutes: 30);
+
+        var result = await service.UpdateConfigAsync(request);
+
+        Assert.Equal(30, result.MatViewRefreshIntervalMinutes);
+
+        var dbCheck = new AnalyticsDbContext(_options);
+        var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
+        Assert.NotNull(configDb);
+        Assert.Equal(30, configDb.MatViewRefreshIntervalMinutes);
+    }
+
+    [Fact]
+    public async Task UpdateConfigAsync_RejectsIntervalBelowFiveMinutes()
+    {
+        var dbContext = new AnalyticsDbContext(_options);
+        SeedGlobalConfig(dbContext);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext, OrgAccess());
+        var request = new UpdateGlobalConfigRequestDto(MatViewRefreshIntervalMinutes: 4);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateConfigAsync(request));
+
+        var dbCheck = new AnalyticsDbContext(_options);
+        var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
+        Assert.Equal(60, configDb!.MatViewRefreshIntervalMinutes);
     }
 
     [Fact]

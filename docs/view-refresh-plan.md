@@ -8,7 +8,7 @@ Nothing existing is removed or changed:
 
 - `RefreshFinancialMaterializedViewJob` (daily) stays.
 - `RefreshMonitoringMaterializedViewJob` (daily) stays.
-- The manual trigger endpoints stay and keep their current policies.
+- The manual trigger endpoints stay and keep triggering rebuilds unconditionally; their authorization moves to `PlatformAdminOnly` (see Authorization).
 - Backfills and ingestion behave as today.
 
 ## Problem the new job solves
@@ -61,7 +61,12 @@ Option to decide later: the daily jobs clear the table when they finish, removin
 
 ## Authorization
 
-No existing endpoint changes its policy. If platform-gating of the manual triggers is wanted later, it is a separate decision.
+The manual trigger endpoints for the materialized view refresh jobs move to `PlatformAdminOnly`:
+
+- `POST /api/job/trigger/refresh-historic-order-data`
+- `POST /api/job/trigger/refresh-monitoring-data`
+
+The gating is auth only. The endpoints keep their current behavior: they trigger a rebuild unconditionally. No other endpoint changes its policy.
 
 ## Migration
 

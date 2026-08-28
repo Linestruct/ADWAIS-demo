@@ -19,12 +19,12 @@ public class OrganizationConfigService(
     IApplicationDbContext dbContext,
     ICurrentAccess currentAccess,
     IEnumerable<IMonitoringProvider> monitoringProviders,
-    IViewRefreshTracker viewRefreshTracker) : IOrganizationConfigService
+    IReportingRollupRefresher reportingRollupRefresher) : IOrganizationConfigService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly ICurrentAccess _currentAccess = currentAccess;
     private readonly IEnumerable<IMonitoringProvider> _monitoringProviders = monitoringProviders;
-    private readonly IViewRefreshTracker _viewRefreshTracker = viewRefreshTracker;
+    private readonly IReportingRollupRefresher _reportingRollupRefresher = reportingRollupRefresher;
 
     public async Task<OrganizationConfigDto?> GetConfigAsync(CancellationToken ct = default)
     {
@@ -80,9 +80,8 @@ public class OrganizationConfigService(
         if (request.FeedFetchIntervalHours.HasValue) config.FeedFetchIntervalHours = request.FeedFetchIntervalHours.Value;
 
         await _dbContext.SaveChangesAsync(ct);
-        // The timezone change invalidates the reporting calendar, so the views must
-        // be rebuilt. Mark the organization dirty; the platform refresh job owns the rebuild.
-        if (timezoneChanged) await _viewRefreshTracker.MarkDirtyAsync(organizationId, CancellationToken.None);
+        // Once the config is persisted, finish rebuilding even if the HTTP request is cancelled.
+        if (timezoneChanged) await _reportingRollupRefresher.RefreshAsync(CancellationToken.None);
         return MapToDto(config);
     }
 

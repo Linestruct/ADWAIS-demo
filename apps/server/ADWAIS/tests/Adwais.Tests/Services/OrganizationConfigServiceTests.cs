@@ -59,12 +59,12 @@ public class OrganizationConfigServiceTests
         return mock.Object;
     }
 
-    private static (OrganizationConfigService Service, Mock<IViewRefreshTracker> Tracker) CreateService(
+    private static (OrganizationConfigService Service, Mock<IReportingRollupRefresher> Refresher) CreateService(
         IApplicationDbContext context, ICurrentAccess access)
     {
-        var tracker = new Mock<IViewRefreshTracker>();
-        var service = new OrganizationConfigService(context, access, [CreateProvider()], tracker.Object);
-        return (service, tracker);
+        var refresher = new Mock<IReportingRollupRefresher>();
+        var service = new OrganizationConfigService(context, access, [CreateProvider()], refresher.Object);
+        return (service, refresher);
     }
 
     [Fact]
@@ -232,7 +232,7 @@ public class OrganizationConfigServiceTests
     }
 
     [Fact]
-    public async Task UpdateConfigAsync_WhenReportingTimeZoneChanges_MarksViewsDirty()
+    public async Task UpdateConfigAsync_WhenReportingTimeZoneChanges_RefreshesFinancialRollups()
     {
         var context = CreateDbContext(out var dbContext);
         var orgId = Guid.NewGuid();
@@ -243,7 +243,7 @@ public class OrganizationConfigServiceTests
         });
         await dbContext.SaveChangesAsync();
 
-        var (service, tracker) = CreateService(context, OrgAccess(orgId));
+        var (service, refresher) = CreateService(context, OrgAccess(orgId));
 
         await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
             WeatherLocation: null,
@@ -257,13 +257,13 @@ public class OrganizationConfigServiceTests
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: null), CancellationToken.None);
 
-        tracker.Verify(
-            trackerMock => trackerMock.MarkDirtyAsync(orgId, It.IsAny<CancellationToken>()),
+        refresher.Verify(
+            refresherMock => refresherMock.RefreshAsync(It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task UpdateConfigAsync_WhenReportingTimeZoneIsUnchanged_DoesNotMarkViewsDirty()
+    public async Task UpdateConfigAsync_WhenReportingTimeZoneIsUnchanged_DoesNotRefreshRollups()
     {
         var context = CreateDbContext(out var dbContext);
         var orgId = Guid.NewGuid();
@@ -274,7 +274,7 @@ public class OrganizationConfigServiceTests
         });
         await dbContext.SaveChangesAsync();
 
-        var (service, tracker) = CreateService(context, OrgAccess(orgId));
+        var (service, refresher) = CreateService(context, OrgAccess(orgId));
 
         await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
             WeatherLocation: null,
@@ -288,8 +288,8 @@ public class OrganizationConfigServiceTests
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: null), CancellationToken.None);
 
-        tracker.Verify(
-            trackerMock => trackerMock.MarkDirtyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+        refresher.Verify(
+            refresherMock => refresherMock.RefreshAsync(It.IsAny<CancellationToken>()),
             Times.Never);
     }
 }

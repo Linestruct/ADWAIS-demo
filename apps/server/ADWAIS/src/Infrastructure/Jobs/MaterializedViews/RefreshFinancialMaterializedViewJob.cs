@@ -23,10 +23,13 @@ public class RefreshFinancialMaterializedViewJob(
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(ct);
 
         // Refresh materialized views in sequential order to respect data dependencies.
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_tenant_rollup;", ct);
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_global_rollup;", ct);
+        if (dbContext.Database.IsRelational())
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_tenant_rollup;", ct);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_global_rollup;", ct);
+        }
 
         // The rebuild incorporated all pending changes; drop the pending marks.
         await viewRefreshTracker.ClearDirtyAsync(ct);

@@ -22,21 +22,24 @@ public class RefreshMonitoringMaterializedViewJob(
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(ct);
 
-        // 1. Latency Views
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_monitor_rollup;", ct);
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_tenant_rollup;", ct);
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_global_rollup;", ct);
+        if (dbContext.Database.IsRelational())
+        {
+            // 1. Latency Views
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_monitor_rollup;", ct);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_tenant_rollup;", ct);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_global_rollup;", ct);
 
-        // 2. Availability Views
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_monitor_rollup;", ct);
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_tenant_rollup;", ct);
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_global_rollup;", ct);
+            // 2. Availability Views
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_monitor_rollup;", ct);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_tenant_rollup;", ct);
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_global_rollup;", ct);
+        }
 
         // The rebuild incorporated all pending changes; drop the pending marks.
         await viewRefreshTracker.ClearDirtyAsync(ct);

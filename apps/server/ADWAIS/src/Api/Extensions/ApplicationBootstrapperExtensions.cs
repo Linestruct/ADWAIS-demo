@@ -102,8 +102,6 @@ public static class ApplicationBootstrapperExtensions
             recurringJobManager.RemoveIfExists("dispatch-uptimerobot-latency");
             recurringJobManager.RemoveIfExists("dispatch-litium-orders");
             recurringJobManager.RemoveIfExists("sync-uptimerobot-account-stats");
-            recurringJobManager.RemoveIfExists("refresh-financial-materialized-views");
-            recurringJobManager.RemoveIfExists("refresh-monitoring-materialized-views");
 
             using (var scope = app.Services.CreateScope())
             {

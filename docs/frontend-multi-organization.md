@@ -161,4 +161,4 @@ Tenant viewer screens (phase four). Visual redesign. Server-side pagination chan
 
 - `SystemEventService` never populates `SystemEvent.OrganizationId`; events are deployment-wide. Attribution is a future backend task if org-filtered event lists become necessary.
 - Cross-tab sync of the selected organization (localStorage plus storage events) is deferred; W5 uses sessionStorage.
-- Financial and fleet query keys are not organization-segmented yet. Their requests carry the scope header, so a switch followed by an immediate read can briefly show the previous organization's cached rows until the 60-second refetch. Key the `financialKeys` factory by the selected organization when switching on those pages becomes a priority.
+- Financial and fleet query keys are now organization-segmented like tenants and monitors, so switching organizations refetches those pages immediately instead of showing the previous organization's cached rows until the refetch interval fires.

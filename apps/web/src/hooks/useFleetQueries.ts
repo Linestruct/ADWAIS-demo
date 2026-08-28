@@ -4,15 +4,17 @@
 
 import { keepPreviousData } from '@tanstack/react-query';
 import { useGetApiMonitors, useGetApiMonitorsAnalytics, useGetApiMonitorsAvailability } from '../api/generated/endpoints';
+import { useOrgSelection } from './useOrgSelection';
 import type { UptimeMonitorDto, MonitorAnalyticsDto, MonitorAvailabilitySeriesResponseDto, ComparisonPeriod, Timeframe, ComparisonType } from '@types';
 
 export const fleetKeys = {
-  all: ['fleet'] as const,
-  monitors: (timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod) => [...fleetKeys.all, 'monitors', timeframe, tenantId, comparison] as const,
-  analytics: (timeframe: string, tenantId?: string | null, monitorId?: number | null, comparison?: ComparisonPeriod, filters?: FleetQueryFilters) =>
-    [...fleetKeys.all, 'analytics', timeframe, tenantId, monitorId, comparison, filters] as const,
-  availability: (timeframe: string, tenantId?: string | null, monitorId?: number | null, comparison?: ComparisonPeriod, filters?: FleetQueryFilters) =>
-    [...fleetKeys.all, 'availability', timeframe, tenantId, monitorId, comparison, filters] as const,
+  all: (orgId: string | null) => ['fleet', orgId] as const,
+  monitors: (orgId: string | null, timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod) =>
+    [...fleetKeys.all(orgId), 'monitors', timeframe, tenantId, comparison] as const,
+  analytics: (orgId: string | null, timeframe: string, tenantId?: string | null, monitorId?: number | null, comparison?: ComparisonPeriod, filters?: FleetQueryFilters) =>
+    [...fleetKeys.all(orgId), 'analytics', timeframe, tenantId, monitorId, comparison, filters] as const,
+  availability: (orgId: string | null, timeframe: string, tenantId?: string | null, monitorId?: number | null, comparison?: ComparisonPeriod, filters?: FleetQueryFilters) =>
+    [...fleetKeys.all(orgId), 'availability', timeframe, tenantId, monitorId, comparison, filters] as const,
 };
 
 const REFETCH_INTERVAL = 30000;
@@ -24,6 +26,7 @@ export interface FleetQueryFilters {
 }
 
 export function useFleetMonitors(timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiMonitors<UptimeMonitorDto[], Error>(
     {
       timeframe: timeframe as Timeframe,
@@ -32,7 +35,7 @@ export function useFleetMonitors(timeframe: string, tenantId?: string | null, co
     },
     {
       query: {
-        queryKey: fleetKeys.monitors(timeframe, tenantId, comparison),
+        queryKey: fleetKeys.monitors(selectedOrgId, timeframe, tenantId, comparison),
         refetchInterval: REFETCH_INTERVAL,
         select: (res) => res.data as UptimeMonitorDto[]
       }
@@ -41,6 +44,7 @@ export function useFleetMonitors(timeframe: string, tenantId?: string | null, co
 }
 
 export function useFleetAnalytics(timeframe: string, tenantId?: string | null, monitorId?: number | null, comparison?: ComparisonPeriod, filters?: FleetQueryFilters) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiMonitorsAnalytics<MonitorAnalyticsDto, Error>(
     {
       timeframe: timeframe as Timeframe,
@@ -53,7 +57,7 @@ export function useFleetAnalytics(timeframe: string, tenantId?: string | null, m
     },
     {
       query: {
-        queryKey: fleetKeys.analytics(timeframe, tenantId, monitorId, comparison, filters),
+        queryKey: fleetKeys.analytics(selectedOrgId, timeframe, tenantId, monitorId, comparison, filters),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data as MonitorAnalyticsDto
@@ -63,6 +67,7 @@ export function useFleetAnalytics(timeframe: string, tenantId?: string | null, m
 }
 
 export function useFleetAvailability(timeframe: string, tenantId?: string | null, monitorId?: number | null, comparison?: ComparisonPeriod, filters?: FleetQueryFilters) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiMonitorsAvailability<MonitorAvailabilitySeriesResponseDto, Error>(
     {
       timeframe: timeframe as Timeframe,
@@ -75,7 +80,7 @@ export function useFleetAvailability(timeframe: string, tenantId?: string | null
     },
     {
       query: {
-        queryKey: fleetKeys.availability(timeframe, tenantId, monitorId, comparison, filters),
+        queryKey: fleetKeys.availability(selectedOrgId, timeframe, tenantId, monitorId, comparison, filters),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: response => response.data,

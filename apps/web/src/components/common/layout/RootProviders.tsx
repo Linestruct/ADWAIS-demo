@@ -9,8 +9,11 @@ import {Toaster} from 'sonner';
 import { toast } from 'sonner';
 import { useRouterState } from '@tanstack/react-router';
 import {KioskProvider} from '../dashboard/KioskProvider';
+import {useOrgSelectionWatcher} from '../../../hooks/useOrgSelectionWatcher';
 
 export function RootProviders({children}: { children: ReactNode }) {
+  useOrgSelectionWatcher();
+
   const pathname = useRouterState({select: (state) => state.location.pathname});
   const previousPathname = useRef(pathname);
 

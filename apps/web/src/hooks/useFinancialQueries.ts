@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { keepPreviousData } from '@tanstack/react-query';
+import { useOrgSelection } from './useOrgSelection';
 import { 
   useGetApiFinancialKpis,
   useGetApiFinancialAccumulatedRevenue,
@@ -32,29 +33,30 @@ import type {
 } from '@types';
 
 export const financialKeys = {
-  all: ['financial'] as const,
-  kpis: (timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'kpis', timeframe, tenantId, comparison, tenantTypes] as const,
-  velocity: (timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'velocity', timeframe, tenantId, comparison, tenantTypes] as const,
-  extremes: (timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'extremes', timeframe, comparison, tenantTypes] as const,
-  portfolioImpact: (timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'portfolioImpact', timeframe, comparison, tenantTypes] as const,
-  revenueEfficiency: (timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'revenueEfficiency', timeframe, comparison, tenantTypes] as const,
-  crossSegmentDistribution: (timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'crossSegmentDistribution', timeframe, comparison, tenantTypes] as const,
-  volumeAnomaly: (timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'volumeAnomaly', timeframe, comparison, tenantTypes] as const,
-  delta: (timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'delta', timeframe, tenantId, comparison, tenantTypes] as const,
-  netGrowthAddition: (timeframe: string, tenantId?: string | null, tenantTypes?: TenantType[]) => [...financialKeys.all, 'netGrowthAddition', timeframe, tenantId, tenantTypes] as const,
-  orders: (timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod) => [...financialKeys.all, 'orders', timeframe, tenantId, comparison] as const,
-  accumulatedRevenue: (timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all, 'accumulatedRevenue', timeframe, tenantId, comparison, tenantTypes] as const,
-  transactionDensity: (period: TransactionDensityPeriod, tenantId?: string | null, tenantTypes?: TenantType[]) => [...financialKeys.all, 'transactionDensity', period, tenantId, tenantTypes] as const,
+  all: (orgId: string | null) => ['financial', orgId] as const,
+  kpis: (orgId: string | null, timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'kpis', timeframe, tenantId, comparison, tenantTypes] as const,
+  velocity: (orgId: string | null, timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'velocity', timeframe, tenantId, comparison, tenantTypes] as const,
+  extremes: (orgId: string | null, timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'extremes', timeframe, comparison, tenantTypes] as const,
+  portfolioImpact: (orgId: string | null, timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'portfolioImpact', timeframe, comparison, tenantTypes] as const,
+  revenueEfficiency: (orgId: string | null, timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'revenueEfficiency', timeframe, comparison, tenantTypes] as const,
+  crossSegmentDistribution: (orgId: string | null, timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'crossSegmentDistribution', timeframe, comparison, tenantTypes] as const,
+  volumeAnomaly: (orgId: string | null, timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'volumeAnomaly', timeframe, comparison, tenantTypes] as const,
+  delta: (orgId: string | null, timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'delta', timeframe, tenantId, comparison, tenantTypes] as const,
+  netGrowthAddition: (orgId: string | null, timeframe: string, tenantId?: string | null, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'netGrowthAddition', timeframe, tenantId, tenantTypes] as const,
+  orders: (orgId: string | null, timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod) => [...financialKeys.all(orgId), 'orders', timeframe, tenantId, comparison] as const,
+  accumulatedRevenue: (orgId: string | null, timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'accumulatedRevenue', timeframe, tenantId, comparison, tenantTypes] as const,
+  transactionDensity: (orgId: string | null, period: TransactionDensityPeriod, tenantId?: string | null, tenantTypes?: TenantType[]) => [...financialKeys.all(orgId), 'transactionDensity', period, tenantId, tenantTypes] as const,
 };
 
 const REFETCH_INTERVAL = 60000;
 
 export function useGlobalKpis(timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialKpis<GlobalKpi, Error>(
     { timeframe: timeframe as Timeframe, tenantId: tenantId || undefined, comparison: comparison as ComparisonType, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.kpis(timeframe, tenantId, comparison, tenantTypes),
+        queryKey: financialKeys.kpis(selectedOrgId, timeframe, tenantId, comparison, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data as GlobalKpi
@@ -64,11 +66,12 @@ export function useGlobalKpis(timeframe: string, tenantId?: string | null, compa
 }
 
 export function useAccumulatedRevenue(timeframe: string, tenantId?: string | null, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialAccumulatedRevenue<AccumulatedRevenuePointDto[], Error>(
     { timeframe: timeframe as Timeframe, tenantId: tenantId || undefined, comparison: comparison as ComparisonType, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.accumulatedRevenue(timeframe, tenantId, comparison, tenantTypes),
+        queryKey: financialKeys.accumulatedRevenue(selectedOrgId, timeframe, tenantId, comparison, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data as AccumulatedRevenuePointDto[]
@@ -78,11 +81,12 @@ export function useAccumulatedRevenue(timeframe: string, tenantId?: string | nul
 }
 
 export function usePortfolioImpact(timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialPortfolioImpact<PortfolioImpactResponse, Error>(
     { timeframe: timeframe as Timeframe, comparison: comparison as ComparisonType, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.portfolioImpact(timeframe, comparison, tenantTypes),
+        queryKey: financialKeys.portfolioImpact(selectedOrgId, timeframe, comparison, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data as PortfolioImpactResponse
@@ -92,11 +96,12 @@ export function usePortfolioImpact(timeframe: string, comparison?: ComparisonPer
 }
 
 export function useRevenueEfficiency(timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialRevenueEfficiency<RevenueEfficiencyResponse, Error>(
     { timeframe: timeframe as Timeframe, comparison: comparison as ComparisonType, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.revenueEfficiency(timeframe, comparison, tenantTypes),
+        queryKey: financialKeys.revenueEfficiency(selectedOrgId, timeframe, comparison, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data as RevenueEfficiencyResponse
@@ -106,11 +111,12 @@ export function useRevenueEfficiency(timeframe: string, comparison?: ComparisonP
 }
 
 export function useCrossSegmentDistribution(timeframe: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialCrossSegmentDistribution<CrossSegmentDistributionResponse, Error>(
     { timeframe: timeframe as Timeframe, comparison: comparison as ComparisonType, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.crossSegmentDistribution(timeframe, comparison, tenantTypes),
+        queryKey: financialKeys.crossSegmentDistribution(selectedOrgId, timeframe, comparison, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data as CrossSegmentDistributionResponse
@@ -120,11 +126,12 @@ export function useCrossSegmentDistribution(timeframe: string, comparison?: Comp
 }
 
 export function useCumulativeGrowthDelta(timeframe: string, tenantId: string, comparison?: ComparisonPeriod, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialCumulativeGrowthDelta<CumulativeGrowthDeltaPoint[], Error>(
     { timeframe: timeframe as Timeframe, tenantId, comparison: comparison as ComparisonType, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.delta(timeframe, tenantId, comparison, tenantTypes),
+        queryKey: financialKeys.delta(selectedOrgId, timeframe, tenantId, comparison, tenantTypes),
         enabled: !!tenantId,
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
@@ -135,11 +142,12 @@ export function useCumulativeGrowthDelta(timeframe: string, tenantId: string, co
 }
 
 export function useNetGrowthAddition(timeframe: string, tenantId?: string | null, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialDailyRevenueDelta<NetGrowthAdditionPoint[], Error>(
     { timeframe: timeframe as Timeframe, tenantId: tenantId || undefined, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.netGrowthAddition(timeframe, tenantId, tenantTypes),
+        queryKey: financialKeys.netGrowthAddition(selectedOrgId, timeframe, tenantId, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data as NetGrowthAdditionPoint[]
@@ -149,11 +157,12 @@ export function useNetGrowthAddition(timeframe: string, tenantId?: string | null
 }
 
 export function useOrderDistribution(timeframe: string, tenantId: string, comparison?: ComparisonPeriod) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialOrderDistribution<OrderBin[], Error>(
     { timeframe: timeframe as Timeframe, tenantId, comparison: comparison as ComparisonType },
     {
       query: {
-        queryKey: financialKeys.orders(timeframe, tenantId, comparison),
+        queryKey: financialKeys.orders(selectedOrgId, timeframe, tenantId, comparison),
         enabled: !!tenantId,
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
@@ -164,11 +173,12 @@ export function useOrderDistribution(timeframe: string, tenantId: string, compar
 }
 
 export function useTransactionDensity(period: TransactionDensityPeriod, tenantId?: string | null, tenantTypes?: TenantType[]) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiFinancialTransactionDensity<TransactionDensityResponseDto, Error>(
     { period, tenantId: tenantId || undefined, tenantTypes: tenantTypes?.length ? tenantTypes : undefined },
     {
       query: {
-        queryKey: financialKeys.transactionDensity(period, tenantId, tenantTypes),
+        queryKey: financialKeys.transactionDensity(selectedOrgId, period, tenantId, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
         select: (res) => res.data

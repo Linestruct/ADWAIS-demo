@@ -4,7 +4,7 @@
 
 import { isDemoMode, userManager } from './utils/oidcConfig';
 import { removeKioskToken } from './utils/auth';
-import { readStoredOrgId, notifyOrgSelectionCheck } from './utils/orgSelection';
+import { readStoredOrgId, setSelectedOrgId, notifyOrgSelectionCheck } from './utils/orgSelection';
 
 export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Headers> {
   const headers = new Headers(customHeaders);
@@ -45,10 +45,11 @@ export async function handleSessionInvalidation() {
   if (window.location.pathname === '/kiosk' || window.location.pathname === '/login') {
     return;
   }
-  const user = await userManager?.getUser();
+const user = await userManager?.getUser();
   if (user) {
     await userManager?.removeUser();
     removeKioskToken();
+    setSelectedOrgId(null);
     sessionStorage.clear();
     window.location.href = '/login';
   } else {

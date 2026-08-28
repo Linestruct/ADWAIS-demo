@@ -9,4 +9,5 @@ namespace Adwais.Application.DTOs.GlobalConfig;
 public record GlobalConfigResponseDto(
     int Id,
     DateTimeOffset? LastPolled,
-    int SystemEventRetentionDays);
+    int SystemEventRetentionDays,
+    int MatViewRefreshIntervalMinutes);

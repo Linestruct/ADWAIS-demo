@@ -39,7 +39,7 @@ The monitoring write paths matter because the latency and availability views are
 
 ## New job
 
-`RefreshMaterializedViewsJob`, additive:
+`RefreshStaleMaterializedViewsJob`, registered as `refresh-stale-materialized-views`, additive:
 
 - Runs on the configured cadence (default 60 minutes).
 - Checks whether any org is dirty. If not, exits without touching the views.

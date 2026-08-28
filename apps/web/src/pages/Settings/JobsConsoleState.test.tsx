@@ -11,7 +11,11 @@ const testState = vi.hoisted(() => ({
 }));
 
 vi.mock('../../hooks/useCurrentUser', () => ({
-  useCurrentUser: () => ({ role: 'Viewer' }),
+  useCurrentUser: () => ({ role: 'Viewer', user: null }),
+}));
+
+vi.mock('../../hooks/useOrgSelection', () => ({
+  useOrgSelection: () => ({ selectedOrgId: null }),
 }));
 
 vi.mock('../../hooks/useJobSettingsQueries', () => ({

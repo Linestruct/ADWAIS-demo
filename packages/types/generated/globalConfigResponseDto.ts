@@ -10,4 +10,5 @@ export interface GlobalConfigResponseDto {
   /** @nullable */
   lastPolled?: string | null;
   systemEventRetentionDays?: number;
+  matViewRefreshIntervalMinutes?: number;
 }

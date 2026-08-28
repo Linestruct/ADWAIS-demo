@@ -8,4 +8,6 @@
 export interface UpdateGlobalConfigRequestDto {
   /** @nullable */
   systemEventRetentionDays?: number | null;
+  /** @nullable */
+  matViewRefreshIntervalMinutes?: number | null;
 }

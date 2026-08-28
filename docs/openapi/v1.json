@@ -4674,6 +4674,10 @@
           "systemEventRetentionDays": {
             "type": "integer",
             "format": "int32"
+          },
+          "matViewRefreshIntervalMinutes": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -6179,6 +6183,11 @@
         "type": "object",
         "properties": {
           "systemEventRetentionDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "matViewRefreshIntervalMinutes": {
             "type": "integer",
             "format": "int32",
             "nullable": true

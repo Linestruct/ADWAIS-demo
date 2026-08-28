@@ -14,10 +14,6 @@ vi.mock('../../hooks/useSystemEventsViewModel', () => ({
   useSystemEventsViewModel: () => testState.viewModel,
 }));
 
-vi.mock('../../api/generated/endpoints', () => ({
-  usePostApiDashboardSession: () => ({ mutateAsync: vi.fn(), isPending: false }),
-}));
-
 function baseViewModel() {
   return {
     isAdmin: true,

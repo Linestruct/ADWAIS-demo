@@ -103,9 +103,13 @@ if (!isBuildTime)
 var app = builder.Build();
 
 app.UseExceptionHandler();
-app.MapOpenApi();
-app.UseSwagger();
-app.UseSwaggerUI();
+
+if (!isBuildTime && app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

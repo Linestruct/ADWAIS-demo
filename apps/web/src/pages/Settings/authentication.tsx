@@ -86,8 +86,8 @@ export function AuthenticationSettings() {
 <FormField
                 label="Activation Code"
                 type="text"
-                className="text-center font-mono text-xl uppercase tracking-[0.35em]"
-                placeholder={isStaff ? "XXXXXX" : "LOCKED"}
+                className="font-mono text-xl uppercase tracking-[0.35em]"
+                style={{ textAlign: 'center' }}
                 value={activationCode}
                 onChange={(e) => setActivationCode(e.target.value.toUpperCase().slice(0, 6))}
                 disabled={activateMutation.isPending || !isStaff}

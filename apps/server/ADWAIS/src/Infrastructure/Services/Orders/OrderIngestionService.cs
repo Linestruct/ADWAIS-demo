@@ -18,7 +18,8 @@ public class OrderIngestionService(
     IDbContextFactory<AnalyticsDbContext> contextFactory,
     IEnumerable<IOrderSource> orderSources,
     ILogger<OrderIngestionService> logger,
-    ISystemEventService eventService)
+    ISystemEventService eventService,
+    IViewRefreshTracker viewRefreshTracker)
     : IOrderIngestionService
 {
     public async Task<int> ExecuteIngestionAsync(Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct = default)
@@ -43,6 +44,7 @@ public class OrderIngestionService(
             if (result > 0)
             {
                 await eventService.LogAsync(nameof(OrderIngestionService), $"Successfully ingested {result} orders.", SystemEventLevel.Information, $"Period: {startDate:O} to {endDate:O}", tenantId);
+                await viewRefreshTracker.MarkDirtyAsync(tenant.OrganizationId, ct);
             }
             
             return result;
@@ -172,7 +174,7 @@ public class OrderIngestionService(
         await using var dbContext = await contextFactory.CreateDbContextAsync(ct);
         var tenant = await dbContext.Tenants
             .Where(t => t.Id == tenantId)
-            .Select(t => new { t.OrderProvider, t.IsSystem })
+            .Select(t => new { t.OrderProvider, t.IsSystem, t.OrganizationId })
             .SingleOrDefaultAsync(ct)
             ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
         if (tenant.IsSystem)
@@ -195,6 +197,7 @@ public class OrderIngestionService(
         var pCurrencies = new[] { order.Currency };
 
         await UpsertOrdersAsync(dbContext, pIds, pTenantIds, pProviders, pExternalIds, pOrderStatus, pOrderIds, pDatesCreated, pIncVat, pExcVat, pCurrencies);
+        await viewRefreshTracker.MarkDirtyAsync(tenant.OrganizationId, ct);
     }
 
     private static async Task UpsertOrdersAsync(

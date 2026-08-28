@@ -26,7 +26,7 @@ public class GlobalConfigServiceTests
 {
     private readonly DbContextOptions<AnalyticsDbContext> _options;
     private readonly Mock<ISystemEventService> _eventServiceMock;
-    private readonly Mock<IReportingRollupRefresher> _reportingRollupRefresherMock;
+    private readonly Mock<IViewRefreshTracker> _viewRefreshTrackerMock;
     private readonly Mock<IMonitoringProvider> _monitoringProviderMock;
     private readonly Guid _orgId;
 
@@ -35,7 +35,7 @@ public class GlobalConfigServiceTests
         var dbName = Guid.NewGuid().ToString();
         _options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
         _eventServiceMock = new Mock<ISystemEventService>();
-        _reportingRollupRefresherMock = new Mock<IReportingRollupRefresher>();
+        _viewRefreshTrackerMock = new Mock<IViewRefreshTracker>();
         _monitoringProviderMock = new Mock<IMonitoringProvider>();
         _monitoringProviderMock.SetupGet(provider => provider.Provider).Returns("uptimerobot");
         _monitoringProviderMock
@@ -78,7 +78,7 @@ public class GlobalConfigServiceTests
     private GlobalConfigService CreateService(AnalyticsDbContext dbContext, ICurrentAccess access)
     {
         var orgConfigService = new OrganizationConfigService(
-            dbContext, access, new[] { _monitoringProviderMock.Object }, _reportingRollupRefresherMock.Object);
+            dbContext, access, new[] { _monitoringProviderMock.Object }, _viewRefreshTrackerMock.Object);
         return new GlobalConfigService(dbContext, _eventServiceMock.Object, orgConfigService, access);
     }
 

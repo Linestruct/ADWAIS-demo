@@ -10,7 +10,11 @@ import { useCurrentUser } from '../../../hooks/useCurrentUser';
 
 const PLATFORM_OVERVIEW = '';
 
-export function OrgPicker() {
+type OrgPickerProps = {
+  className?: string;
+};
+
+export function OrgPicker({ className = 'shrink-0' }: OrgPickerProps) {
   const { selectedOrgId, setSelectedOrgId, organizations } = useOrgSelection();
   const { scope } = useCurrentUser();
   const isMutating = useIsMutating();
@@ -25,10 +29,10 @@ export function OrgPicker() {
   const current = selectedOrgId ?? (scope.isPlatformAdmin ? PLATFORM_OVERVIEW : organizations[0]?.id ?? PLATFORM_OVERVIEW);
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className={`flex min-w-0 items-center gap-2 ${className}`}>
       <Select
         aria-label="Active organization"
-        leadingIcon={<Building2 size={24} className="text-white/70" aria-hidden="true" />}
+        leadingIcon={<Building2 size={18} className="text-on-surface" aria-hidden="true" />}
         value={current}
         onChange={(e) => setSelectedOrgId(e.target.value === PLATFORM_OVERVIEW ? null : e.target.value)}
         disabled={isMutating > 0}

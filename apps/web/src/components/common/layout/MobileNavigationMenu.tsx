@@ -7,6 +7,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronDown, Settings } from 'lucide-react';
 import type { Timeframe } from '../../../schemas';
 import { NotificationToggleWidget } from '../dashboard/NotificationToggleWidget';
+import { OrgPicker } from './OrgPicker';
 
 type MobileNavigationMenuProps = {
   isOpen: boolean;
@@ -94,7 +95,10 @@ export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fle
 
           <div className="mt-auto border-t border-outline-variant px-2 pt-4">
             <span className="mb-3 block px-2 text-xs font-black uppercase tracking-wide text-on-surface-variant">Controls</span>
-            <NotificationToggleWidget />
+            <div className="flex w-full min-w-0 flex-nowrap gap-2">
+              <NotificationToggleWidget />
+              <OrgPicker className="min-w-0 flex-1" />
+            </div>
           </div>
         </div>
       </aside>

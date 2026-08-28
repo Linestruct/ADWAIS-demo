@@ -108,4 +108,11 @@ describe('OrgPicker', () => {
 
     expect(screen.getByRole('combobox', { name: 'Active organization' })).toBeDisabled();
   });
+
+  it('applies layout classes to its outer wrapper', () => {
+    render(<OrgPicker className="min-w-0 flex-1" />);
+
+    const trigger = screen.getByRole('combobox', { name: 'Active organization' });
+    expect(trigger.parentElement?.parentElement).toHaveClass('min-w-0', 'flex-1');
+  });
 });

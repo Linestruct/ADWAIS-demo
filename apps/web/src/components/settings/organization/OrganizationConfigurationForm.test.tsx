@@ -59,7 +59,6 @@ describe('OrganizationConfigurationForm', () => {
     expect(screen.getByText('Europe/Stockholm')).toBeInTheDocument();
     expect(screen.getByText('Stockholm, SE')).toBeInTheDocument();
     expect(screen.getByText('uptimerobot')).toBeInTheDocument();
-    expect(screen.getByText('30')).toBeInTheDocument();
   });
 
   it('masks configured secret keys but shows plain provider settings', () => {

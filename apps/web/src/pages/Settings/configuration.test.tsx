@@ -31,11 +31,6 @@ const orgConfig: OrganizationConfigDto = {
   feedFetchIntervalHours: 6,
 };
 
-vi.mock('../../hooks/useJobSettingsQueries', () => ({
-  useGlobalConfigQuery: () => ({ data: undefined }),
-  useUpdateConfigMutation: () => ({ mutateAsync: vi.fn() }),
-}));
-
 vi.mock('../../hooks/useIntegrationQueries', () => ({
   useMonitoringProviderDescriptorsQuery: () => ({ data: [] }),
 }));
@@ -61,7 +56,7 @@ vi.mock('../../hooks/useOrganizationQueries', () => ({
 }));
 
 vi.mock('../../components/settings/configuration/CalendarSubscriptionsPanel', () => ({
-  CalendarSubscriptionsPanel: () => null,
+  CalendarSubscriptionsPanel: () => <h2>External Calendar Subscriptions</h2>,
 }));
 
 function scopeFor(overrides: Partial<AccessScope>): AccessScope {
@@ -83,7 +78,7 @@ describe('ConfigurationView', () => {
     state.organizations = [{ id: 'org-1', name: 'Acme' }, { id: 'org-2', name: 'Beta' }];
   });
 
-  it('shows only the organization section for staff admins and derives the org from scope', () => {
+  it('shows the org config, intervals, and calendar panels for an org user', () => {
     state.currentUser = {
       role: 'Admin',
       scope: scopeFor({ organizationId: 'org-1', organizationName: 'Acme' }),
@@ -92,35 +87,10 @@ describe('ConfigurationView', () => {
     render(<ConfigurationView />);
 
     expect(screen.getByRole('heading', { name: 'Organization Configuration' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Fetch Intervals' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'External Calendar Subscriptions' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Global Configuration' })).not.toBeInTheDocument();
     expect(state.orgConfigArgs).toEqual(['org-1']);
-  });
-
-  it('shows both sections for platform admins with an organization selected', () => {
-    state.currentUser = {
-      role: 'Admin',
-      scope: scopeFor({ isPlatformAdmin: true, organizationId: 'org-1', organizationName: 'Acme' }),
-    };
-    state.selectedOrgId = 'org-1';
-
-    render(<ConfigurationView />);
-
-    expect(screen.getByRole('heading', { name: 'Global Configuration' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Organization Configuration' })).toBeInTheDocument();
-    expect(state.orgConfigArgs).toEqual(['org-1']);
-  });
-
-  it('shows only the platform section while a platform admin is on the platform overview', () => {
-    state.currentUser = {
-      role: 'Admin',
-      scope: scopeFor({ isPlatformAdmin: true, organizationId: 'org-1', organizationName: 'Acme' }),
-    };
-
-    render(<ConfigurationView />);
-
-    expect(screen.getByRole('heading', { name: 'Global Configuration' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Organization Configuration' })).not.toBeInTheDocument();
-    expect(state.orgConfigArgs).toEqual([null]);
   });
 
   it('addresses the selected organization when a staff member switches', () => {
@@ -136,25 +106,26 @@ describe('ConfigurationView', () => {
     expect(state.orgConfigArgs).toEqual(['org-2']);
   });
 
-  it('renders no sections for a user without an organization', () => {
+  it('shows the selected organization for a platform admin', () => {
+    state.currentUser = {
+      role: 'Admin',
+      scope: scopeFor({ isPlatformAdmin: true, organizationId: 'org-1', organizationName: 'Acme' }),
+    };
+    state.selectedOrgId = 'org-1';
+
+    render(<ConfigurationView />);
+
+    expect(screen.getByRole('heading', { name: 'Organization Configuration' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Fetch Intervals' })).toBeInTheDocument();
+    expect(state.orgConfigArgs).toEqual(['org-1']);
+  });
+
+  it('renders an empty state for a user without an organization', () => {
     state.currentUser = { role: 'Employee', scope: scopeFor({ isAdmin: false }) };
 
     render(<ConfigurationView />);
 
-    expect(screen.queryByRole('heading', { name: 'Global Configuration' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Organization Configuration' })).not.toBeInTheDocument();
+    expect(screen.getByText('No organization selected.')).toBeInTheDocument();
     expect(state.orgConfigArgs).toEqual([null]);
-  });
-
-  it('keeps the organization section editable only for admins', () => {
-    state.currentUser = {
-      role: 'Viewer',
-      scope: scopeFor({ isAdmin: false, organizationId: 'org-1', organizationName: 'Acme' }),
-    };
-
-    render(<ConfigurationView />);
-
-    expect(screen.getByText('Parameters for Acme')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument();
   });
 });

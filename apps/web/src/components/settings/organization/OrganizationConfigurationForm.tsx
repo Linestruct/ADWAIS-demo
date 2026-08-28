@@ -116,56 +116,6 @@ export function OrganizationConfigurationForm({ orgName, config, updateConfig, p
                 />
               );
             })}
-            <InlineEditField
-              label="Order Fetch Interval (Min)"
-              value={config.orderFetchIntervalMinutes ?? 30}
-              kind="number"
-              required
-              requirement="Greater than 0"
-              disabled={disabled}
-              validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
-              onCommit={(val) => updateConfig.mutateAsync({ orderFetchIntervalMinutes: val })}
-            />
-            <InlineEditField
-              label="Uptime Fetch Interval (Min)"
-              value={config.uptimeFetchIntervalMinutes ?? 5}
-              kind="number"
-              required
-              requirement="Greater than 0"
-              disabled={disabled}
-              validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
-              onCommit={(val) => updateConfig.mutateAsync({ uptimeFetchIntervalMinutes: val })}
-            />
-            <InlineEditField
-              label="Latency Fetch Interval (Min)"
-              value={config.latencyFetchIntervalMinutes ?? 5}
-              kind="number"
-              required
-              requirement="Greater than 0"
-              disabled={disabled}
-              validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
-              onCommit={(val) => updateConfig.mutateAsync({ latencyFetchIntervalMinutes: val })}
-            />
-            <InlineEditField
-              label="User Stats Fetch Interval (Min)"
-              value={config.userStatsFetchIntervalMinutes ?? 15}
-              kind="number"
-              required
-              requirement="Greater than 0"
-              disabled={disabled}
-              validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
-              onCommit={(val) => updateConfig.mutateAsync({ userStatsFetchIntervalMinutes: val })}
-            />
-            <InlineEditField
-              label="Feed Fetch Interval (Hours)"
-              value={config.feedFetchIntervalHours ?? 6}
-              kind="number"
-              required
-              requirement="Greater than 0"
-              disabled={disabled}
-              validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
-              onCommit={(val) => updateConfig.mutateAsync({ feedFetchIntervalHours: val })}
-            />
           </div>
         ) : (
           <FormSkeleton>
@@ -173,7 +123,6 @@ export function OrganizationConfigurationForm({ orgName, config, updateConfig, p
             <FormSkeleton.Input labelWidth="w-32" />
             <FormSkeleton.Input labelWidth="w-36" />
             <FormSkeleton.Input labelWidth="w-28" />
-            <FormSkeleton.Input labelWidth="w-32" />
           </FormSkeleton>
         )}
       </div>

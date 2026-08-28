@@ -139,10 +139,15 @@ public static class ApplicationBootstrapperExtensions
                     newJob => newJob.ExecuteAsync(),
                     CronHelper.FromMinutes(userStatsInterval));
 
-                recurringJobManager.AddOrUpdate<RefreshMaterializedViewsJob>(
-                    "refresh-materialized-views",
+                recurringJobManager.AddOrUpdate<RefreshMonitoringMaterializedViewJob>(
+                    "refresh-monitoring-materialized-views",
                     newJob => newJob.ExecuteAsync(),
-                    CronHelper.FromMinutes(60));
+                    Cron.Daily);
+
+                recurringJobManager.AddOrUpdate<RefreshFinancialMaterializedViewJob>(
+                    "refresh-financial-materialized-views",
+                    newJob => newJob.ExecuteAsync(),
+                    Cron.Daily);
 
                 recurringJobManager.AddOrUpdate<SystemEventCleanupJob>(
                     "system-event-cleanup",

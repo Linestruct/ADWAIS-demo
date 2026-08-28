@@ -72,26 +72,24 @@ public class BackgroundJobController : ControllerBase
     }
 
     /// <summary>
-    /// Triggers the coalesced materialized view refresh job.
-    /// The job only rebuilds the views when an organization has pending changes.
+    /// Triggers a refresh of the financial materialized views.
     /// </summary>
     [HttpPost("trigger/refresh-historic-order-data")]
     [Authorize(Policy = "StaffAccess")]
     public ActionResult TriggerMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob("refresh-materialized-views");
+        RecurringJob.TriggerJob("refresh-financial-materialized-views");
         return Ok();
     }
     
     /// <summary>
-    /// Triggers the coalesced materialized view refresh job.
-    /// The job only rebuilds the views when an organization has pending changes.
+    /// Triggers a refresh of all monitoring materialized views (latency and availability).
     /// </summary>
     [HttpPost("trigger/refresh-monitoring-data")]
     [Authorize(Policy = "StaffAccess")]
     public ActionResult TriggerMonitoringMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob("refresh-materialized-views");
+        RecurringJob.TriggerJob("refresh-monitoring-materialized-views");
         return Ok();
     }
 

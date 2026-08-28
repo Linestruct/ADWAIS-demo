@@ -40,7 +40,8 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationConfigService, OrganizationConfigService>();
         services.AddScoped<IReportingCalendar, ReportingCalendar>();
         services.AddScoped<IViewRefreshTracker, ViewRefreshTracker>();
-        services.AddScoped<RefreshMaterializedViewsJob>();
+        services.AddScoped<RefreshFinancialMaterializedViewJob>();
+        services.AddScoped<RefreshMonitoringMaterializedViewJob>();
 
         // Register Typed HTTP Clients with resilience policies
         services.AddTransient<UptimeRobotRateLimitHandler>();

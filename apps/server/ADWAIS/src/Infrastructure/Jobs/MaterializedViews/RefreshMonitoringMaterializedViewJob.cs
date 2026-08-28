@@ -2,34 +2,24 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
-using Adwais.Application.Interfaces;
 using Adwais.Infrastructure.Persistence;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Jobs.MaterializedViews;
 
-public class RefreshMaterializedViewsJob(
-    IDbContextFactory<AnalyticsDbContext> dbContextFactory,
-    IViewRefreshTracker viewRefreshTracker)
+public class RefreshMonitoringMaterializedViewJob(IDbContextFactory<AnalyticsDbContext> dbContextFactory)
 {
     public async Task ExecuteAsync()
     {
-        if (!await viewRefreshTracker.IsDirtyAsync()) return;
-
-        await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-        await RefreshViewsAsync(dbContext);
-        await viewRefreshTracker.ClearDirtyAsync();
+        await RefreshAsync();
     }
 
-    protected virtual async Task RefreshViewsAsync(AnalyticsDbContext dbContext, CancellationToken ct = default)
+    public async Task RefreshAsync(CancellationToken ct = default)
     {
-        // Financial rollups
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_tenant_rollup;", ct);
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_financial_daily_global_rollup;", ct);
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(ct);
 
-        // Latency rollups
+        // 1. Latency Views
         await dbContext.Database.ExecuteSqlRawAsync(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_monitor_rollup;", ct);
         await dbContext.Database.ExecuteSqlRawAsync(
@@ -37,7 +27,7 @@ public class RefreshMaterializedViewsJob(
         await dbContext.Database.ExecuteSqlRawAsync(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_latency_global_rollup;", ct);
 
-        // Availability rollups
+        // 2. Availability Views
         await dbContext.Database.ExecuteSqlRawAsync(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_monitor_rollup;", ct);
         await dbContext.Database.ExecuteSqlRawAsync(
@@ -46,3 +36,5 @@ public class RefreshMaterializedViewsJob(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY v_mat_daily_availability_global_rollup;", ct);
     }
 }
+
+

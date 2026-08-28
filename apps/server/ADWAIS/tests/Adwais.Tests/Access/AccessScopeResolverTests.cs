@@ -27,7 +27,7 @@ public class AccessScopeResolverTests
         var orgId = Guid.NewGuid();
         var memberships = new[]
         {
-            Access(null, null, UserRole.Admin),
+            Access(null, null, UserRole.PlatformAdmin),
             Access(orgId, null, UserRole.Admin)
         };
 
@@ -60,7 +60,7 @@ public class AccessScopeResolverTests
     }
 
     [Fact]
-    public void SelectEffective_AdminWithoutRequest_ReturnsPlatformScope()
+    public void SelectEffective_PlatformAdminWithoutRequest_ReturnsPlatformScope()
     {
         var resolution = new MembershipResolution(true, []);
 
@@ -68,7 +68,7 @@ public class AccessScopeResolverTests
 
         Assert.NotNull(scope);
         Assert.True(scope.IsPlatformAdmin);
-        Assert.Equal([UserRole.Admin], scope.Roles);
+        Assert.Equal([UserRole.PlatformAdmin], scope.Roles);
     }
 
     [Fact]

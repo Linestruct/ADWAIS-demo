@@ -32,7 +32,7 @@ public class CurrentAccessServiceTests
         Assert.True(scope.IsPlatformAdmin);
         Assert.Null(scope.OrganizationId);
         Assert.Null(scope.TenantId);
-        Assert.Equal([UserRole.Admin], scope.Roles);
+        Assert.Equal([UserRole.PlatformAdmin], scope.Roles);
     }
 
     [Fact]

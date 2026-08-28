@@ -62,6 +62,7 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             "Admin"    => (UserRole?)UserRole.Admin,
             "Employee" => UserRole.Employee,
             "Viewer"   => UserRole.Viewer,
+            "PlatformAdmin" => UserRole.PlatformAdmin,
             _          => null
         };
 

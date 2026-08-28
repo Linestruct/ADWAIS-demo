@@ -33,7 +33,7 @@ public class DashboardSessionControllerTests
             AuthenticationExtensions.DashboardCookieScheme,
             It.Is<ClaimsPrincipal>(principal =>
                 principal.Identity!.IsAuthenticated 
-                && principal.IsInRole("Admin")
+                && principal.IsInRole("PlatformAdmin")
                 && principal.HasClaim(Adwais.Application.Common.Access.AccessClaimTypes.IsPlatformAdmin, "true")),
             It.Is<AuthenticationProperties>(properties =>
                 properties.AllowRefresh == false

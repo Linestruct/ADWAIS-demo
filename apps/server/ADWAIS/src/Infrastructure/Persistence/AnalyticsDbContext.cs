@@ -364,9 +364,19 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         {
             entity.ToTable("user_access", table =>
             {
+                // The platform shape is structural: a null organization only
+                // ever pairs with the PlatformAdmin role, and the role never
+                // pairs with an organization. The database rejects every other
+                // combination, so no write path can bypass the invariant.
                 table.HasCheckConstraint(
                     "ck_user_access_role",
-                    DbEnum.CheckConstraintSql<Adwais.Domain.Enums.UserRole>("role"));
+                    $"""
+                    {DbEnum.CheckConstraintSql<Adwais.Domain.Enums.UserRole>("role")}
+                    AND (
+                      ("organization_id" IS NULL AND "role" = '{nameof(Adwais.Domain.Enums.UserRole.PlatformAdmin)}')
+                      OR ("organization_id" IS NOT NULL AND "role" <> '{nameof(Adwais.Domain.Enums.UserRole.PlatformAdmin)}')
+                    )
+                    """);
             });
             entity.HasKey(access => access.Id);
             entity.Property(access => access.Id)

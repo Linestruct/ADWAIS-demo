@@ -73,7 +73,7 @@ public class KioskAuthControllerTests
     public async Task Activate_ShouldReturnBadRequest_WhenActivatorHasNoOrganization()
     {
         _currentAccessMock.Setup(access => access.Scope)
-            .Returns(new AccessScope(null, null, [UserRole.Admin]));
+            .Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
 
         var result = await _controller.Activate(new ActivateKioskRequestDto { ActivationCode = "XY98ZA" });
 
@@ -161,7 +161,7 @@ public class KioskAuthControllerTests
         mockConfig.Setup(c => c["Authentication:KioskJwtSecret"]).Returns("SuperSecretKeyForTestingKioskTokens32CharsMinimum!");
         
         var mockTokenService = new Mock<ITokenService>();
-        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "Admin", null, true)).Returns("generated-token");
+        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "PlatformAdmin", null, true)).Returns("generated-token");
 
         var mockEnv = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
         mockEnv.Setup(e => e.EnvironmentName).Returns("Development");

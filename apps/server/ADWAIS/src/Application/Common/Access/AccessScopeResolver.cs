@@ -16,8 +16,11 @@ public static class AccessScopeResolver
     public static MembershipResolution ResolveAllowed(IEnumerable<UserAccess> memberships)
     {
         var rows = memberships.ToList();
+        // A platform admin is an explicit role on a membership row with no
+        // organization. Membership writes enforce the invariant that platform
+        // roles only exist on null-org rows and org rows never carry it.
         var isPlatformAdmin = rows.Any(row =>
-            row.OrganizationId is null && row.Role == UserRole.Admin);
+            row.OrganizationId is null && row.Role == UserRole.PlatformAdmin);
 
         var orgLevelScopes = new List<AllowedScope>();
         var tenantScopes = new List<AllowedScope>();
@@ -59,7 +62,7 @@ public static class AccessScopeResolver
         {
             if (requestedOrganizationId is null)
             {
-                return new AccessScope(null, null, [UserRole.Admin]);
+                return new AccessScope(null, null, [UserRole.PlatformAdmin]);
             }
 
             return new AccessScope(requestedOrganizationId, requestedTenantId, [UserRole.Admin]);

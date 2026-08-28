@@ -222,6 +222,17 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
             throw new ArgumentException("Tenant viewer memberships require a tenant and are not supported yet.");
         }
 
+        // The platform role only exists on null-org rows, and null-org rows
+        // only ever hold the platform role. Org rows never carry it.
+        if (organizationId is null && role != UserRole.PlatformAdmin)
+        {
+            throw new ArgumentException("Memberships without an organization must use the PlatformAdmin role.");
+        }
+        if (organizationId is not null && role == UserRole.PlatformAdmin)
+        {
+            throw new ArgumentException("The PlatformAdmin role requires a membership without an organization.");
+        }
+
         var userExists = await _dbContext.Users.AnyAsync(user => user.Id == userId, ct);
         if (!userExists)
         {

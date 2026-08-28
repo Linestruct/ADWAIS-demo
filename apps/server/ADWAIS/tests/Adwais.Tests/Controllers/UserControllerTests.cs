@@ -324,11 +324,11 @@ public class UserControllerTests
         {
             UserId = user.Id,
             OrganizationId = null,
-            Role = UserRole.Admin
+            Role = UserRole.PlatformAdmin
         });
         await _dbContext.SaveChangesAsync();
         _accessMock.Setup(access => access.Scope)
-            .Returns(new AccessScope(null, null, [UserRole.Admin]));
+            .Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
 
         var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
         GivenPrincipal(claims);
@@ -357,7 +357,7 @@ public class UserControllerTests
         {
             UserId = user.Id,
             OrganizationId = null,
-            Role = UserRole.Admin
+            Role = UserRole.PlatformAdmin
         });
         _dbContext.Organizations.Add(new Organization { Id = orgId, Name = "Worn Org" });
         await _dbContext.SaveChangesAsync();

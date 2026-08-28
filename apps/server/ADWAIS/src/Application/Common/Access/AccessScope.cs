@@ -16,6 +16,11 @@ public sealed record AccessScope(
     Guid? TenantId,
     IReadOnlyCollection<UserRole> Roles)
 {
-    public bool IsPlatformAdmin => OrganizationId is null;
+    /// <summary>
+    /// A scope is platform-wide when it carries the explicit platform role.
+    /// Platform scopes always have a null organization; org scopes never
+    /// carry the platform role. The invariant is enforced on membership writes.
+    /// </summary>
+    public bool IsPlatformAdmin => Roles.Contains(UserRole.PlatformAdmin);
     public bool IsTenantRestricted => TenantId is not null;
 }

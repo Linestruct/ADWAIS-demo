@@ -327,14 +327,14 @@ public class LocalUserClaimsTransformationTests
                 UserId = userId,
                 OrganizationId = null,
                 TenantId = null,
-                Role = UserRole.Admin
+                Role = UserRole.PlatformAdmin
             });
             await db.SaveChangesAsync();
         }
 
         var result = await _transformation.TransformAsync(CreatePrincipal("membership-platform-user", "platform@example.com", "Platform User"));
 
-        Assert.True(result.IsInRole("Admin"));
+        Assert.True(result.IsInRole("PlatformAdmin"));
         Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin && c.Value == "true"));
         Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId));
         Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.TenantId));
@@ -436,7 +436,7 @@ public class LocalUserClaimsTransformationTests
                 UserId = userId,
                 OrganizationId = null,
                 TenantId = null,
-                Role = UserRole.Admin
+                Role = UserRole.PlatformAdmin
             });
             await db.SaveChangesAsync();
         }
@@ -526,13 +526,13 @@ public class LocalUserClaimsTransformationTests
         // Arrange: the dev mock builds principals through AccessClaimsBuilder.
         var principal = new ClaimsPrincipal(AccessClaimsBuilder.Build(
             AnalyticsDbContext.SystemUserGuid,
-            new AccessScope(null, null, [UserRole.Admin])));
+            new AccessScope(null, null, [UserRole.PlatformAdmin])));
 
         // Act
         var result = await _transformation.TransformAsync(principal);
 
         // Assert
-        Assert.True(result.IsInRole("Admin"));
+        Assert.True(result.IsInRole("PlatformAdmin"));
         Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin && c.Value == "true"));
     }
 

@@ -22,7 +22,7 @@ public class AccessClaimsRoundTripTests
     [Fact]
     public void BuilderToResolver_PlatformScope_RoundTrips()
     {
-        var scope = new AccessScope(null, null, [UserRole.Admin]);
+        var scope = new AccessScope(null, null, [UserRole.PlatformAdmin]);
 
         var resolved = Resolve(scope);
 

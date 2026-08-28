@@ -39,7 +39,7 @@ public class DashboardSessionController : ControllerBase
         // claims transformation recognizes it as locally authoritative.
         var identity = AccessClaimsBuilder.Build(
             AnalyticsDbContext.SystemUserGuid,
-            new AccessScope(null, null, [UserRole.Admin]));
+            new AccessScope(null, null, [UserRole.PlatformAdmin]));
         identity.AddClaim(new Claim(ClaimTypes.Name, User.Identity?.Name ?? "PlatformAdmin"));
 
         await HttpContext.SignInAsync(

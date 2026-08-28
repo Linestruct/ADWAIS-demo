@@ -19,7 +19,7 @@ public class DevMockAuthenticationHandlerTests
 
         Assert.NotNull(principal);
         Assert.True(principal.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"));
-        Assert.True(principal.IsInRole("Admin"));
+        Assert.True(principal.IsInRole("PlatformAdmin"));
         Assert.True(principal.HasClaim(
             c => c.Type == ClaimTypes.NameIdentifier && c.Value == AnalyticsDbContext.SystemUserGuid.ToString()));
     }

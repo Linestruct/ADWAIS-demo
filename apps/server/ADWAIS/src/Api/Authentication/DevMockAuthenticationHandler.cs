@@ -52,7 +52,7 @@ public class DevMockAuthenticationHandler(
 
         var scope = mockOrganizationId is { } orgId
             ? new AccessScope(orgId, null, [UserRole.Admin])
-            : new AccessScope(null, null, [UserRole.Admin]);
+            : new AccessScope(null, null, [UserRole.PlatformAdmin]);
         var identity = AccessClaimsBuilder.Build(
             AnalyticsDbContext.SystemUserGuid,
             scope);

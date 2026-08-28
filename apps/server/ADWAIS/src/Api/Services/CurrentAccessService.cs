@@ -29,7 +29,9 @@ public sealed class CurrentAccessService(IHttpContextAccessor httpContextAccesso
 
         if (principal.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"))
         {
-            return new AccessScope(null, null, roles);
+            // The platform claim is authoritative. The scope always carries
+            // the explicit platform role, regardless of any role claims.
+            return new AccessScope(null, null, [UserRole.PlatformAdmin]);
         }
 
         var organizationId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.OrganizationId));

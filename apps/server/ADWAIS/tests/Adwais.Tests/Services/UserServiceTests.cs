@@ -35,7 +35,7 @@ public class UserServiceTests
         _dbContext = new AnalyticsDbContext(_dbOptions);
         _accessMock = new Mock<ICurrentAccess>();
         _accessMock.Setup(access => access.Scope)
-            .Returns(new AccessScope(null, null, [UserRole.Admin]));
+            .Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
         _userService = new UserService(_dbContext, _accessMock.Object);
     }
 
@@ -518,7 +518,7 @@ public class UserServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _userService.AddUserMembershipAsync(user.Id, null, UserRole.Admin, CancellationToken.None));
+            _userService.AddUserMembershipAsync(user.Id, null, UserRole.PlatformAdmin, CancellationToken.None));
     }
 
     [Fact]
@@ -544,11 +544,11 @@ public class UserServiceTests
         var user = await SeedUserAsync("New Platform Admin");
 
         // Act
-        var membership = await _userService.AddUserMembershipAsync(user.Id, null, UserRole.Admin, CancellationToken.None);
+        var membership = await _userService.AddUserMembershipAsync(user.Id, null, UserRole.PlatformAdmin, CancellationToken.None);
 
         // Assert
         Assert.Null(membership.OrganizationId);
-        Assert.Equal(UserRole.Admin, membership.Role);
+        Assert.Equal(UserRole.PlatformAdmin, membership.Role);
     }
 
     [Fact]
@@ -682,7 +682,7 @@ public class UserServiceTests
                 Id = membershipId,
                 UserId = platformUserId,
                 OrganizationId = null,
-                Role = UserRole.Admin,
+                Role = UserRole.PlatformAdmin,
                 CreatedAt = DateTimeOffset.UtcNow
             });
             await db.SaveChangesAsync();

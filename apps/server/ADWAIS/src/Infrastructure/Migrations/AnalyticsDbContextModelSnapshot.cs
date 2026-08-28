@@ -37,12 +37,6 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_polled");
 
-                    b.Property<int>("MatViewRefreshIntervalMinutes")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(60)
-                        .HasColumnName("mat_view_refresh_interval_minutes");
-
                     b.Property<int>("SystemEventRetentionDays")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -61,7 +55,6 @@ namespace Adwais.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            MatViewRefreshIntervalMinutes = 60,
                             SystemEventRetentionDays = 2
                         });
                 });
@@ -430,22 +423,6 @@ namespace Adwais.Infrastructure.Migrations
                         .HasDatabaseName("ix_kiosk_devices_organization_id");
 
                     b.ToTable("kiosk_devices", (string)null);
-                });
-
-            modelBuilder.Entity("Adwais.Domain.Entities.MaterializedViewDirty", b =>
-                {
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("organization_id");
-
-                    b.Property<DateTimeOffset>("MarkedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("marked_at");
-
-                    b.HasKey("OrganizationId")
-                        .HasName("pk_materialized_view_dirty");
-
-                    b.ToTable("materialized_view_dirty", (string)null);
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Monitoring.DailyAvailabilityGlobalRollup", b =>
@@ -1473,16 +1450,6 @@ namespace Adwais.Infrastructure.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("fk_kiosk_devices_organization_organization_id");
-                });
-
-            modelBuilder.Entity("Adwais.Domain.Entities.MaterializedViewDirty", b =>
-                {
-                    b.HasOne("Adwais.Domain.Entities.Organization", null)
-                        .WithMany()
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_materialized_view_dirty_organizations_organization_id");
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Monitoring.DailyAvailabilityMonitorRollup", b =>

@@ -5,5 +5,4 @@
 namespace Adwais.Application.DTOs.GlobalConfig;
 
 public record UpdateGlobalConfigRequestDto(
-    int? SystemEventRetentionDays = null,
-    int? MatViewRefreshIntervalMinutes = null);
+    int? SystemEventRetentionDays = null);

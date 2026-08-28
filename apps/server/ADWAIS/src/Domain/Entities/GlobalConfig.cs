@@ -9,5 +9,4 @@ public class GlobalConfig
     public int Id { get; set; }
     public DateTimeOffset? LastPolled { get; set; }
     public int SystemEventRetentionDays { get; set; }
-    public int MatViewRefreshIntervalMinutes { get; set; }
 }

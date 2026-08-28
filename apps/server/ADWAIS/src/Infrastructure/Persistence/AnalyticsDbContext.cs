@@ -274,13 +274,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                     "\"id\" = 1"));
             entity.HasKey(x => x.Id);
             entity.Property(x => x.SystemEventRetentionDays).HasDefaultValue(2);
-            entity.Property(x => x.MatViewRefreshIntervalMinutes).HasDefaultValue(60);
 
             entity.HasData(new GlobalConfig
             {
                 Id = 1,
-                SystemEventRetentionDays = 2,
-                MatViewRefreshIntervalMinutes = 60
+                SystemEventRetentionDays = 2
             });
         });
         

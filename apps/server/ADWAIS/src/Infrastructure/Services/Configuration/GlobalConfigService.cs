@@ -14,7 +14,6 @@ using Adwais.Domain;
 using Adwais.Domain.Entities;
 using Adwais.Infrastructure.Helpers;
 using Adwais.Infrastructure.Jobs;
-using Adwais.Infrastructure.Jobs.MaterializedViews;
 using Adwais.Infrastructure.Jobs.Monitor;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
@@ -46,22 +45,7 @@ public class GlobalConfigService(
         if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
         if (request.SystemEventRetentionDays.HasValue) config.SystemEventRetentionDays = request.SystemEventRetentionDays.Value;
-        if (request.MatViewRefreshIntervalMinutes.HasValue)
-        {
-            var interval = request.MatViewRefreshIntervalMinutes.Value;
-            if (interval < 5) throw new ArgumentException("Interval must be at least 5 minutes.", nameof(request.MatViewRefreshIntervalMinutes));
-            config.MatViewRefreshIntervalMinutes = interval;
-        }
         await _dbContext.SaveChangesAsync(ct);
-
-        if (request.MatViewRefreshIntervalMinutes.HasValue)
-        {
-            RecurringJob.AddOrUpdate<RefreshMaterializedViewsJob>(
-                "refresh-materialized-views",
-                job => job.ExecuteAsync(),
-                CronHelper.FromMinutes(config.MatViewRefreshIntervalMinutes));
-            await _eventService.LogAsync(nameof(GlobalConfigService), $"Materialized view refresh interval updated to {config.MatViewRefreshIntervalMinutes} minutes.");
-        }
 
         await _eventService.LogAsync(nameof(GlobalConfigService), "Global configuration updated.");
 
@@ -211,7 +195,7 @@ public class GlobalConfigService(
     }
 
     private GlobalConfigResponseDto MapToDto(GlobalConfig config) =>
-        new(config.Id, config.LastPolled, config.SystemEventRetentionDays, config.MatViewRefreshIntervalMinutes);
+        new(config.Id, config.LastPolled, config.SystemEventRetentionDays);
 
     private static OrganizationConfigDto DefaultOrgConfig() => new(
         WeatherLocation: null,

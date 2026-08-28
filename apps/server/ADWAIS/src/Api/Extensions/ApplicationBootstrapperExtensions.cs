@@ -111,7 +111,6 @@ public static class ApplicationBootstrapperExtensions
                     .Where(c => c.MonitoringProviderSettings != null)
                     .OrderBy(c => c.OrganizationId)
                     .FirstOrDefaultAsync();
-                var globalConfig = await context.GlobalConfigs.AsNoTracking().FirstOrDefaultAsync();
                 var intervals = SchedulingIntervalResolver.Resolve(orgConfig);
 
                 var uptimeInterval = intervals.UptimeMinutes;
@@ -119,7 +118,6 @@ public static class ApplicationBootstrapperExtensions
                 var orderFetchInterval = intervals.OrderFetchMinutes;
                 var userStatsInterval = intervals.UserStatsMinutes;
                 var feedInterval = intervals.FeedHours;
-                var matViewInterval = globalConfig?.MatViewRefreshIntervalMinutes ?? 60;
                 
                 recurringJobManager.AddOrUpdate<UptimeDispatcherJob>(
                         "dispatch-monitoring-uptime",
@@ -144,7 +142,7 @@ public static class ApplicationBootstrapperExtensions
                 recurringJobManager.AddOrUpdate<RefreshMaterializedViewsJob>(
                     "refresh-materialized-views",
                     newJob => newJob.ExecuteAsync(),
-                    CronHelper.FromMinutes(matViewInterval));
+                    CronHelper.FromMinutes(60));
 
                 recurringJobManager.AddOrUpdate<SystemEventCleanupJob>(
                     "system-event-cleanup",

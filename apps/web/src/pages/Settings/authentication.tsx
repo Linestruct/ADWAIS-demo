@@ -10,7 +10,7 @@ import { KeyRound, LogOut, MonitorSmartphone } from 'lucide-react';
 import { useActivateKioskMutation } from '../../hooks/useKioskAuth';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { SecureButton } from '../../components/common/ui/SecureButton';
-import { Input } from '../../components/common/ui/Input';
+import { FormField } from '../../components/common/ui/FormField';
 import { removeKioskToken } from '../../utils/auth';
 import { ErrorAlert } from '../../components/common/ui/ErrorAlert';
 import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
@@ -83,7 +83,7 @@ export function AuthenticationSettings() {
             <p className="text-sm text-on-surface-variant">Enter the code shown on a kiosk to authorize that display.</p>
 
             <form onSubmit={handleActivate} className="flex flex-col gap-4">
-              <Input
+<FormField
                 label="Activation Code"
                 type="text"
                 className="text-center font-mono text-xl uppercase tracking-[0.35em]"

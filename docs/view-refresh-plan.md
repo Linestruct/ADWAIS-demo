@@ -7,7 +7,7 @@ Additive. The existing refresh jobs and manual triggers keep working exactly as 
 Nothing existing is removed or changed:
 
 - `RefreshFinancialMaterializedViewJob` (daily) stays.
-- `RefreshMonitoringMaterializedViewJob` (daily) stays.
+- `RefreshMonitoringMaterializedViewJob` (daily) stays, and clears the dirty table after a successful rebuild.
 - The manual trigger endpoints stay and keep triggering rebuilds unconditionally; their authorization moves to `PlatformAdminOnly` (see Authorization).
 - Backfills and ingestion behave as today.
 
@@ -48,12 +48,14 @@ The monitoring write paths matter because the latency and availability views are
 
 ## Interplay with the daily jobs
 
-The daily jobs do not read or write the dirty table. Two cases:
+The daily jobs keep refreshing unconditionally on their schedule. After a successful rebuild, each daily job clears the dirty table. Consequences:
 
-- Daily job runs while nothing is dirty: it refreshes as today. Unchanged behavior.
-- Daily job runs while orgs are dirty: it refreshes, and the next run of the new job sees stale dirty rows and refreshes again. One redundant rebuild, bounded. Correct either way.
+- Nothing dirty when the daily job runs: it refreshes as today and clears an empty table. Unchanged behavior.
+- Orgs dirty when the daily job runs: the daily rebuild incorporates the changes and clears the table, so the next run of the new job finds nothing to do. No redundant rebuild.
 
-Option to decide later: the daily jobs clear the table when they finish, removing the redundant rebuild. That changes two lines in existing jobs and is the only modification to existing code this plan permits. Default: leave the daily jobs untouched.
+A failed daily rebuild leaves the dirty rows, so the new job retries on the next cycle.
+
+The only modification to existing code in this plan is the clear call in the two daily jobs, plus their dependency on the tracker.
 
 ## Configuration
 
@@ -88,5 +90,7 @@ One migration: create `materialized_view_dirty`, add `mat_view_refresh_interval_
 - Ingestion and timezone change mark dirty; no synchronous refresh anywhere.
 - Uptime and latency jobs mark dirty on successful writes, not on empty payloads.
 - New job: skips when clean, refreshes once and clears when dirty, coalesces multiple orgs.
+- Daily jobs: refresh unconditionally and clear the dirty table; a failed daily rebuild leaves the rows.
 - Interval update persists and reschedules only the new job.
-- Existing daily jobs and trigger tests unchanged and green.
+- Manual triggers stay unconditional; org admins get 403 on the trigger endpoints, platform admins pass.
+- Existing daily jobs and trigger tests updated and green.

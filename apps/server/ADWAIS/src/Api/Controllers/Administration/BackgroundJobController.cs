@@ -76,7 +76,7 @@ public class BackgroundJobController : ControllerBase
     /// The job only rebuilds the views when an organization has pending changes.
     /// </summary>
     [HttpPost("trigger/refresh-historic-order-data")]
-    [Authorize(Policy = "PlatformAdminOnly")]
+    [Authorize(Policy = "StaffAccess")]
     public ActionResult TriggerMaterialViewRefresh()
     {
         RecurringJob.TriggerJob("refresh-materialized-views");
@@ -88,7 +88,7 @@ public class BackgroundJobController : ControllerBase
     /// The job only rebuilds the views when an organization has pending changes.
     /// </summary>
     [HttpPost("trigger/refresh-monitoring-data")]
-    [Authorize(Policy = "PlatformAdminOnly")]
+    [Authorize(Policy = "StaffAccess")]
     public ActionResult TriggerMonitoringMaterialViewRefresh()
     {
         RecurringJob.TriggerJob("refresh-materialized-views");

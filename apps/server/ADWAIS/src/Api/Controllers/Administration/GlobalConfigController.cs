@@ -37,7 +37,7 @@ public class GlobalConfigController(IGlobalConfigService globalConfigService) : 
     /// </summary>
     /// <param name="request">The request containing the settings to update.</param>
     [HttpPatch]
-    [Authorize(Policy = "PlatformAdminOnly")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<GlobalConfigResponseDto>> UpdateConfig([FromBody] UpdateGlobalConfigRequestDto request)
     {
         return Ok(await _globalConfigService.UpdateConfigAsync(request));

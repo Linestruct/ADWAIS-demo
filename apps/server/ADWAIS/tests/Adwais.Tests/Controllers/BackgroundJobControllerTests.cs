@@ -14,12 +14,12 @@ public class BackgroundJobControllerTests
     [Theory]
     [InlineData(nameof(BackgroundJobController.TriggerMaterialViewRefresh))]
     [InlineData(nameof(BackgroundJobController.TriggerMonitoringMaterialViewRefresh))]
-    public void MaterializedViewRefreshEndpointsRequirePlatformAdmin(string actionName)
+    public void MaterializedViewRefreshEndpointsRequireStaffAccess(string actionName)
     {
         var action = typeof(BackgroundJobController).GetMethod(actionName);
         var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.NotNull(authorization);
-        Assert.Equal("PlatformAdminOnly", authorization.Policy);
+        Assert.Equal("StaffAccess", authorization.Policy);
     }
 }

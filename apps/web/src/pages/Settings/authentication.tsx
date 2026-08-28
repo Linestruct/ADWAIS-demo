@@ -88,6 +88,7 @@ export function AuthenticationSettings() {
                 type="text"
                 className="font-mono text-xl uppercase tracking-[0.35em]"
                 style={{ textAlign: 'center' }}
+                placeholder={isStaff ? "Input code" : "LOCKED"}
                 value={activationCode}
                 onChange={(e) => setActivationCode(e.target.value.toUpperCase().slice(0, 6))}
                 disabled={activateMutation.isPending || !isStaff}

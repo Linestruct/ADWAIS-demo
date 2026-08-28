@@ -19,6 +19,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as SettingsUsersRouteImport } from './routes/settings/users'
 import { Route as SettingsTenantsRouteImport } from './routes/settings/tenants'
+import { Route as SettingsPlatformRouteImport } from './routes/settings/platform'
 import { Route as SettingsMonitorsRouteImport } from './routes/settings/monitors'
 import { Route as SettingsJobsRouteImport } from './routes/settings/jobs'
 import { Route as SettingsEventsRouteImport } from './routes/settings/events'
@@ -81,6 +82,13 @@ const SettingsTenantsRoute = SettingsTenantsRouteImport.update({
   getParentRoute: () => SettingsRoute,
 } as any).lazy(() =>
   import('./routes/settings/tenants.lazy').then((d) => d.Route),
+)
+const SettingsPlatformRoute = SettingsPlatformRouteImport.update({
+  id: '/platform',
+  path: '/platform',
+  getParentRoute: () => SettingsRoute,
+} as any).lazy(() =>
+  import('./routes/settings/platform.lazy').then((d) => d.Route),
 )
 const SettingsMonitorsRoute = SettingsMonitorsRouteImport.update({
   id: '/monitors',
@@ -151,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/settings/events': typeof SettingsEventsRoute
   '/settings/jobs': typeof SettingsJobsRoute
   '/settings/monitors': typeof SettingsMonitorsRoute
+  '/settings/platform': typeof SettingsPlatformRoute
   '/settings/tenants': typeof SettingsTenantsRoute
   '/settings/users': typeof SettingsUsersRoute
   '/settings/': typeof SettingsIndexRoute
@@ -170,6 +179,7 @@ export interface FileRoutesByTo {
   '/settings/events': typeof SettingsEventsRoute
   '/settings/jobs': typeof SettingsJobsRoute
   '/settings/monitors': typeof SettingsMonitorsRoute
+  '/settings/platform': typeof SettingsPlatformRoute
   '/settings/tenants': typeof SettingsTenantsRoute
   '/settings/users': typeof SettingsUsersRoute
   '/settings': typeof SettingsIndexRoute
@@ -191,6 +201,7 @@ export interface FileRoutesById {
   '/settings/events': typeof SettingsEventsRoute
   '/settings/jobs': typeof SettingsJobsRoute
   '/settings/monitors': typeof SettingsMonitorsRoute
+  '/settings/platform': typeof SettingsPlatformRoute
   '/settings/tenants': typeof SettingsTenantsRoute
   '/settings/users': typeof SettingsUsersRoute
   '/settings/': typeof SettingsIndexRoute
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/settings/events'
     | '/settings/jobs'
     | '/settings/monitors'
+    | '/settings/platform'
     | '/settings/tenants'
     | '/settings/users'
     | '/settings/'
@@ -232,6 +244,7 @@ export interface FileRouteTypes {
     | '/settings/events'
     | '/settings/jobs'
     | '/settings/monitors'
+    | '/settings/platform'
     | '/settings/tenants'
     | '/settings/users'
     | '/settings'
@@ -252,6 +265,7 @@ export interface FileRouteTypes {
     | '/settings/events'
     | '/settings/jobs'
     | '/settings/monitors'
+    | '/settings/platform'
     | '/settings/tenants'
     | '/settings/users'
     | '/settings/'
@@ -342,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsTenantsRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/platform': {
+      id: '/settings/platform'
+      path: '/platform'
+      fullPath: '/settings/platform'
+      preLoaderRoute: typeof SettingsPlatformRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/monitors': {
       id: '/settings/monitors'
       path: '/monitors'
@@ -407,6 +428,7 @@ interface SettingsRouteChildren {
   SettingsEventsRoute: typeof SettingsEventsRoute
   SettingsJobsRoute: typeof SettingsJobsRoute
   SettingsMonitorsRoute: typeof SettingsMonitorsRoute
+  SettingsPlatformRoute: typeof SettingsPlatformRoute
   SettingsTenantsRoute: typeof SettingsTenantsRoute
   SettingsUsersRoute: typeof SettingsUsersRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
@@ -421,6 +443,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsEventsRoute: SettingsEventsRoute,
   SettingsJobsRoute: SettingsJobsRoute,
   SettingsMonitorsRoute: SettingsMonitorsRoute,
+  SettingsPlatformRoute: SettingsPlatformRoute,
   SettingsTenantsRoute: SettingsTenantsRoute,
   SettingsUsersRoute: SettingsUsersRoute,
   SettingsIndexRoute: SettingsIndexRoute,

@@ -43,7 +43,7 @@ public class SystemHealthController(ISystemHealthService healthService) : Contro
     /// filtered to the caller's organization.
     /// </summary>
     [HttpGet("jobs")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "KioskOrStaffAccess")]
     public async Task<ActionResult<IEnumerable<BackgroundJobStatusDto>>> GetRecentJobs()
     {
         var jobs = await healthService.GetRecentJobsAsync();

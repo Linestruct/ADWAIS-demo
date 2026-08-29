@@ -22,12 +22,12 @@ public class SystemHealthControllerTests
     }
 
     [Fact]
-    public void GetRecentJobs_RequiresAdminAccess()
+    public void GetRecentJobs_IsReadableByStaffAndKiosk()
     {
         var action = typeof(SystemHealthController).GetMethod(nameof(SystemHealthController.GetRecentJobs));
         var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.NotNull(authorization);
-        Assert.Equal("AdminOnly", authorization.Policy);
+        Assert.Equal("KioskOrStaffAccess", authorization.Policy);
     }
 }

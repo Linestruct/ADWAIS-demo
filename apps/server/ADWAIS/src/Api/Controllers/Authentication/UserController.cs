@@ -177,7 +177,7 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     /// organization admins see only their own organization's rows.
     /// </summary>
     [HttpGet("{id:guid}/memberships")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "KioskOrStaffAccess")]
     public async Task<ActionResult<IEnumerable<UserMembershipResponseDto>>> GetUserMemberships(Guid id, CancellationToken ct)
     {
         var user = await _userService.GetUserByIdAsync(id, ct);

@@ -20,6 +20,7 @@ export function RoleBoundary({ requiredRole, children, fallback }: Props) {
   }
 
   const rolePrecedence: Record<string, number> = {
+    'PlatformAdmin': 4,
     'Admin': 3,
     'Employee': 2,
     'Viewer': 1

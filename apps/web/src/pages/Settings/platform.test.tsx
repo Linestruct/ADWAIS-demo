@@ -12,10 +12,16 @@ import type { GlobalConfigDto } from '@types';
 const testState = vi.hoisted(() => ({
   config: { systemEventRetentionDays: 30, visibleRecurringJobs: ['system-event-cleanup'] } as GlobalConfigDto,
   updateConfig: vi.fn(),
+  recurringJobs: [
+    { id: 'system-event-cleanup' },
+    { id: 'refresh-financial-materialized-views' },
+    { id: 'dispatch-order-fetch-00000000-0000-0000-0000-00000000000a' },
+  ],
 }));
 
 vi.mock('../../hooks/useJobSettingsQueries', () => ({
   useGlobalConfigQuery: () => ({ data: testState.config }),
+  useRecurringJobsQuery: () => ({ data: testState.recurringJobs }),
   useUpdateConfigMutation: () => ({ mutateAsync: testState.updateConfig }),
 }));
 
@@ -48,12 +54,20 @@ describe('PlatformConfigurationView', () => {
     expect(screen.getByRole('button', { name: /Open Hangfire Dashboard/ })).toBeEnabled();
   });
 
-  it('shows visible scheduled jobs and marks the managed ones', () => {
+  it('shows only platform-wide jobs and marks the managed ones', () => {
     render(<PlatformConfigurationView />, { wrapper });
 
     expect(screen.getByRole('heading', { name: 'Visible Scheduled Jobs' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /System Event Cleanup/ })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /Financial View Refresh/ })).not.toBeChecked();
+    expect(screen.queryByRole('checkbox', { name: /Order Fetch/ })).not.toBeInTheDocument();
+  });
+
+  it('shows newly registered platform jobs without a catalog change', () => {
+    testState.recurringJobs = [...testState.recurringJobs, { id: 'new-platform-job' }];
+    render(<PlatformConfigurationView />, { wrapper });
+
+    expect(screen.getByRole('checkbox', { name: /new-platform-job/ })).not.toBeChecked();
   });
 
   it('persists a visibility change through the config update', () => {

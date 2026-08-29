@@ -31,6 +31,8 @@ export function recurringJobDisplayName(jobId: string): string {
   return jobId;
 }
 
-export function platformJobCatalog(): { id: string; label: string }[] {
-  return Object.entries(PLATFORM_LABELS).map(([id, label]) => ({ id, label }));
+const ORG_SUFFIX = /-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isPlatformWideJob(jobId: string): boolean {
+  return !ORG_SUFFIX.test(jobId);
 }

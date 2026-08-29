@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { Settings2 } from 'lucide-react';
-import { useGlobalConfigQuery, useUpdateConfigMutation } from '../../hooks/useJobSettingsQueries';
+import { useGlobalConfigQuery, useUpdateConfigMutation, useRecurringJobsQuery } from '../../hooks/useJobSettingsQueries';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { GlobalConfigurationForm } from '../../components/settings/configuration/GlobalConfigurationForm';
 import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
@@ -12,10 +12,11 @@ import { SecureButton } from '../../components/common/ui/SecureButton';
 import { CheckboxField } from '../../components/common/ui/FormField';
 import { usePostApiDashboardSession } from '../../api/generated/endpoints';
 import { isAdminRole } from '../../utils/roles';
-import { platformJobCatalog } from '../../utils/recurringJobLabels';
+import { isPlatformWideJob, recurringJobDisplayName } from '../../utils/recurringJobLabels';
 
 export function PlatformConfigurationView() {
     const { data: config } = useGlobalConfigQuery();
+    const { data: recurringJobs } = useRecurringJobsQuery();
     const updateConfig = useUpdateConfigMutation();
     const { role } = useCurrentUser();
     const disabled = !isAdminRole(role);
@@ -81,16 +82,19 @@ export function PlatformConfigurationView() {
                                 Platform-wide jobs that organizations can see in their job schedules.
                             </p>
                             <div className="mt-4 flex flex-col gap-2">
-                                {platformJobCatalog().map((job) => (
-                                    <CheckboxField
-                                        key={job.id}
-                                        label={job.label}
-                                        meta={job.id}
-                                        checked={(config?.visibleRecurringJobs ?? []).includes(job.id)}
-                                        disabled={disabled}
-                                        onChange={(e) => toggleVisibleJob(job.id, e.target.checked)}
-                                    />
-                                ))}
+                                {(recurringJobs ?? [])
+                                    .filter((job) => isPlatformWideJob(job.id))
+                                    .sort((a, b) => recurringJobDisplayName(a.id).localeCompare(recurringJobDisplayName(b.id)))
+                                    .map((job) => (
+                                        <CheckboxField
+                                            key={job.id}
+                                            label={recurringJobDisplayName(job.id)}
+                                            meta={job.id}
+                                            checked={(config?.visibleRecurringJobs ?? []).includes(job.id)}
+                                            disabled={disabled}
+                                            onChange={(e) => toggleVisibleJob(job.id, e.target.checked)}
+                                        />
+                                    ))}
                             </div>
                         </section>
                     </div>

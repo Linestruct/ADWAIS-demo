@@ -16,7 +16,7 @@ public class UpdateMonitorUptimeJob(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
     IEnumerable<IMonitoringProvider> monitoringProviders,
     ISystemEventService eventService,
-    IViewRefreshTracker viewRefreshTracker)
+    IViewRefreshTracker viewRefreshTracker) : IOrgScopedJob
 {
     public async Task ExecuteAsync(Guid organizationId, int monitorId, DateTimeOffset startDate, DateTimeOffset endDate)
     {

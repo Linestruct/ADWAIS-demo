@@ -19,7 +19,7 @@ public class UpdateMonitorLatencyJob(
     IEnumerable<IMonitoringProvider> monitoringProviders,
     IMemoryCache cache,
     ISystemEventService eventService,
-    IViewRefreshTracker viewRefreshTracker)
+    IViewRefreshTracker viewRefreshTracker) : IOrgScopedJob
 {
     public async Task ExecuteAsync(Guid organizationId, int monitorId, DateTimeOffset startDate, DateTimeOffset endDate)
     {

@@ -96,6 +96,7 @@ if (!isBuildTime)
             storageOptions.SchemaName = "hangfire";
             storageOptions.PrepareSchemaIfNecessary = true;
         });
+        config.UseFilter(new Adwais.Infrastructure.Jobs.OrgScopedJobEnforcementFilter());
     });
     builder.Services.AddHangfireServer();
 }

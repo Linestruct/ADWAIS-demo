@@ -9,13 +9,15 @@ import {
    usePatchApiUsersId, 
    useDeleteApiUsersId 
  } from '../api/generated/endpoints';
+import { useOrgSelection } from './useOrgSelection';
 import type { UserResponseDto, UserRole } from '@types';
 import { toast } from 'sonner';
 
 export function useUsersQuery() {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiUsers<UserResponseDto[], Error>({
     query: {
-      queryKey: ['users'],
+      queryKey: ['users', selectedOrgId],
       select: (res) => res.data as UserResponseDto[]
     }
   });

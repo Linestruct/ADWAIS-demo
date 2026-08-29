@@ -52,6 +52,30 @@ public class FeedAggregationService(
         }
     }
 
+    public async Task AggregateOrgFeedsAsync(Guid organizationId, CancellationToken ct = default)
+    {
+        List<FeedSource> sources;
+        await using (var context = await _contextFactory.CreateDbContextAsync(ct))
+        {
+            sources = await context.FeedSources
+                .Where(s => s.IsActive && s.OrganizationId == organizationId)
+                .ToListAsync(ct);
+        }
+
+        foreach (var source in sources)
+        {
+            try
+            {
+                await AggregateSourceAsync(source.Id, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to aggregate feed source {Name}", source.Name);
+                await _eventService.LogErrorAsync(nameof(FeedAggregationService), $"Feed aggregation failed for {source.Name}: {ex.Message}", ex);
+            }
+        }
+    }
+
     public async Task AggregateSourceAsync(Guid sourceId, CancellationToken ct = default)
     {
         FeedSource? source;

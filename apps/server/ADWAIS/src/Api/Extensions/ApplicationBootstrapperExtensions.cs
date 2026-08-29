@@ -20,6 +20,8 @@ namespace Adwais.Api.Extensions;
 
 public static class ApplicationBootstrapperExtensions
 {
+    private static int Positive(int value, int fallback) => value > 0 ? value : fallback;
+
     public static async Task BootstrapApplicationAsync(this WebApplication app)
     {
         var configuration = app.Services.GetRequiredService<IConfiguration>();
@@ -91,55 +93,61 @@ public static class ApplicationBootstrapperExtensions
         {
             var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
             
-            recurringJobManager.AddOrUpdate<MonitorSynchronizationJob>(
-                "sync-monitoring-fleet",
-                newJob => newJob.ExecuteAsync(), 
-                Cron.MinuteInterval(5));
-            
             recurringJobManager.RemoveIfExists("dispatch-uptimerobot-metrics");
             recurringJobManager.RemoveIfExists("sync-uptimerobot-fleet");
             recurringJobManager.RemoveIfExists("dispatch-uptimerobot-uptime");
             recurringJobManager.RemoveIfExists("dispatch-uptimerobot-latency");
             recurringJobManager.RemoveIfExists("dispatch-litium-orders");
             recurringJobManager.RemoveIfExists("sync-uptimerobot-account-stats");
+            recurringJobManager.RemoveIfExists("sync-monitoring-fleet");
+            recurringJobManager.RemoveIfExists("dispatch-monitoring-uptime");
+            recurringJobManager.RemoveIfExists("dispatch-monitoring-latency");
+            recurringJobManager.RemoveIfExists("dispatch-order-fetch");
+            recurringJobManager.RemoveIfExists("sync-monitoring-account-stats");
+            recurringJobManager.RemoveIfExists("aggregate-intranet-feeds");
 
             using (var scope = app.Services.CreateScope())
             {
                 var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AnalyticsDbContext>>();
                 await using var context = await dbFactory.CreateDbContextAsync();
-                var orgConfig = await context.OrganizationConfigs
-                    .Where(c => c.MonitoringProviderSettings != null)
-                    .OrderBy(c => c.OrganizationId)
-                    .FirstOrDefaultAsync();
+                var orgConfigs = await context.OrganizationConfigs.AsNoTracking().ToListAsync();
                 var globalConfig = await context.GlobalConfigs.AsNoTracking().FirstOrDefaultAsync();
-                var intervals = SchedulingIntervalResolver.Resolve(orgConfig);
-
-                var uptimeInterval = intervals.UptimeMinutes;
-                var latencyInterval = intervals.LatencyMinutes;
-                var orderFetchInterval = intervals.OrderFetchMinutes;
-                var userStatsInterval = intervals.UserStatsMinutes;
-                var feedInterval = intervals.FeedHours;
                 var matViewInterval = globalConfig?.MatViewRefreshIntervalMinutes ?? 60;
-                
-                recurringJobManager.AddOrUpdate<UptimeDispatcherJob>(
-                        "dispatch-monitoring-uptime",
-                        newJob => newJob.ExecuteAsync(),
-                        CronHelper.FromMinutes(uptimeInterval));
 
-                recurringJobManager.AddOrUpdate<LatencyDispatcherJob>(
-                    "dispatch-monitoring-latency",
-                    newJob => newJob.ExecuteAsync(),
-                    CronHelper.FromMinutes(latencyInterval));
+                foreach (var orgConfig in orgConfigs)
+                {
+                    var orgId = orgConfig.OrganizationId;
 
-                recurringJobManager.AddOrUpdate<OrderFetchDispatcherJob>(
-                    "dispatch-order-fetch",
-                    newJob => newJob.ExecuteAsync(),
-                    CronHelper.FromMinutes(orderFetchInterval));
+                    recurringJobManager.AddOrUpdate<OrderFetchDispatchJob>(
+                        $"dispatch-order-fetch-{orgId}",
+                        newJob => newJob.ExecuteAsync(orgId),
+                        CronHelper.FromMinutes(Positive(orgConfig.OrderFetchIntervalMinutes, 60)));
 
-                recurringJobManager.AddOrUpdate<UpdateGlobalMonitoringStatsJob>(
-                    "sync-monitoring-account-stats",
-                    newJob => newJob.ExecuteAsync(),
-                    CronHelper.FromMinutes(userStatsInterval));
+                    recurringJobManager.AddOrUpdate<MonitorUptimeDispatchJob>(
+                        $"dispatch-monitoring-uptime-{orgId}",
+                        newJob => newJob.ExecuteAsync(orgId),
+                        CronHelper.FromMinutes(Positive(orgConfig.UptimeFetchIntervalMinutes, 60)));
+
+                    recurringJobManager.AddOrUpdate<MonitorLatencyDispatchJob>(
+                        $"dispatch-monitoring-latency-{orgId}",
+                        newJob => newJob.ExecuteAsync(orgId),
+                        CronHelper.FromMinutes(Positive(orgConfig.LatencyFetchIntervalMinutes, 10)));
+
+                    recurringJobManager.AddOrUpdate<SyncOrganizationAccountStatsJob>(
+                        $"sync-monitoring-account-stats-{orgId}",
+                        newJob => newJob.ExecuteAsync(orgId),
+                        CronHelper.FromMinutes(Positive(orgConfig.UserStatsFetchIntervalMinutes, 60)));
+
+                    recurringJobManager.AddOrUpdate<SyncOrganizationFleetJob>(
+                        $"sync-monitoring-fleet-{orgId}",
+                        newJob => newJob.ExecuteAsync(orgId),
+                        Cron.MinuteInterval(5));
+
+                    recurringJobManager.AddOrUpdate<AggregateOrganizationFeedsJob>(
+                        $"aggregate-intranet-feeds-{orgId}",
+                        newJob => newJob.ExecuteAsync(orgId, CancellationToken.None),
+                        Cron.HourInterval(Positive(orgConfig.FeedFetchIntervalHours, 2)));
+                }
 
                 recurringJobManager.AddOrUpdate<RefreshMonitoringMaterializedViewJob>(
                     "refresh-monitoring-materialized-views",
@@ -160,11 +168,6 @@ public static class ApplicationBootstrapperExtensions
                     "system-event-cleanup",
                     newJob => newJob.ExecuteAsync(),
                     Cron.Daily(2));
-
-                recurringJobManager.AddOrUpdate<FeedAggregationJob>(
-                    "aggregate-intranet-feeds",
-                    newJob => newJob.ExecuteAsync(CancellationToken.None),
-                    Cron.HourInterval(feedInterval));
 
                 recurringJobManager.AddOrUpdate<CalendarSyncJob>(
                     "sync-intranet-calendars",

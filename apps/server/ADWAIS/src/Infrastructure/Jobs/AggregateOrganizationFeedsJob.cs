@@ -2,21 +2,23 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
-using System.Threading;
-using System.Threading.Tasks;
 using Adwais.Application.Interfaces;
 using Hangfire;
 
 namespace Adwais.Infrastructure.Jobs;
 
-public class FeedAggregationJob(IFeedAggregationService feedAggregationService)
+/// <summary>
+/// Aggregates one organization's intranet feeds. Runs on the
+/// organization's own recurring cadence.
+/// </summary>
+public class AggregateOrganizationFeedsJob(IFeedAggregationService feedAggregationService) : IOrgScopedJob
 {
     private readonly IFeedAggregationService _feedAggregationService = feedAggregationService;
 
     [Queue("default")]
     [AutomaticRetry(Attempts = 2, LogEvents = true)]
-    public async Task ExecuteAsync(CancellationToken ct)
+    public async Task ExecuteAsync(Guid organizationId, CancellationToken ct)
     {
-        await _feedAggregationService.AggregateAllFeedsAsync(ct);
+        await _feedAggregationService.AggregateOrgFeedsAsync(organizationId, ct);
     }
 }

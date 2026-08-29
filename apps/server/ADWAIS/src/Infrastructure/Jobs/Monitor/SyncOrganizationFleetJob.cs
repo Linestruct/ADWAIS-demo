@@ -2,6 +2,8 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using System;
+using System.Linq;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Infrastructure.Persistence;
@@ -22,13 +24,17 @@ namespace Adwais.Infrastructure.Jobs.Monitor;
 public class SyncOrganizationFleetJob(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
     IEnumerable<IMonitoringProvider> monitoringProviders,
-    IMemoryCache cache) : IOrgScopedJob
+    IMemoryCache cache,
+    IRecurringJobManager recurringJobManager) : IOrgScopedJob
 {
     protected virtual string? CurrentSyncCron => JobStorage.Current.GetConnection().GetRecurringJobs()
-        .SingleOrDefault(j => j.Id == "sync-monitoring-fleet")?.Cron;
+        .SingleOrDefault(j => j.Id == $"sync-monitoring-fleet-{OrganizationIdOfLastRun}")?.Cron;
+
+    private Guid OrganizationIdOfLastRun { get; set; } = Guid.Empty;
 
     public async Task ExecuteAsync(Guid organizationId)
     {
+        OrganizationIdOfLastRun = organizationId;
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
 
         var orgConfig = await dbContext.OrganizationConfigs
@@ -119,6 +125,15 @@ public class SyncOrganizationFleetJob(
         }
 
         await dbContext.SaveChangesAsync();
+
+        var lowestIntervalSeconds = upStreamMonitors.Count > 0
+            ? upStreamMonitors.Min(m => m.UpdateInterval)
+            : 300;
+        var lowestIntervalMins = Math.Max(1, lowestIntervalSeconds / 60);
+        recurringJobManager.AddOrUpdate<SyncOrganizationFleetJob>(
+            $"sync-monitoring-fleet-{organizationId}",
+            job => job.ExecuteAsync(organizationId),
+            Cron.MinuteInterval(lowestIntervalMins));
 
         var cacheDuration = ResolveCacheDuration();
 

@@ -25,9 +25,11 @@ public class GlobalConfigService(
     IApplicationDbContext dbContext,
     ISystemEventService eventService,
     IOrganizationConfigService organizationConfigService,
-    ICurrentAccess currentAccess) : IGlobalConfigService
+    ICurrentAccess currentAccess,
+    IJobTriggerService jobTriggerService) : IGlobalConfigService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
+    private readonly IJobTriggerService _jobTriggerService = jobTriggerService;
     private readonly ISystemEventService _eventService = eventService;
     private readonly IOrganizationConfigService _organizationConfigService = organizationConfigService;
     private readonly ICurrentAccess _currentAccess = currentAccess;
@@ -70,7 +72,7 @@ public class GlobalConfigService(
 
     public async Task TriggerFeedFetchAsync(CancellationToken ct = default)
     {
-        await Task.Run(() => RecurringJob.TriggerJob("aggregate-intranet-feeds"), ct);
+        await _jobTriggerService.TriggerFeedSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
     }
 
     public async Task UpdateFeedIntervalAsync(int intervalHours, CancellationToken ct = default)
@@ -92,9 +94,9 @@ public class GlobalConfigService(
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: intervalHours), ct);
 
-        RecurringJob.AddOrUpdate<FeedAggregationJob>(
-            "aggregate-intranet-feeds",
-            job => job.ExecuteAsync(CancellationToken.None),
+        RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
+            $"aggregate-intranet-feeds-{orgId}",
+            job => job.ExecuteAsync(orgId, CancellationToken.None),
             Cron.HourInterval(intervalHours));
 
         await _eventService.LogAsync(nameof(GlobalConfigService), $"Feed aggregation interval updated to {intervalHours} hours.");
@@ -149,45 +151,45 @@ public class GlobalConfigService(
 
         if (request.UptimeFetchIntervalMinutes.HasValue)
         {
-            RecurringJob.AddOrUpdate<UptimeDispatcherJob>(
-                "dispatch-monitoring-uptime",
-                job => job.ExecuteAsync(),
+            RecurringJob.AddOrUpdate<MonitorUptimeDispatchJob>(
+                $"dispatch-monitoring-uptime-{orgId}",
+                job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.UptimeFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Uptime Fetch Interval to {request.UptimeFetchIntervalMinutes.Value} minutes");
         }
 
         if (request.LatencyFetchIntervalMinutes.HasValue)
         {
-            RecurringJob.AddOrUpdate<LatencyDispatcherJob>(
-                "dispatch-monitoring-latency",
-                job => job.ExecuteAsync(),
+            RecurringJob.AddOrUpdate<MonitorLatencyDispatchJob>(
+                $"dispatch-monitoring-latency-{orgId}",
+                job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.LatencyFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Latency Fetch Interval to {request.LatencyFetchIntervalMinutes.Value} minutes");
         }
 
         if (request.UserStatsFetchIntervalMinutes.HasValue)
         {
-            RecurringJob.AddOrUpdate<UpdateGlobalMonitoringStatsJob>(
-                "sync-monitoring-account-stats",
-                job => job.ExecuteAsync(),
+            RecurringJob.AddOrUpdate<SyncOrganizationAccountStatsJob>(
+                $"sync-monitoring-account-stats-{orgId}",
+                job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.UserStatsFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated User Stats Fetch Interval to {request.UserStatsFetchIntervalMinutes.Value} minutes");
         }
 
         if (request.OrderFetchIntervalMinutes.HasValue)
         {
-            RecurringJob.AddOrUpdate<OrderFetchDispatcherJob>(
-                "dispatch-order-fetch",
-                job => job.ExecuteAsync(),
+            RecurringJob.AddOrUpdate<OrderFetchDispatchJob>(
+                $"dispatch-order-fetch-{orgId}",
+                job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.OrderFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated order fetch interval to {request.OrderFetchIntervalMinutes.Value} minutes");
         }
 
         if (request.FeedFetchIntervalHours.HasValue)
         {
-            RecurringJob.AddOrUpdate<FeedAggregationJob>(
-                "aggregate-intranet-feeds",
-                job => job.ExecuteAsync(CancellationToken.None),
+            RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
+                $"aggregate-intranet-feeds-{orgId}",
+                job => job.ExecuteAsync(orgId, CancellationToken.None),
                 Cron.HourInterval(request.FeedFetchIntervalHours.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Feed Fetch Interval to {request.FeedFetchIntervalHours.Value} hours");
         }

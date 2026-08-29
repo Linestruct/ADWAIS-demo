@@ -13,6 +13,7 @@ using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Infrastructure.Jobs.Monitor;
 using Adwais.Infrastructure.Persistence;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
@@ -34,8 +35,9 @@ public class SyncOrganizationFleetJobTests
     private sealed class TestableSyncOrganizationFleetJob(
         IDbContextFactory<AnalyticsDbContext> dbContextFactory,
         IEnumerable<IMonitoringProvider> monitoringProviders,
-        IMemoryCache cache)
-        : SyncOrganizationFleetJob(dbContextFactory, monitoringProviders, cache)
+        IMemoryCache cache,
+        IRecurringJobManager recurringJobManager)
+        : SyncOrganizationFleetJob(dbContextFactory, monitoringProviders, cache, recurringJobManager)
     {
         protected override string? CurrentSyncCron => null;
     }
@@ -88,7 +90,8 @@ public class SyncOrganizationFleetJobTests
         return new TestableSyncOrganizationFleetJob(
             new FakeDbContextFactory(_dbOptions),
             providers,
-            new MemoryCache(new MemoryCacheOptions()));
+            new MemoryCache(new MemoryCacheOptions()),
+            Mock.Of<IRecurringJobManager>());
     }
 
     [Fact]

@@ -2,28 +2,35 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using Adwais.Application.Interfaces;
 using Adwais.Infrastructure.Persistence;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Jobs.Monitor;
 
-public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContextFactory, IBackgroundJobClient backgroundJobClient)
+/// <summary>
+/// Enqueues uptime collection jobs for one organization's monitors.
+/// Runs on the organization's own recurring cadence.
+/// </summary>
+public class MonitorUptimeDispatchJob(
+    IDbContextFactory<AnalyticsDbContext> dbContextFactory,
+    IBackgroundJobClient backgroundJobClient) : IOrgScopedJob
 {
-    public async Task ExecuteAsync()
+    [DisableConcurrentExecution(timeoutInSeconds: 300)]
+    public async Task ExecuteAsync(Guid organizationId)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-        
+
         var hasConfiguredOrg = await dbContext.OrganizationConfigs
-            .AnyAsync(c => c.MonitoringProviderSettings != null && c.MonitoringFetchEnabled);
-        if (!hasConfiguredOrg)
-        {
-            return;
-        }
-        
+            .AnyAsync(c => c.OrganizationId == organizationId
+                && c.MonitoringProviderSettings != null
+                && c.MonitoringFetchEnabled);
+        if (!hasConfiguredOrg) return;
+
         var monitors = await dbContext.Monitors
-            .Where(m => m.Id > 0 && m.UptimeMonitorEnabled)
-            .Select(m => new { m.Id, m.LastUptimeUpdate, OrgId = m.Tenant!.OrganizationId })
+            .Where(m => m.Id > 0 && m.UptimeMonitorEnabled && m.Tenant!.OrganizationId == organizationId)
+            .Select(m => new { m.Id, m.LastUptimeUpdate })
             .ToListAsync();
 
         var now = DateTimeOffset.UtcNow;
@@ -54,25 +61,23 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
             .ToHashSet();
 
         int index = 0;
-        var olderBackfills = new List<(int MonitorId, Guid OrgId, DateTimeOffset Start, DateTimeOffset End)>();
+        var olderBackfills = new List<(int MonitorId, DateTimeOffset Start, DateTimeOffset End)>();
 
         foreach (var monitor in monitors)
         {
-            // Finalize yesterday first, then keep today's partial bucket fresh.
             if (!finalizedKeys.Contains((monitor.Id, yesterdayStart.UtcDateTime.Date)))
             {
                 backgroundJobClient.Schedule<UpdateMonitorUptimeJob>(
-                    x => x.ExecuteAsync(monitor.OrgId, monitor.Id, yesterdayStart, todayStart.AddSeconds(-1)),
+                    x => x.ExecuteAsync(organizationId, monitor.Id, yesterdayStart, todayStart.AddSeconds(-1)),
                     TimeSpan.FromSeconds(index * 2));
                 index++;
             }
 
             backgroundJobClient.Schedule<UpdateMonitorUptimeJob>(
-                x => x.ExecuteAsync(monitor.OrgId, monitor.Id, todayStart, now),
+                x => x.ExecuteAsync(organizationId, monitor.Id, todayStart, now),
                 TimeSpan.FromSeconds(index * 2));
             index++;
 
-            // Queue older gaps after every monitor has received its current-day update.
             var cursor = monitor.LastUptimeUpdate.HasValue && monitor.LastUptimeUpdate.Value < todayStart
                 ? new DateTimeOffset(
                     monitor.LastUptimeUpdate.Value.Year,
@@ -86,7 +91,7 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
             {
                 if (!finalizedKeys.Contains((monitor.Id, cursor.UtcDateTime.Date)))
                 {
-                    olderBackfills.Add((monitor.Id, monitor.OrgId, cursor, cursor.AddDays(1).AddSeconds(-1)));
+                    olderBackfills.Add((monitor.Id, cursor, cursor.AddDays(1).AddSeconds(-1)));
                 }
                 cursor = cursor.AddDays(1);
             }
@@ -95,7 +100,7 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
         foreach (var backfill in olderBackfills)
         {
             backgroundJobClient.Schedule<UpdateMonitorUptimeJob>(
-                x => x.ExecuteAsync(backfill.OrgId, backfill.MonitorId, backfill.Start, backfill.End),
+                x => x.ExecuteAsync(organizationId, backfill.MonitorId, backfill.Start, backfill.End),
                 TimeSpan.FromSeconds(index * 2));
             index++;
         }

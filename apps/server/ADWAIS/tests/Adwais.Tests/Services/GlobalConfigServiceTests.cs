@@ -79,7 +79,8 @@ public class GlobalConfigServiceTests
     {
         var orgConfigService = new OrganizationConfigService(
             dbContext, access, new[] { _monitoringProviderMock.Object }, _viewRefreshTrackerMock.Object);
-        return new GlobalConfigService(dbContext, _eventServiceMock.Object, orgConfigService, access);
+        return new GlobalConfigService(dbContext, _eventServiceMock.Object, orgConfigService, access,
+            new Mock<IJobTriggerService>().Object);
     }
 
     private static GlobalConfig SeedGlobalConfig(AnalyticsDbContext dbContext, int retentionDays = 2)

@@ -20,4 +20,5 @@ public interface IJobTriggerService
     Task TriggerLatencySyncAsync(Guid? organizationId, CancellationToken ct = default);
     Task TriggerFleetSyncAsync(Guid? organizationId, CancellationToken ct = default);
     Task TriggerAccountStatsSyncAsync(Guid? organizationId, CancellationToken ct = default);
+    Task TriggerFeedSyncAsync(Guid? organizationId, CancellationToken ct = default);
 }

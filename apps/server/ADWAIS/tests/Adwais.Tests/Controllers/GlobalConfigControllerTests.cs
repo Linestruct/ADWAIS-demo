@@ -34,7 +34,8 @@ public class GlobalConfigControllerTests
             Id: 1,
             LastPolled: null,
             SystemEventRetentionDays: 2,
-            MatViewRefreshIntervalMinutes: 60
+            MatViewRefreshIntervalMinutes: 60,
+            VisibleRecurringJobs: Array.Empty<string>()
         );
 
         _configServiceMock.Setup(s => s.GetConfigAsync(It.IsAny<CancellationToken>()))
@@ -59,7 +60,8 @@ public class GlobalConfigControllerTests
             Id: 1,
             LastPolled: null,
             SystemEventRetentionDays: 30,
-            MatViewRefreshIntervalMinutes: 60
+            MatViewRefreshIntervalMinutes: 60,
+            VisibleRecurringJobs: Array.Empty<string>()
         );
 
         _configServiceMock.Setup(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()))

@@ -54,6 +54,10 @@ public class GlobalConfigService(
             if (interval < 5) throw new ArgumentException("Interval must be at least 5 minutes.", nameof(request.MatViewRefreshIntervalMinutes));
             config.MatViewRefreshIntervalMinutes = interval;
         }
+        if (request.VisibleRecurringJobs is not null)
+        {
+            config.VisibleRecurringJobsCsv = Adwais.Application.Common.Jobs.RecurringJobVisibility.JoinVisibleJobs(request.VisibleRecurringJobs);
+        }
         await _dbContext.SaveChangesAsync(ct);
 
         if (request.MatViewRefreshIntervalMinutes.HasValue)
@@ -213,7 +217,8 @@ public class GlobalConfigService(
     }
 
     private GlobalConfigResponseDto MapToDto(GlobalConfig config) =>
-        new(config.Id, config.LastPolled, config.SystemEventRetentionDays, config.MatViewRefreshIntervalMinutes);
+        new(config.Id, config.LastPolled, config.SystemEventRetentionDays, config.MatViewRefreshIntervalMinutes,
+            Adwais.Application.Common.Jobs.RecurringJobVisibility.ParseVisibleJobs(config.VisibleRecurringJobsCsv));
 
     private static OrganizationConfigDto DefaultOrgConfig() => new(
         WeatherLocation: null,

@@ -10,4 +10,5 @@ public class GlobalConfig
     public DateTimeOffset? LastPolled { get; set; }
     public int SystemEventRetentionDays { get; set; }
     public int MatViewRefreshIntervalMinutes { get; set; }
+    public string? VisibleRecurringJobsCsv { get; set; }
 }

@@ -275,12 +275,15 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.HasKey(x => x.Id);
             entity.Property(x => x.SystemEventRetentionDays).HasDefaultValue(2);
             entity.Property(x => x.MatViewRefreshIntervalMinutes).HasDefaultValue(60);
+            entity.Property(x => x.VisibleRecurringJobsCsv)
+                .HasDefaultValueSql($"'{Adwais.Application.Common.Jobs.RecurringJobVisibility.DefaultVisiblePlatformJobs}'");
 
             entity.HasData(new GlobalConfig
             {
                 Id = 1,
                 SystemEventRetentionDays = 2,
-                MatViewRefreshIntervalMinutes = 60
+                MatViewRefreshIntervalMinutes = 60,
+                VisibleRecurringJobsCsv = Adwais.Application.Common.Jobs.RecurringJobVisibility.DefaultVisiblePlatformJobs
             });
         });
         

@@ -89,7 +89,8 @@ public class GlobalConfigServiceTests
         {
             Id = 1,
             SystemEventRetentionDays = retentionDays,
-            MatViewRefreshIntervalMinutes = 60
+            MatViewRefreshIntervalMinutes = 60,
+            VisibleRecurringJobsCsv = "refresh-financial-materialized-views,system-event-cleanup"
         };
         dbContext.GlobalConfigs.Add(config);
         return config;
@@ -169,6 +170,40 @@ public class GlobalConfigServiceTests
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
         Assert.Equal(60, configDb!.MatViewRefreshIntervalMinutes);
+    }
+
+    [Fact]
+    public async Task UpdateConfigAsync_UpdatesVisibleRecurringJobsAndPersists()
+    {
+        var dbContext = new AnalyticsDbContext(_options);
+        SeedGlobalConfig(dbContext);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext, OrgAccess());
+        var request = new UpdateGlobalConfigRequestDto(
+            VisibleRecurringJobs: new[] { "sync-intranet-calendars", "dev-runtime-data-seeder" });
+
+        var result = await service.UpdateConfigAsync(request);
+
+        Assert.Equal(new[] { "sync-intranet-calendars", "dev-runtime-data-seeder" }, result.VisibleRecurringJobs);
+
+        var dbCheck = new AnalyticsDbContext(_options);
+        var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
+        Assert.Equal("sync-intranet-calendars,dev-runtime-data-seeder", configDb!.VisibleRecurringJobsCsv);
+    }
+
+    [Fact]
+    public async Task GetConfigAsync_ReturnsVisibleRecurringJobs()
+    {
+        var dbContext = new AnalyticsDbContext(_options);
+        SeedGlobalConfig(dbContext);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext, OrgAccess());
+
+        var result = await service.GetConfigAsync();
+
+        Assert.Equal(new[] { "refresh-financial-materialized-views", "system-event-cleanup" }, result!.VisibleRecurringJobs);
     }
 
     [Fact]

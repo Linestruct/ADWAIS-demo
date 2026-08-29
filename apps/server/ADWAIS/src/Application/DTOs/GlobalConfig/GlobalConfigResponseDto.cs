@@ -10,4 +10,5 @@ public record GlobalConfigResponseDto(
     int Id,
     DateTimeOffset? LastPolled,
     int SystemEventRetentionDays,
-    int MatViewRefreshIntervalMinutes);
+    int MatViewRefreshIntervalMinutes,
+    string[] VisibleRecurringJobs);

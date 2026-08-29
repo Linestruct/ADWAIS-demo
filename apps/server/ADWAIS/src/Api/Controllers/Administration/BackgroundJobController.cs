@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Hangfire;
 using Hangfire.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Api.Controllers.Administration;
 
@@ -18,10 +20,12 @@ namespace Adwais.Api.Controllers.Administration;
 [Route("api/job")]
 public class BackgroundJobController(
     IJobTriggerService jobTriggerService,
-    ICurrentAccess currentAccess) : ControllerBase
+    ICurrentAccess currentAccess,
+    IApplicationDbContext dbContext) : ControllerBase
 {
     private readonly IJobTriggerService _jobTriggerService = jobTriggerService;
     private readonly ICurrentAccess _currentAccess = currentAccess;
+    private readonly IApplicationDbContext _dbContext = dbContext;
 
     /// <summary>
     /// Triggers the monitoring-provider synchronization job for the caller's organization.
@@ -107,12 +111,22 @@ public class BackgroundJobController(
     /// </summary>
     [HttpGet("recurring")]
     [Authorize(Policy = "KioskOrStaffAccess")]
-    public async Task<ActionResult> GetRecurringJobs()
+    public async Task<ActionResult> GetRecurringJobs(CancellationToken ct)
     {
         var recurringJobs = await Task.Run(() => JobStorage.Current.GetConnection().GetRecurringJobs());
         var scopeOrgId = _currentAccess.Scope?.OrganizationId;
+
+        IReadOnlySet<string> visiblePlatformJobs = new HashSet<string>(StringComparer.Ordinal);
+        if (scopeOrgId is not null)
+        {
+            var globalConfig = await _dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
+            visiblePlatformJobs = Adwais.Application.Common.Jobs.RecurringJobVisibility
+                .ParseVisibleJobs(globalConfig?.VisibleRecurringJobsCsv)
+                .ToHashSet(StringComparer.Ordinal);
+        }
+
         return Ok(recurringJobs
-            .Where(j => scopeOrgId is null || Adwais.Api.Jobs.RecurringJobVisibility.VisibleToOrganizationScope(j.Id, scopeOrgId.Value))
+            .Where(j => scopeOrgId is null || Adwais.Application.Common.Jobs.RecurringJobVisibility.IsVisible(j.Id, scopeOrgId.Value, visiblePlatformJobs))
             .Select(j => new
             {
                 j.Id,

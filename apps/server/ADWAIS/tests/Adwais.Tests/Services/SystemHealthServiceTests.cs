@@ -25,6 +25,10 @@ using Xunit;
 
 namespace Adwais.Tests.Services;
 
+[CollectionDefinition("StaticJobStorage", DisableParallelization = true)]
+public class StaticJobStorageCollection;
+
+[Collection("StaticJobStorage")]
 public class SystemHealthServiceTests
 {
     private static readonly System.Reflection.MethodInfo IngestionMethod =

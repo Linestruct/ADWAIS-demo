@@ -101,22 +101,27 @@ public class BackgroundJobController(
     }
 
     /// <summary>
-    /// Retrieves a list of all registered recurring jobs and their current schedules.
+    /// Retrieves the recurring jobs for the caller's organization.
+    /// Platform scope returns every organization's jobs.
     /// </summary>
     [HttpGet("recurring")]
-    [Authorize(Policy = "PlatformAdminOnly")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult> GetRecurringJobs()
     {
         var recurringJobs = await Task.Run(() => JobStorage.Current.GetConnection().GetRecurringJobs());
-        return Ok(recurringJobs.Select(j => new
-        {
-            j.Id,
-            j.Cron,
-            j.LastExecution,
-            j.NextExecution,
-            j.LastJobState,
-            j.Queue
-        }));
+        var scopeOrgId = _currentAccess.Scope?.OrganizationId;
+        var orgSuffix = scopeOrgId is null ? null : $"-{scopeOrgId}";
+        return Ok(recurringJobs
+            .Where(j => orgSuffix is null || j.Id.EndsWith(orgSuffix, StringComparison.Ordinal))
+            .Select(j => new
+            {
+                j.Id,
+                j.Cron,
+                j.LastExecution,
+                j.NextExecution,
+                j.LastJobState,
+                j.Queue
+            }));
     }
 
     /// <summary>

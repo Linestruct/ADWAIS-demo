@@ -110,7 +110,7 @@ export function BackgroundJobsView() {
 
             {/* Scheduled Jobs Section & Console Panel / Right Pane */}
             <div className="flex min-h-0 flex-col gap-4 h-full">
-                {platformScopeActive && (
+                {isAdminRole(role) && (
                 <SettingsPanel 
                     title="Scheduled Jobs"
                     subtitle="Recurring system schedules."

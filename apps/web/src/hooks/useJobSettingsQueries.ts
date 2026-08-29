@@ -28,9 +28,10 @@ export function useGlobalConfigQuery() {
 }
 
 export function useRecurringJobsQuery() {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiJobRecurring<RecurringJobDto[], Error>({
     query: {
-      queryKey: ['job-recurring'],
+      queryKey: ['job-recurring', selectedOrgId],
       select: (res) => (res as unknown as { data: RecurringJobDto[] }).data
     }
   });

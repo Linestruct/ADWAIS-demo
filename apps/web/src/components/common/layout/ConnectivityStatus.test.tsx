@@ -14,8 +14,8 @@ describe('ConnectivityStatus', () => {
 
     expect(screen.getByText('Server Offline')).toBeInTheDocument();
     expect(screen.getByText('Server Offline').parentElement).toHaveClass('h-11');
-    expect(container.querySelector('svg')).toHaveAttribute('width', '14');
-    expect(container.querySelector('svg')).toHaveAttribute('height', '14');
+    expect(container.querySelector('svg')).toHaveAttribute('width', '16');
+    expect(container.querySelector('svg')).toHaveAttribute('height', '16');
   });
 
   it('renders nothing when both connections are online', () => {

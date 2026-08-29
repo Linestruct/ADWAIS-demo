@@ -9,3 +9,7 @@ export function isAdminRole(role: string | null | undefined): boolean {
 export function isStaffRole(role: string | null | undefined): boolean {
   return role === 'Admin' || role === 'Employee' || role === 'PlatformAdmin';
 }
+
+export function isKioskOrStaff(role: string | null | undefined): boolean {
+  return role === 'Admin' || role === 'Employee' || role === 'Viewer' || role === 'PlatformAdmin';
+}

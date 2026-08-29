@@ -24,12 +24,12 @@ public class BackgroundJobControllerTests
     }
 
     [Fact]
-    public void RecurringJobsEndpointRequiresAdminAccess()
+    public void RecurringJobsEndpointIsReadableByStaffAndKiosk()
     {
         var action = typeof(BackgroundJobController).GetMethod(nameof(BackgroundJobController.GetRecurringJobs));
         var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.NotNull(authorization);
-        Assert.Equal("AdminOnly", authorization.Policy);
+        Assert.Equal("KioskOrStaffAccess", authorization.Policy);
     }
 }

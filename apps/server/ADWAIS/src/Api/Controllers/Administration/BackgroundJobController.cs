@@ -101,18 +101,18 @@ public class BackgroundJobController(
     }
 
     /// <summary>
-    /// Retrieves the recurring jobs for the caller's organization.
-    /// Platform scope returns every organization's jobs.
+    /// Retrieves the recurring jobs visible to the caller. Organization
+    /// scope returns the organization's jobs plus the curated platform-wide
+    /// jobs; platform scope returns everything.
     /// </summary>
     [HttpGet("recurring")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "KioskOrStaffAccess")]
     public async Task<ActionResult> GetRecurringJobs()
     {
         var recurringJobs = await Task.Run(() => JobStorage.Current.GetConnection().GetRecurringJobs());
         var scopeOrgId = _currentAccess.Scope?.OrganizationId;
-        var orgSuffix = scopeOrgId is null ? null : $"-{scopeOrgId}";
         return Ok(recurringJobs
-            .Where(j => orgSuffix is null || j.Id.EndsWith(orgSuffix, StringComparison.Ordinal))
+            .Where(j => scopeOrgId is null || Adwais.Api.Jobs.RecurringJobVisibility.VisibleToOrganizationScope(j.Id, scopeOrgId.Value))
             .Select(j => new
             {
                 j.Id,

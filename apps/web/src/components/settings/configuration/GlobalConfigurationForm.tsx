@@ -15,49 +15,56 @@ interface GlobalConfigurationFormProps {
     mutateAsync: (variables: UpdateGlobalConfigRequestDto) => Promise<void>;
   };
   disabled?: boolean;
+  embedded?: boolean;
 }
 
-export function GlobalConfigurationForm({ config, updateConfig, disabled }: GlobalConfigurationFormProps) {
+export function GlobalConfigurationForm({ config, updateConfig, disabled, embedded = false }: GlobalConfigurationFormProps) {
+  const content = (
+    <div className="flex flex-col gap-4">
+      {disabled && config && (
+        <ReadOnlyBanner message="You can review these values, but only administrators can change them." />
+      )}
+
+      {config ? (
+        <div className="flex flex-col gap-2">
+          <InlineEditField
+            label="Event Retention (Days)"
+            value={config.systemEventRetentionDays ?? 30}
+            kind="number"
+            required
+            requirement="Greater than 0"
+            disabled={disabled}
+            validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
+            onCommit={(val) => updateConfig.mutateAsync({ systemEventRetentionDays: val })}
+          />
+          <InlineEditField
+            label="Materialized View Refresh Interval (Minutes)"
+            value={config.matViewRefreshIntervalMinutes ?? 60}
+            kind="number"
+            required
+            requirement="At least 5"
+            disabled={disabled}
+            validate={val => val >= 5 ? undefined : 'Enter a value of at least 5.'}
+            onCommit={(val) => updateConfig.mutateAsync({ matViewRefreshIntervalMinutes: val })}
+          />
+        </div>
+      ) : (
+        <FormSkeleton>
+          <FormSkeleton.Input labelWidth="w-28" />
+        </FormSkeleton>
+      )}
+    </div>
+  );
+
+  if (embedded) return content;
+
   return (
     <SettingsPanel
       title="Global Configuration"
       subtitle="Deployment-wide parameters"
       icon={<Settings size={24} />}
     >
-      <div className="flex flex-col gap-4">
-        {disabled && config && (
-          <ReadOnlyBanner message="You can review these values, but only administrators can change them." />
-        )}
-
-        {config ? (
-          <div className="flex flex-col gap-2">
-            <InlineEditField
-              label="Event Retention (Days)"
-              value={config.systemEventRetentionDays ?? 30}
-              kind="number"
-              required
-              requirement="Greater than 0"
-              disabled={disabled}
-              validate={val => val > 0 ? undefined : 'Enter a value greater than 0.'}
-              onCommit={(val) => updateConfig.mutateAsync({ systemEventRetentionDays: val })}
-            />
-            <InlineEditField
-              label="Materialized View Refresh Interval (Minutes)"
-              value={config.matViewRefreshIntervalMinutes ?? 60}
-              kind="number"
-              required
-              requirement="At least 5"
-              disabled={disabled}
-              validate={val => val >= 5 ? undefined : 'Enter a value of at least 5.'}
-              onCommit={(val) => updateConfig.mutateAsync({ matViewRefreshIntervalMinutes: val })}
-            />
-          </div>
-        ) : (
-          <FormSkeleton>
-            <FormSkeleton.Input labelWidth="w-28" />
-          </FormSkeleton>
-        )}
-      </div>
+      {content}
     </SettingsPanel>
   );
 }

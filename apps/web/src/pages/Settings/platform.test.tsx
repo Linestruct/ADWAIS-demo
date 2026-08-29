@@ -44,7 +44,7 @@ describe('PlatformConfigurationView', () => {
   it('exposes the Hangfire dashboard entry point', () => {
     render(<PlatformConfigurationView />, { wrapper });
 
-    expect(screen.getByRole('heading', { name: 'Hangfire Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Platform' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Open Hangfire Dashboard/ })).toBeEnabled();
   });
 

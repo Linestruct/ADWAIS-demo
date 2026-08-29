@@ -107,12 +107,13 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers(CancellationToken ct)
     {
         var users = await _userService.GetUsersAsync(ct);
-        var rolesByUserId = await ResolveMembershipRolesByUserIdAsync(users.Select(u => u.Id).ToArray(), ct);
+        var summaries = await ResolveMembershipSummaryByUserIdAsync(users.Select(u => u.Id).ToArray(), ct);
         var response = users.Select(u => new UserResponseDto(
             u.Id,
             u.Name,
             u.Email,
-            rolesByUserId.TryGetValue(u.Id, out var role) ? role : null));
+            summaries.TryGetValue(u.Id, out var summary) ? summary.Role : null,
+            IsPlatformAdmin: summaries.TryGetValue(u.Id, out var s) && s.IsPlatformAdmin));
         return Ok(response);
     }
 
@@ -126,8 +127,8 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             return NotFound();
         }
 
-        var role = await ResolveMembershipRoleAsync(user.Id, ct);
-        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, role));
+        var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Id, ct);
+        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, role, IsPlatformAdmin: isPlatformAdmin));
     }
 
     /// <summary>
@@ -139,9 +140,9 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserRequestDto request, CancellationToken ct)
     {
         var user = await _userService.CreateUserAsync(request.Email, request.Role, ct);
-        var role = await ResolveMembershipRoleAsync(user.Id, ct);
+        var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Id, ct);
         return CreatedAtAction(nameof(GetUser), new { id = user.Id },
-            new UserResponseDto(user.Id, user.Name, user.Email, role));
+            new UserResponseDto(user.Id, user.Name, user.Email, role, IsPlatformAdmin: isPlatformAdmin));
     }
 
     [HttpPatch("{id:guid}")]
@@ -154,8 +155,8 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             return NotFound();
         }
 
-        var role = await ResolveMembershipRoleAsync(user.Id, ct);
-        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, role));
+        var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Id, ct);
+        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, role, IsPlatformAdmin: isPlatformAdmin));
     }
 
     [HttpDelete("{id:guid}")]
@@ -245,39 +246,51 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             membership.Role);
 
     /// <summary>
-    /// Resolves the membership role a user holds in the caller's effective
-    /// organization. Null when the caller has no single organization context.
+    /// Resolves the role and platform flag for one user. The role is the
+    /// caller's-org role when the caller has an organization scope; in
+    /// platform scope it is the dominant role across all memberships.
+    /// The platform flag reflects membership, not the effective scope.
     /// </summary>
-    private async Task<UserRole?> ResolveMembershipRoleAsync(Guid userId, CancellationToken ct)
+    private async Task<(UserRole? Role, bool IsPlatformAdmin)> ResolveMembershipSummaryAsync(Guid userId, CancellationToken ct)
     {
         var orgId = _currentAccess.Scope?.OrganizationId;
-        if (orgId is null)
-        {
-            return null;
-        }
-
-        return await _dbContext.UserAccesses
+        var memberships = await _dbContext.UserAccesses
             .AsNoTracking()
-            .Where(access => access.UserId == userId && access.OrganizationId == orgId)
-            .Select(access => (UserRole?)access.Role)
-            .SingleOrDefaultAsync(ct);
+            .Where(access => access.UserId == userId)
+            .ToListAsync(ct);
+
+        var role = orgId is null
+            ? UserRoleResolver.Dominant(memberships)
+            : memberships
+                .Where(access => access.OrganizationId == orgId)
+                .Select(access => (UserRole?)access.Role)
+                .SingleOrDefault();
+
+        return (role, UserRoleResolver.IsPlatformAdmin(memberships));
     }
 
-    private async Task<Dictionary<Guid, UserRole?>> ResolveMembershipRolesByUserIdAsync(Guid[] userIds, CancellationToken ct)
+    private async Task<Dictionary<Guid, (UserRole? Role, bool IsPlatformAdmin)>> ResolveMembershipSummaryByUserIdAsync(Guid[] userIds, CancellationToken ct)
     {
         var orgId = _currentAccess.Scope?.OrganizationId;
-        if (orgId is null)
-        {
-            return new Dictionary<Guid, UserRole?>();
-        }
-
         var rows = await _dbContext.UserAccesses
             .AsNoTracking()
-            .Where(access => userIds.Contains(access.UserId) && access.OrganizationId == orgId)
-            .Select(access => new { access.UserId, access.Role })
+            .Where(access => userIds.Contains(access.UserId))
             .ToListAsync(ct);
+
         return rows
             .GroupBy(entry => entry.UserId)
-            .ToDictionary(group => group.Key, group => (UserRole?)group.First().Role);
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var memberships = group.ToList();
+                    var role = orgId is null
+                        ? UserRoleResolver.Dominant(memberships)
+                        : memberships
+                            .Where(access => access.OrganizationId == orgId)
+                            .Select(access => (UserRole?)access.Role)
+                            .SingleOrDefault();
+                    return (role, UserRoleResolver.IsPlatformAdmin(memberships));
+                });
     }
 }

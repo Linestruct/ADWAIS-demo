@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Api.DTOs.Ingestion;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Hangfire;
@@ -21,11 +22,13 @@ namespace Adwais.Api.Controllers.Integrations;
 public class IngestionController(
     IApplicationDbContext dbContext,
     IBackgroundJobClient backgroundJobClient,
-    IEnumerable<IOrderSource> orderSources)
+    IEnumerable<IOrderSource> orderSources,
+    ICurrentAccess currentAccess)
     : ControllerBase
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly IBackgroundJobClient _backgroundJobClient = backgroundJobClient;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
 
     /// <summary>
     /// Manually triggers a historical backfill for a specific tenant within a given date range.
@@ -50,6 +53,8 @@ public class IngestionController(
         var tenant = await context.Tenants.SingleOrDefaultAsync(t => t.Id == request.TenantId, ct);
         
         if (tenant == null) return NotFound("Tenant not found.");
+        var scopeOrgId = _currentAccess.Scope?.OrganizationId;
+        if (scopeOrgId is not null && tenant.OrganizationId != scopeOrgId) return Forbid();
         if (!orderSources.ForProvider(tenant.OrderProvider).IsConfigured(tenant.OrderProviderSettings))
             return BadRequest("Tenant is missing valid order provider settings.");
         if (tenant.CurrentlyFetching) return Conflict(new { message = $"Tenant {request.TenantId} is currently fetching. Wait for the active job to complete." });

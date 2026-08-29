@@ -64,6 +64,7 @@ public class UpdateMonitorJobsTests
             trackerMock.Object);
 
         await job.ExecuteAsync(
+            orgId,
             monitorId,
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 23, 59, 59, TimeSpan.Zero));
@@ -107,6 +108,7 @@ public class UpdateMonitorJobsTests
             trackerMock.Object);
 
         await job.ExecuteAsync(
+            orgId,
             monitorId,
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 0, 10, 0, TimeSpan.Zero));
@@ -150,6 +152,7 @@ public class UpdateMonitorJobsTests
             trackerMock.Object);
 
         await job.ExecuteAsync(
+            orgId,
             monitorId,
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 0, 10, 0, TimeSpan.Zero));

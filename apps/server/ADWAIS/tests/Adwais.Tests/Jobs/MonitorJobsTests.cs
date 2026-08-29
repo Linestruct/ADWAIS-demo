@@ -97,7 +97,7 @@ public class MonitorJobsTests
 
         // Act
         var now = DateTimeOffset.UtcNow;
-        await job.ExecuteAsync(100, now.AddHours(-1), now);
+        await job.ExecuteAsync(_orgId, 100, now.AddHours(-1), now);
 
         // Assert
         using (var db = new AnalyticsDbContext(_dbOptions))
@@ -139,7 +139,7 @@ public class MonitorJobsTests
             new Mock<IViewRefreshTracker>().Object);
 
         var now = DateTimeOffset.UtcNow;
-        await job.ExecuteAsync(-1, now.AddHours(-1), now);
+        await job.ExecuteAsync(_orgId, -1, now.AddHours(-1), now);
 
         _uptimeRobotServiceMock.Verify(service => service.GetResponseTimeAsync(
             It.IsAny<Guid>(),
@@ -180,7 +180,7 @@ public class MonitorJobsTests
 
         // Act & Assert
         var now = DateTimeOffset.UtcNow;
-        await Assert.ThrowsAsync<HttpRequestException>(() => job.ExecuteAsync(101, now.AddHours(-1), now));
+        await Assert.ThrowsAsync<HttpRequestException>(() => job.ExecuteAsync(_orgId, 101, now.AddHours(-1), now));
 
         using (var db = new AnalyticsDbContext(_dbOptions))
         {

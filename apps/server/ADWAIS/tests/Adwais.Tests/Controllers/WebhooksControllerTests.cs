@@ -33,6 +33,7 @@ public class WebhooksControllerTests
         _postServiceMock = new Mock<IBulletinPostService>();
         _controller = new WebhooksController(
             _ingestionServiceMock.Object,
+            new Mock<Adwais.Application.Common.Interfaces.IApplicationDbContext>().Object,
             _configurationMock.Object,
             NullLogger<WebhooksController>.Instance,
             _postServiceMock.Object)

@@ -68,7 +68,7 @@ public class OrderFetchDispatcherJob(
             }
 
             backgroundJobClient.Enqueue<IOrderIngestionService>(
-                ingestionService => ingestionService.ExecuteIngestionAsync(tenant.Id, start, end, CancellationToken.None));
+                ingestionService => ingestionService.ExecuteIngestionAsync(tenant.OrganizationId, tenant.Id, start, end, CancellationToken.None));
 
             tenant.CurrentlyFetching = true;
             tenant.LastPolled = now;

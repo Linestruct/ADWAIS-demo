@@ -22,13 +22,16 @@ public class OrderIngestionService(
     IViewRefreshTracker viewRefreshTracker)
     : IOrderIngestionService
 {
-    public async Task<int> ExecuteIngestionAsync(Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct = default)
+    public async Task<int> ExecuteIngestionAsync(Guid organizationId, Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct = default)
     {
         Tenant tenant;
         await using (var context = await contextFactory.CreateDbContextAsync(ct))
         {
             tenant = await context.Tenants.FirstAsync(t => t.Id == tenantId, ct);
         }
+
+        if (tenant.OrganizationId != organizationId)
+            throw new InvalidOperationException($"Tenant {tenantId} does not belong to organization {organizationId}.");
 
         try
         {
@@ -169,7 +172,7 @@ public class OrderIngestionService(
         return totalIngested;
     }
 
-    public async Task IngestSingleOrderAsync(Guid tenantId, string provider, OrderSourceOrder order, CancellationToken ct = default)
+    public async Task IngestSingleOrderAsync(Guid organizationId, Guid tenantId, string provider, OrderSourceOrder order, CancellationToken ct = default)
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(ct);
         var tenant = await dbContext.Tenants
@@ -181,6 +184,8 @@ public class OrderIngestionService(
         {
             throw new KeyNotFoundException($"Tenant {tenantId} is not an order target.");
         }
+        if (tenant.OrganizationId != organizationId)
+            throw new InvalidOperationException($"Tenant {tenantId} does not belong to organization {organizationId}.");
         var orderSource = orderSources.ForProvider(provider);
         if (!tenant.OrderProvider.Equals(orderSource.Provider, StringComparison.OrdinalIgnoreCase))
             throw new ConfigurationException($"Tenant is configured for order provider '{tenant.OrderProvider}', not '{orderSource.Provider}'.");

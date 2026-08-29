@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.Financial.Upstream;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
@@ -13,6 +15,7 @@ using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -23,6 +26,7 @@ namespace Adwais.Api.Controllers.Integrations;
 [AllowAnonymous]
 public class WebhooksController(
     IOrderIngestionService ingestionService,
+    IApplicationDbContext dbContext,
     IConfiguration configuration,
     ILogger<WebhooksController> logger,
     IBulletinPostService postService)
@@ -47,7 +51,14 @@ public class WebhooksController(
 
         try
         {
-            await ingestionService.IngestSingleOrderAsync(tenantId, IntegrationProviders.Litium, LitiumOrderSource.Normalize(payload), ct);
+            var tenantOrg = await dbContext.Tenants
+                .AsNoTracking()
+                .Where(t => t.Id == tenantId)
+                .Select(t => (Guid?)t.OrganizationId)
+                .SingleOrDefaultAsync(ct);
+            if (tenantOrg is null) return NotFound(new { Error = "Tenant not found." });
+
+            await ingestionService.IngestSingleOrderAsync(tenantOrg.Value, tenantId, IntegrationProviders.Litium, LitiumOrderSource.Normalize(payload), ct);
             return Ok();
         }
         catch (Exception ex)

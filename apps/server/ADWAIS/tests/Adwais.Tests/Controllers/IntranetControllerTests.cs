@@ -97,6 +97,7 @@ public class IntranetControllerTests
 
         var controller = new WebhooksController(
             new Mock<IOrderIngestionService>().Object,
+            new Mock<Adwais.Application.Common.Interfaces.IApplicationDbContext>().Object,
             configMock.Object,
             new Mock<ILogger<WebhooksController>>().Object,
             postServiceMock.Object);
@@ -127,6 +128,7 @@ public class IntranetControllerTests
         var postServiceMock = new Mock<IBulletinPostService>();
         var controller = new WebhooksController(
             new Mock<IOrderIngestionService>().Object,
+            new Mock<Adwais.Application.Common.Interfaces.IApplicationDbContext>().Object,
             configMock.Object,
             new Mock<ILogger<WebhooksController>>().Object,
             postServiceMock.Object);

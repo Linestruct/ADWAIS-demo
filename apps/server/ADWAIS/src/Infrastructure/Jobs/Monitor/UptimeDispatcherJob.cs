@@ -23,7 +23,7 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
         
         var monitors = await dbContext.Monitors
             .Where(m => m.Id > 0 && m.UptimeMonitorEnabled)
-            .Select(m => new { m.Id, m.LastUptimeUpdate })
+            .Select(m => new { m.Id, m.LastUptimeUpdate, OrgId = m.Tenant!.OrganizationId })
             .ToListAsync();
 
         var now = DateTimeOffset.UtcNow;
@@ -54,7 +54,7 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
             .ToHashSet();
 
         int index = 0;
-        var olderBackfills = new List<(int MonitorId, DateTimeOffset Start, DateTimeOffset End)>();
+        var olderBackfills = new List<(int MonitorId, Guid OrgId, DateTimeOffset Start, DateTimeOffset End)>();
 
         foreach (var monitor in monitors)
         {
@@ -62,13 +62,13 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
             if (!finalizedKeys.Contains((monitor.Id, yesterdayStart.UtcDateTime.Date)))
             {
                 backgroundJobClient.Schedule<UpdateMonitorUptimeJob>(
-                    x => x.ExecuteAsync(monitor.Id, yesterdayStart, todayStart.AddSeconds(-1)),
+                    x => x.ExecuteAsync(monitor.OrgId, monitor.Id, yesterdayStart, todayStart.AddSeconds(-1)),
                     TimeSpan.FromSeconds(index * 2));
                 index++;
             }
 
             backgroundJobClient.Schedule<UpdateMonitorUptimeJob>(
-                x => x.ExecuteAsync(monitor.Id, todayStart, now),
+                x => x.ExecuteAsync(monitor.OrgId, monitor.Id, todayStart, now),
                 TimeSpan.FromSeconds(index * 2));
             index++;
 
@@ -86,7 +86,7 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
             {
                 if (!finalizedKeys.Contains((monitor.Id, cursor.UtcDateTime.Date)))
                 {
-                    olderBackfills.Add((monitor.Id, cursor, cursor.AddDays(1).AddSeconds(-1)));
+                    olderBackfills.Add((monitor.Id, monitor.OrgId, cursor, cursor.AddDays(1).AddSeconds(-1)));
                 }
                 cursor = cursor.AddDays(1);
             }
@@ -95,7 +95,7 @@ public class UptimeDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContext
         foreach (var backfill in olderBackfills)
         {
             backgroundJobClient.Schedule<UpdateMonitorUptimeJob>(
-                x => x.ExecuteAsync(backfill.MonitorId, backfill.Start, backfill.End),
+                x => x.ExecuteAsync(backfill.OrgId, backfill.MonitorId, backfill.Start, backfill.End),
                 TimeSpan.FromSeconds(index * 2));
             index++;
         }

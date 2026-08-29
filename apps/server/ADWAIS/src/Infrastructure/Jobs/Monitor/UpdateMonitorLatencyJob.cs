@@ -21,7 +21,7 @@ public class UpdateMonitorLatencyJob(
     ISystemEventService eventService,
     IViewRefreshTracker viewRefreshTracker)
 {
-    public async Task ExecuteAsync(int monitorId, DateTimeOffset startDate, DateTimeOffset endDate)
+    public async Task ExecuteAsync(Guid organizationId, int monitorId, DateTimeOffset startDate, DateTimeOffset endDate)
     {
         var currentStep = "Initializing Database Connection";
         try
@@ -34,6 +34,9 @@ public class UpdateMonitorLatencyJob(
                 .FirstOrDefaultAsync(m => m.Id == monitorId);
 
             if (monitor == null || !monitor.UptimeMonitorEnabled) return;
+
+            if (monitor.Tenant!.OrganizationId != organizationId)
+                throw new InvalidOperationException($"Monitor {monitorId} does not belong to organization {organizationId}.");
 
             if (monitorId <= 0) return;
             var monitoringProvider = monitoringProviders.ForProvider(monitor.Provider);

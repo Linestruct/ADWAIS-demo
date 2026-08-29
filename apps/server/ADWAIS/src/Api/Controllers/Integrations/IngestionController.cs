@@ -61,7 +61,7 @@ public class IngestionController(
         var endDate = request.EndDate ?? DateTimeOffset.UtcNow;
 
         var jobId = _backgroundJobClient.Enqueue<IOrderIngestionService>(
-            service => service.ExecuteIngestionAsync(tenant.Id, startDate, endDate, CancellationToken.None));
+            service => service.ExecuteIngestionAsync(tenant.OrganizationId, tenant.Id, startDate, endDate, CancellationToken.None));
 
         return Accepted(new { JobId = jobId });
     }

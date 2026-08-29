@@ -28,7 +28,7 @@ public class LatencyDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContex
         
         var monitors = await dbContext.Monitors
             .Where(m => m.Id > 0 && m.UptimeMonitorEnabled)
-            .Select(m => new { m.Id, m.LastLatencyUpdate })
+            .Select(m => new { m.Id, m.LastLatencyUpdate, OrgId = m.Tenant!.OrganizationId })
             .ToListAsync();
 
         var end = DateTimeOffset.UtcNow;
@@ -39,7 +39,7 @@ public class LatencyDispatcherJob(IDbContextFactory<AnalyticsDbContext> dbContex
             var start = monitor.LastLatencyUpdate ?? end.AddMinutes(-globalInterval);
 
             backgroundJobClient.Schedule<UpdateMonitorLatencyJob>(
-                x => x.ExecuteAsync(monitor.Id, start, end), 
+                x => x.ExecuteAsync(monitor.OrgId, monitor.Id, start, end), 
                 TimeSpan.FromSeconds(index * 2));
             index++;
         }

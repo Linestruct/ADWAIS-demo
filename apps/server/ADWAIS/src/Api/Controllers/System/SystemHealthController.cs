@@ -20,7 +20,7 @@ public class SystemHealthController(ISystemHealthService healthService) : Contro
     /// Retrieves an aggregated health report of the entire application pipeline.
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = "KioskOrStaffAccess")]
+    [Authorize(Policy = "PlatformAdminOnly")]
     public async Task<ActionResult<SystemHealthDto>> GetHealth()
     {
         var health = await healthService.GetHealthAsync();
@@ -39,10 +39,11 @@ public class SystemHealthController(ISystemHealthService healthService) : Contro
     }
 
     /// <summary>
-    /// Retrieves a list of recent background job executions and their status.
+    /// Retrieves a list of recent background job executions and their status,
+    /// filtered to the caller's organization.
     /// </summary>
     [HttpGet("jobs")]
-    [Authorize(Policy = "KioskOrStaffAccess")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<IEnumerable<BackgroundJobStatusDto>>> GetRecentJobs()
     {
         var jobs = await healthService.GetRecentJobsAsync();

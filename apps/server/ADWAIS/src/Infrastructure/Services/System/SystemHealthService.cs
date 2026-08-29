@@ -9,15 +9,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.DTOs.System;
 using Adwais.Application.Interfaces;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Services;
 
-public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealthService
+public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess currentAccess) : ISystemHealthService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
 
     public async Task<SystemHealthDto> GetHealthAsync(CancellationToken ct = default)
     {
@@ -181,6 +183,7 @@ public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealt
     public async Task<IEnumerable<BackgroundJobStatusDto>> GetRecentJobsAsync(CancellationToken ct = default)
     {
         var monitorApi = JobStorage.Current.GetMonitoringApi();
+        var scopeOrgId = _currentAccess.Scope?.OrganizationId;
         
         var succeeded = await Task.Run(() => monitorApi.SucceededJobs(0, 15), ct);
         var failed = await Task.Run(() => monitorApi.FailedJobs(0, 15), ct);
@@ -270,6 +273,8 @@ public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealt
         var result = new List<BackgroundJobStatusDto>();
         foreach (var job in top20)
         {
+            if (scopeOrgId is not null && GetOrgId(job.RawJob) != scopeOrgId) continue;
+
             string? mName = null;
             string? tName = null;
 
@@ -295,26 +300,38 @@ public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealt
         return result;
     }
 
+    private static Guid? GetOrgId(Hangfire.Common.Job? job)
+    {
+        if (job?.Args is null || job.Args.Count == 0) return null;
+
+        return job.Args[0] switch
+        {
+            Guid guid => guid,
+            string str when Guid.TryParse(str, out var parsed) => parsed,
+            _ => null
+        };
+    }
+
     private static int? GetMonitorId(Hangfire.Common.Job? job)
     {
-        if (job == null || job.Args == null || job.Args.Count == 0) return null;
+        if (job == null || job.Args == null || job.Args.Count < 2) return null;
         if (job.Type.Name.Contains("Monitor") || job.Type.Name.Contains("Uptime") || job.Type.Name.Contains("Latency"))
         {
-            var arg0 = job.Args[0];
-            if (arg0 is int id) return id;
-            if (arg0 != null && int.TryParse(arg0.ToString(), out var parsedId)) return parsedId;
+            var arg = job.Args[1];
+            if (arg is int id) return id;
+            if (arg != null && int.TryParse(arg.ToString(), out var parsedId)) return parsedId;
         }
         return null;
     }
 
     private static Guid? GetTenantId(Hangfire.Common.Job? job)
     {
-        if (job == null || job.Args == null || job.Args.Count == 0) return null;
+        if (job == null || job.Args == null || job.Args.Count < 2) return null;
         if (job.Type.Name.Contains("Ingestion") || job.Type.Name.Contains("Order") || job.Type.Name.Contains("Tenant"))
         {
-            var arg0 = job.Args[0];
-            if (arg0 is Guid guid) return guid;
-            if (arg0 != null && Guid.TryParse(arg0.ToString(), out var parsedGuid)) return parsedGuid;
+            var arg = job.Args[1];
+            if (arg is Guid guid) return guid;
+            if (arg != null && Guid.TryParse(arg.ToString(), out var parsedGuid)) return parsedGuid;
         }
         return null;
     }

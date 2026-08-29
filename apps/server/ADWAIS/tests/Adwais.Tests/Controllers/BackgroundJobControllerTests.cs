@@ -22,4 +22,14 @@ public class BackgroundJobControllerTests
         Assert.NotNull(authorization);
         Assert.Equal("PlatformAdminOnly", authorization.Policy);
     }
+
+    [Fact]
+    public void RecurringJobsEndpointRequiresPlatformAdmin()
+    {
+        var action = typeof(BackgroundJobController).GetMethod(nameof(BackgroundJobController.GetRecurringJobs));
+        var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
+
+        Assert.NotNull(authorization);
+        Assert.Equal("PlatformAdminOnly", authorization.Policy);
+    }
 }

@@ -104,7 +104,7 @@ public class BackgroundJobController(
     /// Retrieves a list of all registered recurring jobs and their current schedules.
     /// </summary>
     [HttpGet("recurring")]
-    [Authorize(Policy = "KioskOrStaffAccess")]
+    [Authorize(Policy = "PlatformAdminOnly")]
     public async Task<ActionResult> GetRecurringJobs()
     {
         var recurringJobs = await Task.Run(() => JobStorage.Current.GetConnection().GetRecurringJobs());

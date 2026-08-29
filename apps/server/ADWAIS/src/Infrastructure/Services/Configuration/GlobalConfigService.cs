@@ -56,7 +56,7 @@ public class GlobalConfigService(
         }
         if (request.VisibleRecurringJobs is not null)
         {
-            config.VisibleRecurringJobsCsv = Adwais.Application.Common.Jobs.RecurringJobVisibility.JoinVisibleJobs(request.VisibleRecurringJobs);
+            config.VisibleRecurringJobsCsv = Adwais.Application.Common.Jobs.RecurringJobVisibility.JoinVisibleKinds(request.VisibleRecurringJobs);
         }
         await _dbContext.SaveChangesAsync(ct);
 
@@ -218,7 +218,7 @@ public class GlobalConfigService(
 
     private GlobalConfigResponseDto MapToDto(GlobalConfig config) =>
         new(config.Id, config.LastPolled, config.SystemEventRetentionDays, config.MatViewRefreshIntervalMinutes,
-            Adwais.Application.Common.Jobs.RecurringJobVisibility.ParseVisibleJobs(config.VisibleRecurringJobsCsv));
+            Adwais.Application.Common.Jobs.RecurringJobVisibility.ParseVisibleKinds(config.VisibleRecurringJobsCsv));
 
     private static OrganizationConfigDto DefaultOrgConfig() => new(
         WeatherLocation: null,

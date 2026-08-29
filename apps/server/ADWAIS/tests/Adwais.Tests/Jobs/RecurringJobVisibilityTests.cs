@@ -15,8 +15,8 @@ public class RecurringJobVisibilityTests
     private readonly Guid _orgA = Guid.NewGuid();
     private readonly Guid _orgB = Guid.NewGuid();
 
-    private static HashSet<string> Curated(string csv = RecurringJobVisibility.DefaultVisiblePlatformJobs)
-        => RecurringJobVisibility.ParseVisibleJobs(csv).ToHashSet(StringComparer.Ordinal);
+    private static HashSet<RecurringJobKind> Curated(string csv = RecurringJobVisibility.DefaultVisiblePlatformJobs)
+        => RecurringJobVisibility.ParseVisibleKinds(csv).ToHashSet();
 
     [Fact]
     public void OrganizationJob_IsVisibleToItsOrg()
@@ -31,13 +31,13 @@ public class RecurringJobVisibilityTests
     }
 
     [Fact]
-    public void PlatformJob_InVisibleSet_IsVisible()
+    public void PlatformJob_WithKindInVisibleSet_IsVisible()
     {
         Assert.True(RecurringJobVisibility.IsVisible("refresh-financial-materialized-views", _orgA, Curated()));
     }
 
     [Fact]
-    public void PlatformJob_NotInVisibleSet_IsHidden()
+    public void PlatformJob_WithKindNotInVisibleSet_IsHidden()
     {
         Assert.False(RecurringJobVisibility.IsVisible("dev-runtime-data-seeder", _orgA, Curated()));
     }
@@ -45,7 +45,7 @@ public class RecurringJobVisibilityTests
     [Fact]
     public void RemovedFromVisibleSet_BecomesHidden()
     {
-        var visible = Curated("refresh-financial-materialized-views");
+        var visible = Curated("FinancialViewRefresh");
 
         Assert.False(RecurringJobVisibility.IsVisible("refresh-monitoring-materialized-views", _orgA, visible));
     }
@@ -53,9 +53,25 @@ public class RecurringJobVisibilityTests
     [Fact]
     public void AddedToVisibleSet_BecomesVisible()
     {
-        var visible = Curated(RecurringJobVisibility.DefaultVisiblePlatformJobs + ",dev-runtime-data-seeder");
+        var visible = Curated(RecurringJobVisibility.DefaultVisiblePlatformJobs + ",RuntimeDataSeeder");
 
         Assert.True(RecurringJobVisibility.IsVisible("dev-runtime-data-seeder", _orgA, visible));
+    }
+
+    [Fact]
+    public void ParseVisibleKinds_SplitsAndValidatesCsv()
+    {
+        var parsed = RecurringJobVisibility.ParseVisibleKinds("OrderFetch, SystemEventCleanup ,unknown-entry");
+
+        Assert.Equal(new[] { RecurringJobKind.OrderFetch, RecurringJobKind.SystemEventCleanup }, parsed);
+    }
+
+    [Fact]
+    public void JoinVisibleKinds_RoundTripsParse()
+    {
+        var kinds = new[] { RecurringJobKind.OrderFetch, RecurringJobKind.SystemEventCleanup };
+
+        Assert.Equal(kinds, RecurringJobVisibility.ParseVisibleKinds(RecurringJobVisibility.JoinVisibleKinds(kinds)));
     }
 
     [Fact]
@@ -63,21 +79,5 @@ public class RecurringJobVisibilityTests
     {
         Assert.True(RecurringJobVisibility.IsPlatformWide("system-event-cleanup"));
         Assert.False(RecurringJobVisibility.IsPlatformWide($"dispatch-order-fetch-{_orgA}"));
-    }
-
-    [Fact]
-    public void ParseVisibleJobs_SplitsAndTrimsCsv()
-    {
-        var parsed = RecurringJobVisibility.ParseVisibleJobs(" a, b ,c ");
-
-        Assert.Equal(new[] { "a", "b", "c" }, parsed);
-    }
-
-    [Fact]
-    public void JoinVisibleJobs_RoundTripsParse()
-    {
-        var jobs = new[] { "a", "b", "c" };
-
-        Assert.Equal(jobs, RecurringJobVisibility.ParseVisibleJobs(RecurringJobVisibility.JoinVisibleJobs(jobs)));
     }
 }

@@ -4682,7 +4682,7 @@
           "visibleRecurringJobs": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/RecurringJobKind"
             },
             "nullable": true
           }
@@ -5569,6 +5569,23 @@
         ],
         "type": "string"
       },
+      "RecurringJobKind": {
+        "enum": [
+          "OrderFetch",
+          "UptimeFetch",
+          "LatencyFetch",
+          "UserStatsFetch",
+          "FleetSync",
+          "FeedFetch",
+          "FinancialViewRefresh",
+          "MonitoringViewRefresh",
+          "StaleViewRefresh",
+          "SystemEventCleanup",
+          "CalendarSync",
+          "RuntimeDataSeeder"
+        ],
+        "type": "string"
+      },
       "RegisterKioskRequestDto": {
         "required": [
           "deviceId"
@@ -6202,7 +6219,7 @@
           "visibleRecurringJobs": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/RecurringJobKind"
             },
             "nullable": true
           }

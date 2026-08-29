@@ -2,6 +2,7 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using Adwais.Application.Common.Jobs;
 using Adwais.Domain;
 
 namespace Adwais.Application.DTOs.GlobalConfig;
@@ -11,4 +12,4 @@ public record GlobalConfigResponseDto(
     DateTimeOffset? LastPolled,
     int SystemEventRetentionDays,
     int MatViewRefreshIntervalMinutes,
-    string[] VisibleRecurringJobs);
+    RecurringJobKind[] VisibleRecurringJobs);

@@ -10,12 +10,12 @@ import { PlatformConfigurationView } from './platform';
 import type { GlobalConfigDto } from '@types';
 
 const testState = vi.hoisted(() => ({
-  config: { systemEventRetentionDays: 30, visibleRecurringJobs: ['system-event-cleanup'] } as GlobalConfigDto,
+  config: { systemEventRetentionDays: 30, visibleRecurringJobs: ['SystemEventCleanup'] } as GlobalConfigDto,
   updateConfig: vi.fn(),
   recurringJobs: [
-    { id: 'system-event-cleanup', name: 'System Event Cleanup', platformWide: true },
-    { id: 'refresh-financial-materialized-views', name: 'Financial View Refresh', platformWide: true },
-    { id: 'dispatch-order-fetch-00000000-0000-0000-0000-00000000000a', name: 'Order Fetch', platformWide: false },
+    { id: 'system-event-cleanup', kind: 'SystemEventCleanup', name: 'System Event Cleanup', platformWide: true },
+    { id: 'refresh-financial-materialized-views', kind: 'FinancialViewRefresh', name: 'Financial View Refresh', platformWide: true },
+    { id: 'dispatch-order-fetch-00000000-0000-0000-0000-00000000000a', kind: 'OrderFetch', name: 'Order Fetch', platformWide: false },
   ],
 }));
 
@@ -64,7 +64,7 @@ describe('PlatformConfigurationView', () => {
   });
 
   it('shows newly registered platform jobs without a catalog change', () => {
-    testState.recurringJobs = [...testState.recurringJobs, { id: 'new-platform-job', name: 'new-platform-job', platformWide: true }];
+    testState.recurringJobs = [...testState.recurringJobs, { id: 'new-platform-job', kind: 'NewPlatformJob', name: 'new-platform-job', platformWide: true }];
     render(<PlatformConfigurationView />, { wrapper });
 
     expect(screen.getByRole('checkbox', { name: /new-platform-job/ })).not.toBeChecked();
@@ -76,7 +76,7 @@ describe('PlatformConfigurationView', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Financial View Refresh/ }));
 
     expect(testState.updateConfig).toHaveBeenCalledWith({
-      visibleRecurringJobs: ['system-event-cleanup', 'refresh-financial-materialized-views'],
+      visibleRecurringJobs: ['SystemEventCleanup', 'FinancialViewRefresh'],
     });
   });
 

@@ -12,6 +12,7 @@ import { SecureButton } from '../../components/common/ui/SecureButton';
 import { CheckboxField } from '../../components/common/ui/FormField';
 import { usePostApiDashboardSession } from '../../api/generated/endpoints';
 import { isAdminRole } from '../../utils/roles';
+import type { RecurringJobDto, RecurringJobKind } from '@types';
 
 export function PlatformConfigurationView() {
     const { data: config } = useGlobalConfigQuery();
@@ -38,13 +39,15 @@ export function PlatformConfigurationView() {
         }
     };
 
-    const toggleVisibleJob = (jobId: string, enabled: boolean) => {
+    const toggleVisibleJob = (kind: RecurringJobKind, enabled: boolean) => {
         const current = config?.visibleRecurringJobs ?? [];
-        const next = enabled
-            ? [...current, jobId]
-            : current.filter((id) => id !== jobId);
+        const next: RecurringJobKind[] = enabled
+            ? [...current, kind]
+            : current.filter((existing) => existing !== kind);
         void updateConfig.mutateAsync({ visibleRecurringJobs: next });
     };
+
+    const visibleKindSet = new Set<string>(config?.visibleRecurringJobs ?? []);
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
@@ -82,16 +85,16 @@ export function PlatformConfigurationView() {
                             </p>
                             <div className="mt-4 flex flex-col gap-2">
                                 {(recurringJobs ?? [])
-                                    .filter((job) => job.platformWide)
+                                    .filter((job): job is RecurringJobDto & { kind: RecurringJobKind } => job.platformWide && job.kind !== null)
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map((job) => (
                                         <CheckboxField
                                             key={job.id}
                                             label={job.name}
                                             meta={job.id}
-                                            checked={(config?.visibleRecurringJobs ?? []).includes(job.id)}
+                                            checked={visibleKindSet.has(job.kind)}
                                             disabled={disabled}
-                                            onChange={(e) => toggleVisibleJob(job.id, e.target.checked)}
+                                            onChange={(e) => toggleVisibleJob(job.kind, e.target.checked)}
                                         />
                                     ))}
                             </div>

@@ -125,6 +125,7 @@ export type MonitorAnalyticsDto = Required<Omit<Generated.MonitorAnalyticsRespon
 // and is not generated in the OpenAPI specs.
 export interface RecurringJobDto {
   id: string;
+  kind: Generated.RecurringJobKind | null;
   name: string;
   platformWide: boolean;
   cron: string;

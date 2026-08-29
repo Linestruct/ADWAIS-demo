@@ -35,7 +35,7 @@ public class GlobalConfigControllerTests
             LastPolled: null,
             SystemEventRetentionDays: 2,
             MatViewRefreshIntervalMinutes: 60,
-            VisibleRecurringJobs: Array.Empty<string>()
+            VisibleRecurringJobs: Array.Empty<Adwais.Application.Common.Jobs.RecurringJobKind>()
         );
 
         _configServiceMock.Setup(s => s.GetConfigAsync(It.IsAny<CancellationToken>()))
@@ -61,7 +61,7 @@ public class GlobalConfigControllerTests
             LastPolled: null,
             SystemEventRetentionDays: 30,
             MatViewRefreshIntervalMinutes: 60,
-            VisibleRecurringJobs: Array.Empty<string>()
+            VisibleRecurringJobs: Array.Empty<Adwais.Application.Common.Jobs.RecurringJobKind>()
         );
 
         _configServiceMock.Setup(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()))

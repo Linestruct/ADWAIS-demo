@@ -84,6 +84,7 @@ export * from './problemDetails';
 export * from './providerDescriptor';
 export * from './providerSettingDescriptor';
 export * from './recurrenceType';
+export * from './recurringJobKind';
 export * from './registerKioskRequestDto';
 export * from './responseTime';
 export * from './revenueEfficiencyResponseDto';

@@ -90,7 +90,7 @@ public class GlobalConfigServiceTests
             Id = 1,
             SystemEventRetentionDays = retentionDays,
             MatViewRefreshIntervalMinutes = 60,
-            VisibleRecurringJobsCsv = "refresh-financial-materialized-views,system-event-cleanup"
+            VisibleRecurringJobsCsv = "FinancialViewRefresh,SystemEventCleanup"
         };
         dbContext.GlobalConfigs.Add(config);
         return config;
@@ -181,15 +181,15 @@ public class GlobalConfigServiceTests
 
         var service = CreateService(dbContext, OrgAccess());
         var request = new UpdateGlobalConfigRequestDto(
-            VisibleRecurringJobs: new[] { "sync-intranet-calendars", "dev-runtime-data-seeder" });
+            VisibleRecurringJobs: new[] { Adwais.Application.Common.Jobs.RecurringJobKind.CalendarSync, Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder });
 
         var result = await service.UpdateConfigAsync(request);
 
-        Assert.Equal(new[] { "sync-intranet-calendars", "dev-runtime-data-seeder" }, result.VisibleRecurringJobs);
+        Assert.Equal(new[] { Adwais.Application.Common.Jobs.RecurringJobKind.CalendarSync, Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder }, result.VisibleRecurringJobs);
 
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
-        Assert.Equal("sync-intranet-calendars,dev-runtime-data-seeder", configDb!.VisibleRecurringJobsCsv);
+        Assert.Equal("CalendarSync,RuntimeDataSeeder", configDb!.VisibleRecurringJobsCsv);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class GlobalConfigServiceTests
 
         var result = await service.GetConfigAsync();
 
-        Assert.Equal(new[] { "refresh-financial-materialized-views", "system-event-cleanup" }, result!.VisibleRecurringJobs);
+        Assert.Equal(new[] { Adwais.Application.Common.Jobs.RecurringJobKind.FinancialViewRefresh, Adwais.Application.Common.Jobs.RecurringJobKind.SystemEventCleanup }, result!.VisibleRecurringJobs);
     }
 
     [Fact]

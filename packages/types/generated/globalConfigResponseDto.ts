@@ -4,6 +4,7 @@
  * Adwais.Api
  * OpenAPI spec version: 1.0
  */
+import type { RecurringJobKind } from './recurringJobKind';
 
 export interface GlobalConfigResponseDto {
   id?: number;
@@ -12,5 +13,5 @@ export interface GlobalConfigResponseDto {
   systemEventRetentionDays?: number;
   matViewRefreshIntervalMinutes?: number;
   /** @nullable */
-  visibleRecurringJobs?: string[] | null;
+  visibleRecurringJobs?: RecurringJobKind[] | null;
 }

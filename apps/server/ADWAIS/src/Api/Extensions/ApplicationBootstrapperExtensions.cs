@@ -119,32 +119,32 @@ public static class ApplicationBootstrapperExtensions
                     var orgId = orgConfig.OrganizationId;
 
                     recurringJobManager.AddOrUpdate<OrderFetchDispatchJob>(
-                        $"dispatch-order-fetch-{orgId}",
+                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.OrderFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.OrderFetchIntervalMinutes, 60)));
 
                     recurringJobManager.AddOrUpdate<MonitorUptimeDispatchJob>(
-                        $"dispatch-monitoring-uptime-{orgId}",
+                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UptimeFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.UptimeFetchIntervalMinutes, 60)));
 
                     recurringJobManager.AddOrUpdate<MonitorLatencyDispatchJob>(
-                        $"dispatch-monitoring-latency-{orgId}",
+                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.LatencyFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.LatencyFetchIntervalMinutes, 10)));
 
                     recurringJobManager.AddOrUpdate<SyncOrganizationAccountStatsJob>(
-                        $"sync-monitoring-account-stats-{orgId}",
+                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UserStatsFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.UserStatsFetchIntervalMinutes, 60)));
 
                     recurringJobManager.AddOrUpdate<SyncOrganizationFleetJob>(
-                        $"sync-monitoring-fleet-{orgId}",
+                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FleetSync, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         Cron.MinuteInterval(5));
 
                     recurringJobManager.AddOrUpdate<AggregateOrganizationFeedsJob>(
-                        $"aggregate-intranet-feeds-{orgId}",
+                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FeedFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId, CancellationToken.None),
                         Cron.HourInterval(Positive(orgConfig.FeedFetchIntervalHours, 2)));
                 }

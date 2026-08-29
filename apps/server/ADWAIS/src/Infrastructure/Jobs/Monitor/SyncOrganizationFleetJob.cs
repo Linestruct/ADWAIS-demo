@@ -131,7 +131,7 @@ public class SyncOrganizationFleetJob(
             : 300;
         var lowestIntervalMins = Math.Max(1, lowestIntervalSeconds / 60);
         recurringJobManager.AddOrUpdate<SyncOrganizationFleetJob>(
-            $"sync-monitoring-fleet-{organizationId}",
+            Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FleetSync, organizationId),
             job => job.ExecuteAsync(organizationId),
             Cron.MinuteInterval(lowestIntervalMins));
 

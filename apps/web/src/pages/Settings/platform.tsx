@@ -12,7 +12,6 @@ import { SecureButton } from '../../components/common/ui/SecureButton';
 import { CheckboxField } from '../../components/common/ui/FormField';
 import { usePostApiDashboardSession } from '../../api/generated/endpoints';
 import { isAdminRole } from '../../utils/roles';
-import { isPlatformWideJob, recurringJobDisplayName } from '../../utils/recurringJobLabels';
 
 export function PlatformConfigurationView() {
     const { data: config } = useGlobalConfigQuery();
@@ -83,12 +82,12 @@ export function PlatformConfigurationView() {
                             </p>
                             <div className="mt-4 flex flex-col gap-2">
                                 {(recurringJobs ?? [])
-                                    .filter((job) => isPlatformWideJob(job.id))
-                                    .sort((a, b) => recurringJobDisplayName(a.id).localeCompare(recurringJobDisplayName(b.id)))
+                                    .filter((job) => job.platformWide)
+                                    .sort((a, b) => a.name.localeCompare(b.name))
                                     .map((job) => (
                                         <CheckboxField
                                             key={job.id}
-                                            label={recurringJobDisplayName(job.id)}
+                                            label={job.name}
                                             meta={job.id}
                                             checked={(config?.visibleRecurringJobs ?? []).includes(job.id)}
                                             disabled={disabled}

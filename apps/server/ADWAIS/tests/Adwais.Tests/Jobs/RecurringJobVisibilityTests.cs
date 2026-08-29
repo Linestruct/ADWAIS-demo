@@ -31,13 +31,13 @@ public class RecurringJobVisibilityTests
     }
 
     [Fact]
-    public void CuratedPlatformJob_IsVisible()
+    public void PlatformJob_InVisibleSet_IsVisible()
     {
         Assert.True(RecurringJobVisibility.IsVisible("refresh-financial-materialized-views", _orgA, Curated()));
     }
 
     [Fact]
-    public void NonCuratedPlatformJob_IsHidden()
+    public void PlatformJob_NotInVisibleSet_IsHidden()
     {
         Assert.False(RecurringJobVisibility.IsVisible("dev-runtime-data-seeder", _orgA, Curated()));
     }
@@ -56,6 +56,13 @@ public class RecurringJobVisibilityTests
         var visible = Curated(RecurringJobVisibility.DefaultVisiblePlatformJobs + ",dev-runtime-data-seeder");
 
         Assert.True(RecurringJobVisibility.IsVisible("dev-runtime-data-seeder", _orgA, visible));
+    }
+
+    [Fact]
+    public void IsPlatformWide_ClassifiesByIdShape()
+    {
+        Assert.True(RecurringJobVisibility.IsPlatformWide("system-event-cleanup"));
+        Assert.False(RecurringJobVisibility.IsPlatformWide($"dispatch-order-fetch-{_orgA}"));
     }
 
     [Fact]

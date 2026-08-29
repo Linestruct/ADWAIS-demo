@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Jobs;
 using Adwais.Application.Interfaces;
 using Adwais.Infrastructure.Persistence;
 using Hangfire;
@@ -28,7 +29,7 @@ public class JobTriggerService(
     {
         foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            recurringJobManager.Trigger($"dispatch-order-fetch-{orgId}");
+            recurringJobManager.Trigger(RecurringJobId.For(RecurringJobKind.OrderFetch, orgId));
         }
     }
 
@@ -36,7 +37,7 @@ public class JobTriggerService(
     {
         foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            recurringJobManager.Trigger($"dispatch-monitoring-uptime-{orgId}");
+            recurringJobManager.Trigger(RecurringJobId.For(RecurringJobKind.UptimeFetch, orgId));
         }
     }
 
@@ -44,7 +45,7 @@ public class JobTriggerService(
     {
         foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            recurringJobManager.Trigger($"dispatch-monitoring-latency-{orgId}");
+            recurringJobManager.Trigger(RecurringJobId.For(RecurringJobKind.LatencyFetch, orgId));
         }
     }
 
@@ -52,7 +53,7 @@ public class JobTriggerService(
     {
         foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            recurringJobManager.Trigger($"sync-monitoring-fleet-{orgId}");
+            recurringJobManager.Trigger(RecurringJobId.For(RecurringJobKind.FleetSync, orgId));
         }
     }
 
@@ -60,7 +61,7 @@ public class JobTriggerService(
     {
         foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            recurringJobManager.Trigger($"sync-monitoring-account-stats-{orgId}");
+            recurringJobManager.Trigger(RecurringJobId.For(RecurringJobKind.UserStatsFetch, orgId));
         }
     }
 
@@ -68,7 +69,7 @@ public class JobTriggerService(
     {
         foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            recurringJobManager.Trigger($"aggregate-intranet-feeds-{orgId}");
+            recurringJobManager.Trigger(RecurringJobId.For(RecurringJobKind.FeedFetch, orgId));
         }
     }
 

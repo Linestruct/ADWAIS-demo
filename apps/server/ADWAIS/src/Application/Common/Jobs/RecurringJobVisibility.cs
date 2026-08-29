@@ -28,6 +28,15 @@ public static class RecurringJobVisibility
     public static string JoinVisibleJobs(IEnumerable<string> jobs) => string.Join(",", jobs);
 
     public static bool IsVisible(string jobId, Guid organizationId, IReadOnlySet<string> visiblePlatformJobs)
-        => jobId.EndsWith($"-{organizationId}", StringComparison.Ordinal)
-            || visiblePlatformJobs.Contains(jobId);
+    {
+        if (RecurringJobId.TryParse(jobId, out _, out var jobOrganizationId))
+        {
+            if (jobOrganizationId == organizationId) return true;
+        }
+
+        return visiblePlatformJobs.Contains(jobId);
+    }
+
+    public static bool IsPlatformWide(string jobId)
+        => RecurringJobId.TryParse(jobId, out _, out var organizationId) && organizationId is null;
 }

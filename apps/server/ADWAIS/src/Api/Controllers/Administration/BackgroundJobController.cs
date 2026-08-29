@@ -125,16 +125,33 @@ public class BackgroundJobController(
                 .ToHashSet(StringComparer.Ordinal);
         }
 
+        var orgIds = recurringJobs
+            .Select(j => Adwais.Application.Common.Jobs.RecurringJobId.TryParse(j.Id, out _, out var orgId) ? orgId : null)
+            .Where(id => id is not null)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToArray();
+        var orgNames = await _dbContext.Organizations
+            .AsNoTracking()
+            .Where(o => orgIds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, o => o.Name, ct);
+
         return Ok(recurringJobs
             .Where(j => scopeOrgId is null || Adwais.Application.Common.Jobs.RecurringJobVisibility.IsVisible(j.Id, scopeOrgId.Value, visiblePlatformJobs))
-            .Select(j => new
+            .Select(j =>
             {
-                j.Id,
-                j.Cron,
-                j.LastExecution,
-                j.NextExecution,
-                j.LastJobState,
-                j.Queue
+                var organizationId = Adwais.Application.Common.Jobs.RecurringJobId.TryParse(j.Id, out _, out var parsedOrgId) ? parsedOrgId : null;
+                return new
+                {
+                    j.Id,
+                    Name = Adwais.Application.Common.Jobs.RecurringJobId.DisplayName(j.Id, organizationId is null ? null : orgNames.GetValueOrDefault(organizationId.Value)),
+                    PlatformWide = Adwais.Application.Common.Jobs.RecurringJobVisibility.IsPlatformWide(j.Id),
+                    j.Cron,
+                    j.LastExecution,
+                    j.NextExecution,
+                    j.LastJobState,
+                    j.Queue
+                };
             }));
     }
 

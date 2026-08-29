@@ -99,7 +99,7 @@ public class GlobalConfigService(
             FeedFetchIntervalHours: intervalHours), ct);
 
         RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
-            $"aggregate-intranet-feeds-{orgId}",
+            Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FeedFetch, orgId),
             job => job.ExecuteAsync(orgId, CancellationToken.None),
             Cron.HourInterval(intervalHours));
 
@@ -156,7 +156,7 @@ public class GlobalConfigService(
         if (request.UptimeFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<MonitorUptimeDispatchJob>(
-                $"dispatch-monitoring-uptime-{orgId}",
+                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UptimeFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.UptimeFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Uptime Fetch Interval to {request.UptimeFetchIntervalMinutes.Value} minutes");
@@ -165,7 +165,7 @@ public class GlobalConfigService(
         if (request.LatencyFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<MonitorLatencyDispatchJob>(
-                $"dispatch-monitoring-latency-{orgId}",
+                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.LatencyFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.LatencyFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Latency Fetch Interval to {request.LatencyFetchIntervalMinutes.Value} minutes");
@@ -174,7 +174,7 @@ public class GlobalConfigService(
         if (request.UserStatsFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<SyncOrganizationAccountStatsJob>(
-                $"sync-monitoring-account-stats-{orgId}",
+                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UserStatsFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.UserStatsFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated User Stats Fetch Interval to {request.UserStatsFetchIntervalMinutes.Value} minutes");
@@ -183,7 +183,7 @@ public class GlobalConfigService(
         if (request.OrderFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<OrderFetchDispatchJob>(
-                $"dispatch-order-fetch-{orgId}",
+                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.OrderFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.OrderFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated order fetch interval to {request.OrderFetchIntervalMinutes.Value} minutes");
@@ -192,7 +192,7 @@ public class GlobalConfigService(
         if (request.FeedFetchIntervalHours.HasValue)
         {
             RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
-                $"aggregate-intranet-feeds-{orgId}",
+                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FeedFetch, orgId),
                 job => job.ExecuteAsync(orgId, CancellationToken.None),
                 Cron.HourInterval(request.FeedFetchIntervalHours.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Feed Fetch Interval to {request.FeedFetchIntervalHours.Value} hours");

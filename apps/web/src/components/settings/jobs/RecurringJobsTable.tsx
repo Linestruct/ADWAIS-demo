@@ -7,7 +7,6 @@ import { EmptyState } from '../../common/ui/EmptyState';
 import { TableSkeletonRows } from '../../common/ui/TableSkeletonRows';
 import type { RecurringJobDto } from '@types';
 import { formatDateTime } from '../../../utils/dateTime';
-import { recurringJobDisplayName } from '../../../utils/recurringJobLabels';
 
 interface RecurringJobsTableProps {
   recurring: RecurringJobDto[] | undefined;
@@ -43,7 +42,7 @@ export function RecurringJobsTable({ recurring, isLoading = recurring === undefi
             recurring?.map((job) => (
               <tr key={job.id} className="transition-colors bg-surface-container-low hover:bg-surface-container">
                 <td className="px-3 py-2 break-words max-w-[150px]">
-                  <span className="font-bold text-on-surface">{recurringJobDisplayName(job.id)}</span>
+                  <span className="font-bold text-on-surface">{job.name || job.id}</span>
                   <span className="block text-xs text-on-surface-variant break-all">{job.id}</span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">

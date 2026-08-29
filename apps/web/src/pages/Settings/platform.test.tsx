@@ -13,9 +13,9 @@ const testState = vi.hoisted(() => ({
   config: { systemEventRetentionDays: 30, visibleRecurringJobs: ['system-event-cleanup'] } as GlobalConfigDto,
   updateConfig: vi.fn(),
   recurringJobs: [
-    { id: 'system-event-cleanup' },
-    { id: 'refresh-financial-materialized-views' },
-    { id: 'dispatch-order-fetch-00000000-0000-0000-0000-00000000000a' },
+    { id: 'system-event-cleanup', name: 'System Event Cleanup', platformWide: true },
+    { id: 'refresh-financial-materialized-views', name: 'Financial View Refresh', platformWide: true },
+    { id: 'dispatch-order-fetch-00000000-0000-0000-0000-00000000000a', name: 'Order Fetch', platformWide: false },
   ],
 }));
 
@@ -64,7 +64,7 @@ describe('PlatformConfigurationView', () => {
   });
 
   it('shows newly registered platform jobs without a catalog change', () => {
-    testState.recurringJobs = [...testState.recurringJobs, { id: 'new-platform-job' }];
+    testState.recurringJobs = [...testState.recurringJobs, { id: 'new-platform-job', name: 'new-platform-job', platformWide: true }];
     render(<PlatformConfigurationView />, { wrapper });
 
     expect(screen.getByRole('checkbox', { name: /new-platform-job/ })).not.toBeChecked();

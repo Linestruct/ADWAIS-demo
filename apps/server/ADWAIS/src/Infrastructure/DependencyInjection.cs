@@ -8,6 +8,7 @@ using Adwais.Application.Services;
 using Adwais.Infrastructure.Caching;
 using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Services;
+using Adwais.Infrastructure.Services.Jobs;
 using Adwais.Infrastructure.Services.Reporting;
 using Adwais.Infrastructure.Jobs.MaterializedViews;
 using Adwais.Infrastructure.Jobs.Monitor;
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationConfigService, OrganizationConfigService>();
         services.AddScoped<IReportingCalendar, ReportingCalendar>();
         services.AddScoped<IViewRefreshTracker, ViewRefreshTracker>();
+        services.AddScoped<IJobTriggerService, JobTriggerService>();
         services.AddScoped<RefreshFinancialMaterializedViewJob>();
         services.AddScoped<RefreshMonitoringMaterializedViewJob>();
         services.AddScoped<RefreshStaleMaterializedViewsJob>();

@@ -2,6 +2,8 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using Adwais.Application.Common.Access;
+using Adwais.Application.Interfaces;
 using Hangfire;
 using Hangfire.Storage;
 using Microsoft.AspNetCore.Authorization;
@@ -14,60 +16,65 @@ namespace Adwais.Api.Controllers.Administration;
 /// </summary>
 [ApiController]
 [Route("api/job")]
-public class BackgroundJobController : ControllerBase
+public class BackgroundJobController(
+    IJobTriggerService jobTriggerService,
+    ICurrentAccess currentAccess) : ControllerBase
 {
+    private readonly IJobTriggerService _jobTriggerService = jobTriggerService;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+
     /// <summary>
-    /// Triggers the monitoring-provider synchronization job immediately.
+    /// Triggers the monitoring-provider synchronization job for the caller's organization.
     /// </summary>
     [HttpPost("trigger/monitor-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerMonitorSync()
+    public async Task<ActionResult> TriggerMonitorSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("sync-monitoring-fleet");
+        await _jobTriggerService.TriggerFleetSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
     
     /// <summary>
-    /// Triggers the monitoring uptime metrics collection job immediately.
+    /// Triggers uptime metrics collection for the caller's organization.
     /// </summary>
     [HttpPost("trigger/uptime-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerUptimeSync()
+    public async Task<ActionResult> TriggerUptimeSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("dispatch-monitoring-uptime");
+        await _jobTriggerService.TriggerUptimeSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 
     /// <summary>
-    /// Triggers the monitoring latency metrics collection job immediately.
+    /// Triggers latency metrics collection for the caller's organization.
     /// </summary>
     [HttpPost("trigger/latency-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerLatencySync()
+    public async Task<ActionResult> TriggerLatencySync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("dispatch-monitoring-latency");
+        await _jobTriggerService.TriggerLatencySyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 
     /// <summary>
-    /// Triggers the monitoring account statistics synchronization job immediately.
+    /// Triggers monitoring account statistics synchronization for the caller's organization.
     /// </summary>
     [HttpPost("trigger/user-stats-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerUserStatsSync()
+    public async Task<ActionResult> TriggerUserStatsSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("sync-monitoring-account-stats");
+        await _jobTriggerService.TriggerAccountStatsSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 
     /// <summary>
-    /// Triggers the order ingestion job immediately.
+    /// Triggers order ingestion for the caller's organization.
     /// </summary>
     [HttpPost("trigger/order-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerOrderSync()
+    public async Task<ActionResult> TriggerOrderSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("dispatch-order-fetch");
+        await _jobTriggerService.TriggerOrderSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 

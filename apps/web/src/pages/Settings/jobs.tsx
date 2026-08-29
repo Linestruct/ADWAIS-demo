@@ -12,7 +12,7 @@ import { ConsolePanel } from '../../components/common/layout/ConsolePanel';
 import { ConsoleLoadingRows } from '../../components/common/ui/ConsoleLoadingRows';
 import { useCurrentUser, type UserProfile } from '../../hooks/useCurrentUser';
 import { useOrgSelection } from '../../hooks/useOrgSelection';
-import { isAdminRole } from '../../utils/roles';
+import { isAdminRole, isStaffRole } from '../../utils/roles';
 import { formatDateTime } from '../../utils/dateTime';
 
 type ManualJobAccess = 'admin' | 'staff' | 'platform';
@@ -110,7 +110,7 @@ export function BackgroundJobsView() {
 
             {/* Scheduled Jobs Section & Console Panel / Right Pane */}
             <div className="flex min-h-0 flex-col gap-4 h-full">
-                {!isAdminRole(role) && (
+                {isStaffRole(role) && (
                 <SettingsPanel 
                     title="Scheduled Jobs"
                     subtitle="Recurring system schedules."

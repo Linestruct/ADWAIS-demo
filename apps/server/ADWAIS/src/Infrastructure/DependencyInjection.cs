@@ -10,6 +10,7 @@ using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Services;
 using Adwais.Infrastructure.Services.Reporting;
 using Adwais.Infrastructure.Jobs.MaterializedViews;
+using Adwais.Infrastructure.Jobs.Monitor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,8 @@ public static class DependencyInjection
         services.AddScoped<RefreshFinancialMaterializedViewJob>();
         services.AddScoped<RefreshMonitoringMaterializedViewJob>();
         services.AddScoped<RefreshStaleMaterializedViewsJob>();
+        services.AddScoped<SyncOrganizationFleetJob>();
+        services.AddScoped<SyncOrganizationAccountStatsJob>();
 
         // Register Typed HTTP Clients with resilience policies
         services.AddTransient<UptimeRobotRateLimitHandler>();

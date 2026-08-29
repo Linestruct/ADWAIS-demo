@@ -57,7 +57,7 @@ export function RecurringJobsTable({ recurring, isLoading = recurring === undefi
                     hour: 'numeric', minute: 'numeric', second: 'numeric',
                   }) || 'Never'}
                 </td>
-                <td className="px-3 py-2 text-on-surface-variant whitespace-nowrap">
+                <td className="px-3 py-2 text-on-surface-variant font-bold whitespace-nowrap">
                   {formatDateTime(job.nextExecution, {
                     year: 'numeric', month: 'numeric', day: 'numeric',
                     hour: 'numeric', minute: 'numeric', second: 'numeric',

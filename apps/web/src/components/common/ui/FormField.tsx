@@ -53,6 +53,7 @@ interface CheckboxFieldProps {
   disabled?: boolean;
   helperText?: ReactNode;
   error?: ReactNode;
+  meta?: ReactNode;
   className?: string;
 }
 
@@ -233,6 +234,7 @@ export function CheckboxField({
   disabled = false,
   helperText,
   error,
+  meta,
   className = '',
 }: CheckboxFieldProps) {
   const generatedId = useId();
@@ -258,6 +260,7 @@ export function CheckboxField({
           className="h-5 w-5 rounded border-outline-variant text-secondary focus:ring-2 focus:ring-secondary/40 disabled:cursor-not-allowed"
         />
         <span>{label}</span>
+        {meta && <span className="ml-auto text-xs font-medium text-on-surface-variant break-all">{meta}</span>}
       </label>
       {(error || helperText) && (
         <span

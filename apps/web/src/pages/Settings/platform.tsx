@@ -9,6 +9,7 @@ import { GlobalConfigurationForm } from '../../components/settings/configuration
 import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { SettingsPanelHeader } from '../../components/common/layout/SettingsPanelHeader';
 import { SecureButton } from '../../components/common/ui/SecureButton';
+import { CheckboxField } from '../../components/common/ui/FormField';
 import { usePostApiDashboardSession } from '../../api/generated/endpoints';
 import { isAdminRole } from '../../utils/roles';
 import { platformJobCatalog } from '../../utils/recurringJobLabels';
@@ -66,7 +67,7 @@ export function PlatformConfigurationView() {
                 </SettingsPanelHeader>
 
                 <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-6">
-                    <div className="space-y-8">
+                    <div className="grid grid-cols-1 items-start gap-10 xl:grid-cols-2">
                         <section>
                             <h3 className="text-lg font-bold text-on-surface">Global Configuration</h3>
                             <div className="mt-4">
@@ -80,25 +81,16 @@ export function PlatformConfigurationView() {
                                 Platform-wide jobs that organizations can see in their job schedules.
                             </p>
                             <div className="mt-4 flex flex-col gap-2">
-                                {platformJobCatalog().map((job) => {
-                                    const checked = (config?.visibleRecurringJobs ?? []).includes(job.id);
-                                    return (
-                                        <label
-                                            key={job.id}
-                                            className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2 transition-colors ${checked ? 'border-secondary bg-secondary-container/30' : 'border-outline-variant bg-surface-container-low hover:bg-surface-container'}`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                disabled={disabled}
-                                                onChange={(e) => toggleVisibleJob(job.id, e.target.checked)}
-                                                className="h-5 w-5 rounded border-outline-variant text-secondary focus:ring-2 focus:ring-secondary/40 cursor-pointer"
-                                            />
-                                            <span className="text-sm font-bold text-on-surface">{job.label}</span>
-                                            <span className="ml-auto text-xs font-medium text-on-surface-variant break-all">{job.id}</span>
-                                        </label>
-                                    );
-                                })}
+                                {platformJobCatalog().map((job) => (
+                                    <CheckboxField
+                                        key={job.id}
+                                        label={job.label}
+                                        meta={job.id}
+                                        checked={(config?.visibleRecurringJobs ?? []).includes(job.id)}
+                                        disabled={disabled}
+                                        onChange={(e) => toggleVisibleJob(job.id, e.target.checked)}
+                                    />
+                                ))}
                             </div>
                         </section>
                     </div>

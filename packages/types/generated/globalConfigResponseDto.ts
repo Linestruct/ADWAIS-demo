@@ -11,4 +11,6 @@ export interface GlobalConfigResponseDto {
   lastPolled?: string | null;
   systemEventRetentionDays?: number;
   matViewRefreshIntervalMinutes?: number;
+  /** @nullable */
+  visibleRecurringJobs?: string[] | null;
 }

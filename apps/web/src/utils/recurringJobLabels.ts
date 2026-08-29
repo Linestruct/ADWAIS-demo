@@ -30,3 +30,7 @@ export function recurringJobDisplayName(jobId: string): string {
 
   return jobId;
 }
+
+export function platformJobCatalog(): { id: string; label: string }[] {
+  return Object.entries(PLATFORM_LABELS).map(([id, label]) => ({ id, label }));
+}

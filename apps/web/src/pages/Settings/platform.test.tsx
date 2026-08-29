@@ -2,16 +2,21 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { PlatformConfigurationView } from './platform';
 import type { GlobalConfigDto } from '@types';
 
+const testState = vi.hoisted(() => ({
+  config: { systemEventRetentionDays: 30, visibleRecurringJobs: ['system-event-cleanup'] } as GlobalConfigDto,
+  updateConfig: vi.fn(),
+}));
+
 vi.mock('../../hooks/useJobSettingsQueries', () => ({
-  useGlobalConfigQuery: () => ({ data: { systemEventRetentionDays: 30 } as GlobalConfigDto }),
-  useUpdateConfigMutation: () => ({ mutateAsync: vi.fn() }),
+  useGlobalConfigQuery: () => ({ data: testState.config }),
+  useUpdateConfigMutation: () => ({ mutateAsync: testState.updateConfig }),
 }));
 
 vi.mock('../../hooks/useCurrentUser', () => ({
@@ -41,5 +46,31 @@ describe('PlatformConfigurationView', () => {
 
     expect(screen.getByRole('heading', { name: 'Hangfire Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Open Hangfire Dashboard/ })).toBeEnabled();
+  });
+
+  it('shows visible scheduled jobs and marks the managed ones', () => {
+    render(<PlatformConfigurationView />, { wrapper });
+
+    expect(screen.getByRole('heading', { name: 'Visible Scheduled Jobs' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /System Event Cleanup/ })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Financial View Refresh/ })).not.toBeChecked();
+  });
+
+  it('persists a visibility change through the config update', () => {
+    render(<PlatformConfigurationView />, { wrapper });
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Financial View Refresh/ }));
+
+    expect(testState.updateConfig).toHaveBeenCalledWith({
+      visibleRecurringJobs: ['system-event-cleanup', 'refresh-financial-materialized-views'],
+    });
+  });
+
+  it('removes a job from visibility when unchecked', () => {
+    render(<PlatformConfigurationView />, { wrapper });
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /System Event Cleanup/ }));
+
+    expect(testState.updateConfig).toHaveBeenCalledWith({ visibleRecurringJobs: [] });
   });
 });

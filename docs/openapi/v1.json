@@ -10,7 +10,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Triggers the monitoring-provider synchronization job immediately.",
+        "summary": "Triggers the monitoring-provider synchronization job for the caller's organization.",
         "responses": {
           "200": {
             "description": "OK"
@@ -23,7 +23,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Triggers the monitoring uptime metrics collection job immediately.",
+        "summary": "Triggers uptime metrics collection for the caller's organization.",
         "responses": {
           "200": {
             "description": "OK"
@@ -36,7 +36,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Triggers the monitoring latency metrics collection job immediately.",
+        "summary": "Triggers latency metrics collection for the caller's organization.",
         "responses": {
           "200": {
             "description": "OK"
@@ -49,7 +49,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Triggers the monitoring account statistics synchronization job immediately.",
+        "summary": "Triggers monitoring account statistics synchronization for the caller's organization.",
         "responses": {
           "200": {
             "description": "OK"
@@ -62,7 +62,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Triggers the order ingestion job immediately.",
+        "summary": "Triggers order ingestion for the caller's organization.",
         "responses": {
           "200": {
             "description": "OK"
@@ -101,7 +101,7 @@
         "tags": [
           "BackgroundJob"
         ],
-        "summary": "Retrieves a list of all registered recurring jobs and their current schedules.",
+        "summary": "Retrieves the recurring jobs visible to the caller. Organization\r\nscope returns the organization's jobs plus the curated platform-wide\r\njobs; platform scope returns everything.",
         "responses": {
           "200": {
             "description": "OK"
@@ -3254,7 +3254,7 @@
         "tags": [
           "SystemHealth"
         ],
-        "summary": "Retrieves a list of recent background job executions and their status.",
+        "summary": "Retrieves a list of recent background job executions and their status,\r\nfiltered to the caller's organization.",
         "responses": {
           "200": {
             "description": "OK",
@@ -4678,6 +4678,13 @@
           "matViewRefreshIntervalMinutes": {
             "type": "integer",
             "format": "int32"
+          },
+          "visibleRecurringJobs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -6190,6 +6197,13 @@
           "matViewRefreshIntervalMinutes": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "visibleRecurringJobs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           }
         },

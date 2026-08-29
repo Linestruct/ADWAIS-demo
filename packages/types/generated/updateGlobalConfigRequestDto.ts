@@ -10,4 +10,6 @@ export interface UpdateGlobalConfigRequestDto {
   systemEventRetentionDays?: number | null;
   /** @nullable */
   matViewRefreshIntervalMinutes?: number | null;
+  /** @nullable */
+  visibleRecurringJobs?: string[] | null;
 }

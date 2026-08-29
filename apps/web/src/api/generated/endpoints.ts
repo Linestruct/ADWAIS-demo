@@ -132,7 +132,7 @@ export const getPostApiJobTriggerMonitorSyncUrl = () => {
 }
 
 /**
- * @summary Triggers the monitoring-provider synchronization job immediately.
+ * @summary Triggers the monitoring-provider synchronization job for the caller's organization.
  */
 export const postApiJobTriggerMonitorSync = async ( options?: RequestInit): Promise<postApiJobTriggerMonitorSyncResponse> => {
 
@@ -180,7 +180,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostApiJobTriggerMonitorSyncMutationError = unknown
 
     /**
- * @summary Triggers the monitoring-provider synchronization job immediately.
+ * @summary Triggers the monitoring-provider synchronization job for the caller's organization.
  */
 export const usePostApiJobTriggerMonitorSync = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiJobTriggerMonitorSync>>, TError,void, TContext>, request?: SecondParameter<typeof customClient>}
@@ -214,7 +214,7 @@ export const getPostApiJobTriggerUptimeSyncUrl = () => {
 }
 
 /**
- * @summary Triggers the monitoring uptime metrics collection job immediately.
+ * @summary Triggers uptime metrics collection for the caller's organization.
  */
 export const postApiJobTriggerUptimeSync = async ( options?: RequestInit): Promise<postApiJobTriggerUptimeSyncResponse> => {
 
@@ -262,7 +262,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostApiJobTriggerUptimeSyncMutationError = unknown
 
     /**
- * @summary Triggers the monitoring uptime metrics collection job immediately.
+ * @summary Triggers uptime metrics collection for the caller's organization.
  */
 export const usePostApiJobTriggerUptimeSync = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiJobTriggerUptimeSync>>, TError,void, TContext>, request?: SecondParameter<typeof customClient>}
@@ -296,7 +296,7 @@ export const getPostApiJobTriggerLatencySyncUrl = () => {
 }
 
 /**
- * @summary Triggers the monitoring latency metrics collection job immediately.
+ * @summary Triggers latency metrics collection for the caller's organization.
  */
 export const postApiJobTriggerLatencySync = async ( options?: RequestInit): Promise<postApiJobTriggerLatencySyncResponse> => {
 
@@ -344,7 +344,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostApiJobTriggerLatencySyncMutationError = unknown
 
     /**
- * @summary Triggers the monitoring latency metrics collection job immediately.
+ * @summary Triggers latency metrics collection for the caller's organization.
  */
 export const usePostApiJobTriggerLatencySync = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiJobTriggerLatencySync>>, TError,void, TContext>, request?: SecondParameter<typeof customClient>}
@@ -378,7 +378,7 @@ export const getPostApiJobTriggerUserStatsSyncUrl = () => {
 }
 
 /**
- * @summary Triggers the monitoring account statistics synchronization job immediately.
+ * @summary Triggers monitoring account statistics synchronization for the caller's organization.
  */
 export const postApiJobTriggerUserStatsSync = async ( options?: RequestInit): Promise<postApiJobTriggerUserStatsSyncResponse> => {
 
@@ -426,7 +426,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostApiJobTriggerUserStatsSyncMutationError = unknown
 
     /**
- * @summary Triggers the monitoring account statistics synchronization job immediately.
+ * @summary Triggers monitoring account statistics synchronization for the caller's organization.
  */
 export const usePostApiJobTriggerUserStatsSync = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiJobTriggerUserStatsSync>>, TError,void, TContext>, request?: SecondParameter<typeof customClient>}
@@ -460,7 +460,7 @@ export const getPostApiJobTriggerOrderSyncUrl = () => {
 }
 
 /**
- * @summary Triggers the order ingestion job immediately.
+ * @summary Triggers order ingestion for the caller's organization.
  */
 export const postApiJobTriggerOrderSync = async ( options?: RequestInit): Promise<postApiJobTriggerOrderSyncResponse> => {
 
@@ -508,7 +508,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PostApiJobTriggerOrderSyncMutationError = unknown
 
     /**
- * @summary Triggers the order ingestion job immediately.
+ * @summary Triggers order ingestion for the caller's organization.
  */
 export const usePostApiJobTriggerOrderSync = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiJobTriggerOrderSync>>, TError,void, TContext>, request?: SecondParameter<typeof customClient>}
@@ -706,7 +706,9 @@ export const getGetApiJobRecurringUrl = () => {
 }
 
 /**
- * @summary Retrieves a list of all registered recurring jobs and their current schedules.
+ * @summary Retrieves the recurring jobs visible to the caller. Organization
+scope returns the organization's jobs plus the curated platform-wide
+jobs; platform scope returns everything.
  */
 export const getApiJobRecurring = async ( options?: RequestInit): Promise<getApiJobRecurringResponse> => {
 
@@ -777,7 +779,9 @@ export function useGetApiJobRecurring<TData = Awaited<ReturnType<typeof getApiJo
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Retrieves a list of all registered recurring jobs and their current schedules.
+ * @summary Retrieves the recurring jobs visible to the caller. Organization
+scope returns the organization's jobs plus the curated platform-wide
+jobs; platform scope returns everything.
  */
 
 export function useGetApiJobRecurring<TData = Awaited<ReturnType<typeof getApiJobRecurring>>, TError = unknown>(
@@ -8234,7 +8238,8 @@ export const getGetApiSystemHealthJobsUrl = () => {
 }
 
 /**
- * @summary Retrieves a list of recent background job executions and their status.
+ * @summary Retrieves a list of recent background job executions and their status,
+filtered to the caller's organization.
  */
 export const getApiSystemHealthJobs = async ( options?: RequestInit): Promise<getApiSystemHealthJobsResponse> => {
 
@@ -8305,7 +8310,8 @@ export function useGetApiSystemHealthJobs<TData = Awaited<ReturnType<typeof getA
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Retrieves a list of recent background job executions and their status.
+ * @summary Retrieves a list of recent background job executions and their status,
+filtered to the caller's organization.
  */
 
 export function useGetApiSystemHealthJobs<TData = Awaited<ReturnType<typeof getApiSystemHealthJobs>>, TError = unknown>(

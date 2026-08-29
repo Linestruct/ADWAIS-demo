@@ -8,74 +8,71 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Interfaces;
-using Adwais.Infrastructure.Jobs;
-using Adwais.Infrastructure.Jobs.Monitor;
 using Adwais.Infrastructure.Persistence;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Services.Jobs;
 
+/// <summary>
+/// Triggers the per-organization recurring jobs on demand. Organization
+/// scope fires that organization's jobs; platform scope fires every
+/// organization's jobs. Firing through the recurring manager keeps the
+/// scheduled-jobs table's last execution and status up to date.
+/// </summary>
 public class JobTriggerService(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
-    IBackgroundJobClient backgroundJobClient) : IJobTriggerService
+    IRecurringJobManager recurringJobManager) : IJobTriggerService
 {
     public async Task TriggerOrderSyncAsync(Guid? organizationId, CancellationToken ct = default)
     {
-        foreach (var orgId in await ResolveTargetOrgsAsync(dbContextFactory, organizationId, ct))
+        foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            backgroundJobClient.Enqueue<OrderFetchDispatchJob>(
-                job => job.ExecuteAsync(orgId));
+            recurringJobManager.Trigger($"dispatch-order-fetch-{orgId}");
         }
     }
 
     public async Task TriggerUptimeSyncAsync(Guid? organizationId, CancellationToken ct = default)
     {
-        foreach (var orgId in await ResolveTargetOrgsAsync(dbContextFactory, organizationId, ct))
+        foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            backgroundJobClient.Enqueue<MonitorUptimeDispatchJob>(
-                job => job.ExecuteAsync(orgId));
+            recurringJobManager.Trigger($"dispatch-monitoring-uptime-{orgId}");
         }
     }
 
     public async Task TriggerLatencySyncAsync(Guid? organizationId, CancellationToken ct = default)
     {
-        foreach (var orgId in await ResolveTargetOrgsAsync(dbContextFactory, organizationId, ct))
+        foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            backgroundJobClient.Enqueue<MonitorLatencyDispatchJob>(
-                job => job.ExecuteAsync(orgId));
+            recurringJobManager.Trigger($"dispatch-monitoring-latency-{orgId}");
         }
     }
 
     public async Task TriggerFleetSyncAsync(Guid? organizationId, CancellationToken ct = default)
     {
-        foreach (var orgId in await ResolveTargetOrgsAsync(dbContextFactory, organizationId, ct))
+        foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            backgroundJobClient.Enqueue<SyncOrganizationFleetJob>(
-                job => job.ExecuteAsync(orgId));
+            recurringJobManager.Trigger($"sync-monitoring-fleet-{orgId}");
         }
     }
 
     public async Task TriggerAccountStatsSyncAsync(Guid? organizationId, CancellationToken ct = default)
     {
-        foreach (var orgId in await ResolveTargetOrgsAsync(dbContextFactory, organizationId, ct))
+        foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            backgroundJobClient.Enqueue<SyncOrganizationAccountStatsJob>(
-                job => job.ExecuteAsync(orgId));
+            recurringJobManager.Trigger($"sync-monitoring-account-stats-{orgId}");
         }
     }
 
     public async Task TriggerFeedSyncAsync(Guid? organizationId, CancellationToken ct = default)
     {
-        foreach (var orgId in await ResolveTargetOrgsAsync(dbContextFactory, organizationId, ct))
+        foreach (var orgId in await ResolveTargetOrgsAsync(organizationId, ct))
         {
-            backgroundJobClient.Enqueue<AggregateOrganizationFeedsJob>(
-                job => job.ExecuteAsync(orgId, CancellationToken.None));
+            recurringJobManager.Trigger($"aggregate-intranet-feeds-{orgId}");
         }
     }
 
-    private static async Task<List<Guid>> ResolveTargetOrgsAsync(
-        IDbContextFactory<AnalyticsDbContext> dbContextFactory, Guid? organizationId, CancellationToken ct)
+    private async Task<List<Guid>> ResolveTargetOrgsAsync(Guid? organizationId, CancellationToken ct)
     {
         if (organizationId is { } org) return [org];
 

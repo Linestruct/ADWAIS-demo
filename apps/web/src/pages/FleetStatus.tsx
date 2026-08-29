@@ -166,7 +166,6 @@ export function FleetStatus() {
             hasSavedPreferences={vm.hasSavedFilters}
             hasUnsavedChanges={vm.hasUnsavedFilterChanges}
           />
-          <div className="w-px h-6 bg-outline-variant mx-1 shrink-0" aria-hidden="true" />
           <PeriodSelector from="/fleet-status" />
         </div>
       </DashboardFooter>

@@ -11,6 +11,8 @@ import { SecureButton } from '../../components/common/ui/SecureButton';
 import { Skeleton } from '../../components/common/ui/Skeleton';
 import { ConsoleLoadingRows } from '../../components/common/ui/ConsoleLoadingRows';
 import { useSystemEventsViewModel, type SystemEvent } from '../../hooks/useSystemEventsViewModel';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { useOrgSelection } from '../../hooks/useOrgSelection';
 import { formatDateTime } from '../../utils/dateTime';
 
 function timeAgo(date: string | number | null | undefined): string {
@@ -76,11 +78,15 @@ export function SystemEventsView() {
         isEventsError,
         clearErrorsMutation
     } = useSystemEventsViewModel();
+    const { user } = useCurrentUser();
+    const { selectedOrgId } = useOrgSelection();
+    const platformScopeActive = user?.isPlatformAdmin === true && selectedOrgId === null;
 
     return (
-        <div className="grid landscape-contained:grid-cols-2 portrait-contained:grid-rows-2 gap-4 contained:h-full contained:min-h-0">
+        <div className={`grid ${platformScopeActive ? 'landscape-contained:grid-cols-2 portrait-contained:grid-rows-2' : ''} gap-4 contained:h-full contained:min-h-0`}>
 
             {/* Diagnostics / Health Panel */}
+            {platformScopeActive && (
             <SettingsPanel className="">
                 <SettingsPanelHeader
                     title="Pipeline Health"
@@ -195,6 +201,7 @@ export function SystemEventsView() {
                     )}
                 </div>
             </SettingsPanel>
+            )}
 
             {/* System Logs console */}
             <ConsolePanel

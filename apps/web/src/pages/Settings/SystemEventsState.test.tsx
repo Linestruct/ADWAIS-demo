@@ -14,6 +14,14 @@ vi.mock('../../hooks/useSystemEventsViewModel', () => ({
   useSystemEventsViewModel: () => testState.viewModel,
 }));
 
+vi.mock('../../hooks/useCurrentUser', () => ({
+  useCurrentUser: () => ({ role: 'PlatformAdmin', user: { isPlatformAdmin: true } }),
+}));
+
+vi.mock('../../hooks/useOrgSelection', () => ({
+  useOrgSelection: () => ({ selectedOrgId: null }),
+}));
+
 function baseViewModel() {
   return {
     isAdmin: true,

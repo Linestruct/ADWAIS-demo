@@ -5,6 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../apiClient';
 import { useCurrentUser } from './useCurrentUser';
+import { useOrgSelection } from './useOrgSelection';
 import { isAdminRole } from '../utils/roles';
 import type { SystemHealthDto } from '@types';
 
@@ -25,13 +26,16 @@ export interface SystemEvent {
 
 export function useSystemEventsViewModel() {
     const queryClient = useQueryClient();
-    const { role } = useCurrentUser();
+    const { role, user } = useCurrentUser();
+    const { selectedOrgId } = useOrgSelection();
     const isAdmin = isAdminRole(role);
+    const platformScopeActive = user?.isPlatformAdmin === true && selectedOrgId === null;
 
     const healthQuery = useQuery<SystemHealthDto>({
         queryKey: ['system-health'],
         queryFn: () => apiFetch<SystemHealthDto>('/api/system/health'),
-        refetchInterval: 30000
+        enabled: platformScopeActive,
+        refetchInterval: platformScopeActive ? 30000 : false
     });
 
     const eventsQuery = useQuery<SystemEvent[]>({

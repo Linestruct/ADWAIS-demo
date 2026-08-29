@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { 
+import {
   useGetApiGlobalConfig,
   useGetApiJobRecurring,
   useGetApiSystemHealthJobs,
@@ -13,6 +13,7 @@ import {
   usePostApiIngestionBackfill
 } from '../api/generated/endpoints';
 import { customClient } from '../apiClient';
+import { useOrgSelection } from './useOrgSelection';
 import type { GlobalConfigDto, RecurringJobDto, BackgroundJobStatusDto, UpdateGlobalConfigRequestDto } from '@types';
 import { toast } from 'sonner';
 
@@ -36,9 +37,10 @@ export function useRecurringJobsQuery() {
 }
 
 export function useRecentJobsQuery() {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiSystemHealthJobs<BackgroundJobStatusDto[], Error>({
     query: {
-      queryKey: ['system-jobs'],
+      queryKey: ['system-jobs', selectedOrgId],
       select: (res) => res.data as BackgroundJobStatusDto[],
       refetchInterval: 15000
     }

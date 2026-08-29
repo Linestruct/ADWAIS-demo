@@ -2,6 +2,7 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
+using System.Reflection;
 using Adwais.Api.Controllers.System;
 using Microsoft.AspNetCore.Authorization;
 using Xunit;

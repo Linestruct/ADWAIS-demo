@@ -1,6 +1,16 @@
 # Financial service refactor plan
 
-Status: proposed. Not started.
+Status: complete. All seven steps are implemented on `feature/multi-organization`. The 1,104-line `FinancialService` is gone. Its logic lives in focused units with the same endpoints, DTOs, and numbers. Backend suite: 531/531 green. OpenAPI regenerates with no diff.
+
+Outcome:
+
+- Characterization suites pin all ten endpoints against hourly and daily fixtures before any behavior change (`FinancialCharacterizationTests`, 18 tests).
+- `FinancialMath` holds the pure statistics with table tests (`FinancialMathTests`).
+- `TenantSeriesFilter` owns scope normalization and visibility predicates with unit tests.
+- `FinancialSeriesReader` (behind `IFinancialSeriesReader`) owns the single merge pipeline.
+- `FinancialKpiService`, `FinancialSeriesService`, `FinancialDistributionService` implement the split interfaces. `FinancialController` injects all three.
+- System tenants now drop out by `Tenant.IsSystem`, never by id (`FinancialSystemTenantTests`, 5 tests). The legacy sentinel comparison is gone from financial code.
+- Coverage on the new units sits between 64 and 100 percent line coverage, above the 53 percent the monolith had. Approximate decision-point counts per file range from 1 to 24 against 97 in the old file. The litmus per-file table could not confirm this run because its coverage paths do not match this checkout, so those two numbers come from the cobertura report and keyword counts instead.
 
 ## Goal
 

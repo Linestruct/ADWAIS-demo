@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
+using Adwais.Application.Common.Jobs;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
 using Adwais.Domain;
@@ -56,14 +57,14 @@ public class GlobalConfigService(
         }
         if (request.VisibleRecurringJobs is not null)
         {
-            config.VisibleRecurringJobsCsv = Adwais.Application.Common.Jobs.RecurringJobVisibility.JoinVisibleKinds(request.VisibleRecurringJobs);
+            config.VisibleRecurringJobsCsv = RecurringJobVisibility.JoinVisibleKinds(request.VisibleRecurringJobs);
         }
         await _dbContext.SaveChangesAsync(ct);
 
         if (request.MatViewRefreshIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<RefreshStaleMaterializedViewsJob>(
-                Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.StaleViewRefresh),
+                RecurringJobId.Platform(RecurringJobKind.StaleViewRefresh),
                 job => job.ExecuteAsync(),
                 CronHelper.FromMinutes(config.MatViewRefreshIntervalMinutes));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Stale materialized view refresh interval updated to {config.MatViewRefreshIntervalMinutes} minutes.");
@@ -99,7 +100,7 @@ public class GlobalConfigService(
             FeedFetchIntervalHours: intervalHours), ct);
 
         RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
-            Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FeedFetch, orgId),
+            RecurringJobId.For(RecurringJobKind.FeedFetch, orgId),
             job => job.ExecuteAsync(orgId, CancellationToken.None),
             Cron.HourInterval(intervalHours));
 
@@ -156,7 +157,7 @@ public class GlobalConfigService(
         if (request.UptimeFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<MonitorUptimeDispatchJob>(
-                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UptimeFetch, orgId),
+                RecurringJobId.For(RecurringJobKind.UptimeFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.UptimeFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Uptime Fetch Interval to {request.UptimeFetchIntervalMinutes.Value} minutes");
@@ -165,7 +166,7 @@ public class GlobalConfigService(
         if (request.LatencyFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<MonitorLatencyDispatchJob>(
-                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.LatencyFetch, orgId),
+                RecurringJobId.For(RecurringJobKind.LatencyFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.LatencyFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Latency Fetch Interval to {request.LatencyFetchIntervalMinutes.Value} minutes");
@@ -174,7 +175,7 @@ public class GlobalConfigService(
         if (request.UserStatsFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<SyncOrganizationAccountStatsJob>(
-                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UserStatsFetch, orgId),
+                RecurringJobId.For(RecurringJobKind.UserStatsFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.UserStatsFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated User Stats Fetch Interval to {request.UserStatsFetchIntervalMinutes.Value} minutes");
@@ -183,7 +184,7 @@ public class GlobalConfigService(
         if (request.OrderFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<OrderFetchDispatchJob>(
-                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.OrderFetch, orgId),
+                RecurringJobId.For(RecurringJobKind.OrderFetch, orgId),
                 job => job.ExecuteAsync(orgId),
                 CronHelper.FromMinutes(request.OrderFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated order fetch interval to {request.OrderFetchIntervalMinutes.Value} minutes");
@@ -192,7 +193,7 @@ public class GlobalConfigService(
         if (request.FeedFetchIntervalHours.HasValue)
         {
             RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
-                Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FeedFetch, orgId),
+                RecurringJobId.For(RecurringJobKind.FeedFetch, orgId),
                 job => job.ExecuteAsync(orgId, CancellationToken.None),
                 Cron.HourInterval(request.FeedFetchIntervalHours.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Feed Fetch Interval to {request.FeedFetchIntervalHours.Value} hours");
@@ -218,7 +219,7 @@ public class GlobalConfigService(
 
     private GlobalConfigResponseDto MapToDto(GlobalConfig config) =>
         new(config.Id, config.LastPolled, config.SystemEventRetentionDays, config.MatViewRefreshIntervalMinutes,
-            Adwais.Application.Common.Jobs.RecurringJobVisibility.ParseVisibleKinds(config.VisibleRecurringJobsCsv));
+            RecurringJobVisibility.ParseVisibleKinds(config.VisibleRecurringJobsCsv));
 
     private static OrganizationConfigDto DefaultOrgConfig() => new(
         WeatherLocation: null,

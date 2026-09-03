@@ -90,7 +90,7 @@ public class BackgroundJobController(
     [Authorize(Policy = "PlatformAdminOnly")]
     public ActionResult TriggerMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob(Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.FinancialViewRefresh));
+        RecurringJob.TriggerJob(RecurringJobId.Platform(RecurringJobKind.FinancialViewRefresh));
         return Ok();
     }
     
@@ -101,7 +101,7 @@ public class BackgroundJobController(
     [Authorize(Policy = "PlatformAdminOnly")]
     public ActionResult TriggerMonitoringMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob(Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.MonitoringViewRefresh));
+        RecurringJob.TriggerJob(RecurringJobId.Platform(RecurringJobKind.MonitoringViewRefresh));
         return Ok();
     }
 
@@ -121,13 +121,13 @@ public class BackgroundJobController(
         if (scopeOrgId is not null)
         {
             var globalConfig = await _dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
-            visiblePlatformKinds = Adwais.Application.Common.Jobs.RecurringJobVisibility
+            visiblePlatformKinds = RecurringJobVisibility
                 .ParseVisibleKinds(globalConfig?.VisibleRecurringJobsCsv)
                 .ToHashSet();
         }
 
         var orgIds = recurringJobs
-            .Select(j => Adwais.Application.Common.Jobs.RecurringJobId.TryParse(j.Id, out _, out var orgId) ? orgId : null)
+            .Select(j => RecurringJobId.TryParse(j.Id, out _, out var orgId) ? orgId : null)
             .Where(id => id is not null)
             .Select(id => id!.Value)
             .Distinct()
@@ -138,16 +138,16 @@ public class BackgroundJobController(
             .ToDictionaryAsync(o => o.Id, o => o.Name, ct);
 
         return Ok(recurringJobs
-            .Where(j => scopeOrgId is null || Adwais.Application.Common.Jobs.RecurringJobVisibility.IsVisible(j.Id, scopeOrgId.Value, visiblePlatformKinds))
+            .Where(j => scopeOrgId is null || RecurringJobVisibility.IsVisible(j.Id, scopeOrgId.Value, visiblePlatformKinds))
             .Select(j =>
             {
-                var parsed = Adwais.Application.Common.Jobs.RecurringJobId.TryParse(j.Id, out var kind, out var organizationId);
+                var parsed = RecurringJobId.TryParse(j.Id, out var kind, out var organizationId);
                 return new
                 {
                     j.Id,
                     Kind = parsed ? kind : (RecurringJobKind?)null,
-                    Name = Adwais.Application.Common.Jobs.RecurringJobId.DisplayName(j.Id, organizationId is null ? null : orgNames.GetValueOrDefault(organizationId.Value)),
-                    PlatformWide = Adwais.Application.Common.Jobs.RecurringJobVisibility.IsPlatformWide(j.Id),
+                    Name = RecurringJobId.DisplayName(j.Id, organizationId is null ? null : orgNames.GetValueOrDefault(organizationId.Value)),
+                    PlatformWide = RecurringJobVisibility.IsPlatformWide(j.Id),
                     j.Cron,
                     j.LastExecution,
                     j.NextExecution,

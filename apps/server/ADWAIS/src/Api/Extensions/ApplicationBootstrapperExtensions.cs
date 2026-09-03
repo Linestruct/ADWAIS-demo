@@ -5,6 +5,7 @@
 using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Helpers;
 using Adwais.Infrastructure.Jobs.Monitor;
+using Adwais.Application.Common.Jobs;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -119,71 +120,71 @@ public static class ApplicationBootstrapperExtensions
                     var orgId = orgConfig.OrganizationId;
 
                     recurringJobManager.AddOrUpdate<OrderFetchDispatchJob>(
-                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.OrderFetch, orgId),
+                        RecurringJobId.For(RecurringJobKind.OrderFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.OrderFetchIntervalMinutes, 60)));
 
                     recurringJobManager.AddOrUpdate<MonitorUptimeDispatchJob>(
-                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UptimeFetch, orgId),
+                        RecurringJobId.For(RecurringJobKind.UptimeFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.UptimeFetchIntervalMinutes, 60)));
 
                     recurringJobManager.AddOrUpdate<MonitorLatencyDispatchJob>(
-                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.LatencyFetch, orgId),
+                        RecurringJobId.For(RecurringJobKind.LatencyFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.LatencyFetchIntervalMinutes, 10)));
 
                     recurringJobManager.AddOrUpdate<SyncOrganizationAccountStatsJob>(
-                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.UserStatsFetch, orgId),
+                        RecurringJobId.For(RecurringJobKind.UserStatsFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         CronHelper.FromMinutes(Positive(orgConfig.UserStatsFetchIntervalMinutes, 60)));
 
                     recurringJobManager.AddOrUpdate<SyncOrganizationFleetJob>(
-                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FleetSync, orgId),
+                        RecurringJobId.For(RecurringJobKind.FleetSync, orgId),
                         newJob => newJob.ExecuteAsync(orgId),
                         Cron.MinuteInterval(5));
 
                     recurringJobManager.AddOrUpdate<AggregateOrganizationFeedsJob>(
-                        Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FeedFetch, orgId),
+                        RecurringJobId.For(RecurringJobKind.FeedFetch, orgId),
                         newJob => newJob.ExecuteAsync(orgId, CancellationToken.None),
                         Cron.HourInterval(Positive(orgConfig.FeedFetchIntervalHours, 2)));
                 }
 
                 recurringJobManager.AddOrUpdate<RefreshMonitoringMaterializedViewJob>(
-                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.MonitoringViewRefresh),
+                    RecurringJobId.Platform(RecurringJobKind.MonitoringViewRefresh),
                     newJob => newJob.ExecuteAsync(),
                     Cron.Daily);
 
                 recurringJobManager.AddOrUpdate<RefreshFinancialMaterializedViewJob>(
-                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.FinancialViewRefresh),
+                    RecurringJobId.Platform(RecurringJobKind.FinancialViewRefresh),
                     newJob => newJob.ExecuteAsync(),
                     Cron.Daily);
 
                 recurringJobManager.AddOrUpdate<RefreshStaleMaterializedViewsJob>(
-                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.StaleViewRefresh),
+                    RecurringJobId.Platform(RecurringJobKind.StaleViewRefresh),
                     newJob => newJob.ExecuteAsync(),
                     CronHelper.FromMinutes(matViewInterval));
 
                 recurringJobManager.AddOrUpdate<SystemEventCleanupJob>(
-                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.SystemEventCleanup),
+                    RecurringJobId.Platform(RecurringJobKind.SystemEventCleanup),
                     newJob => newJob.ExecuteAsync(),
                     Cron.Daily(2));
 
                 recurringJobManager.AddOrUpdate<CalendarSyncJob>(
-                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.CalendarSync),
+                    RecurringJobId.Platform(RecurringJobKind.CalendarSync),
                     newJob => newJob.ExecuteAsync(CancellationToken.None),
                     Cron.MinuteInterval(30));
 
                 if (enableSeeding)
                 {
                     recurringJobManager.AddOrUpdate<RuntimeDataSeederJob>(
-                        Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder),
+                        RecurringJobId.Platform(RecurringJobKind.RuntimeDataSeeder),
                         newJob => newJob.ExecuteAsync(),
                         Cron.MinuteInterval(RuntimeDataSeederJob.FinancialSimulationIntervalMinutes));
                 }
                 else
                 {
-                    recurringJobManager.RemoveIfExists(Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder));
+                    recurringJobManager.RemoveIfExists(RecurringJobId.Platform(RecurringJobKind.RuntimeDataSeeder));
                 }
             }
         }

@@ -5,6 +5,7 @@
 using System;
 using System.Linq;
 using Adwais.Application.Interfaces;
+using Adwais.Application.Common.Jobs;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Infrastructure.Persistence;
 using Hangfire;
@@ -28,7 +29,7 @@ public class SyncOrganizationFleetJob(
     IRecurringJobManager recurringJobManager) : IOrgScopedJob
 {
     protected virtual string? CurrentSyncCron => JobStorage.Current.GetConnection().GetRecurringJobs()
-        .SingleOrDefault(j => j.Id == Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FleetSync, OrganizationIdOfLastRun))?.Cron;
+        .SingleOrDefault(j => j.Id == RecurringJobId.For(RecurringJobKind.FleetSync, OrganizationIdOfLastRun))?.Cron;
 
     private Guid OrganizationIdOfLastRun { get; set; } = Guid.Empty;
 
@@ -131,7 +132,7 @@ public class SyncOrganizationFleetJob(
             : 300;
         var lowestIntervalMins = Math.Max(1, lowestIntervalSeconds / 60);
         recurringJobManager.AddOrUpdate<SyncOrganizationFleetJob>(
-            Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FleetSync, organizationId),
+            RecurringJobId.For(RecurringJobKind.FleetSync, organizationId),
             job => job.ExecuteAsync(organizationId),
             Cron.MinuteInterval(lowestIntervalMins));
 

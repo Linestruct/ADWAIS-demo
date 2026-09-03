@@ -267,17 +267,17 @@ public class FinancialService(
         var activeTenants = currentRows.Where(r => r.Revenue > 0 && r.TenantId.HasValue).Select(r => r.TenantId!.Value).Distinct().Count();
         var prevActiveTenants = previousRows.Where(r => r.Revenue > 0 && r.TenantId.HasValue).Select(r => r.TenantId!.Value).Distinct().Count();
 
-        var growthPct = CalculateGrowthPercentage(currentRevenue, previousRevenue);
-        var volumeGrowthPct = CalculateGrowthPercentage(volume, previousVolume);
-        var activeTenantsGrowthPct = CalculateGrowthPercentage(activeTenants, prevActiveTenants);
+        var growthPct = FinancialMath.CalculateGrowthPercentage(currentRevenue, previousRevenue);
+        var volumeGrowthPct = FinancialMath.CalculateGrowthPercentage(volume, previousVolume);
+        var activeTenantsGrowthPct = FinancialMath.CalculateGrowthPercentage(activeTenants, prevActiveTenants);
         
         var aov = volume > 0 ? Math.Round(currentRevenue / volume, 2) : 0m;
         var previousAov = previousVolume > 0 ? Math.Round(previousRevenue / previousVolume, 2) : 0m;
-        var aovGrowthPct = CalculateGrowthPercentage(aov, previousAov);
+        var aovGrowthPct = FinancialMath.CalculateGrowthPercentage(aov, previousAov);
 
         var arpt = activeTenants > 0 ? Math.Round(currentRevenue / activeTenants, 2) : 0m;
         var prevArpt = prevActiveTenants > 0 ? Math.Round(previousRevenue / prevActiveTenants, 2) : 0m;
-        var arptGrowthPct = CalculateGrowthPercentage(arpt, prevArpt);
+        var arptGrowthPct = FinancialMath.CalculateGrowthPercentage(arpt, prevArpt);
 
         return new KpiDto(currentRevenue, previousRevenue, growthPct, volume, volumeGrowthPct, aov, aovGrowthPct, activeTenants, activeTenantsGrowthPct, arpt, arptGrowthPct);
     }
@@ -400,7 +400,7 @@ public class FinancialService(
 
                 var aov = curVol > 0 ? Math.Round(curRev / curVol, 2) : 0m;
                 var share = totalRevenue > 0 ? Math.Round((curRev / totalRevenue) * 100, 2) : 0m;
-                var growth = CalculateGrowthPercentage(curRev, prevRev);
+                var growth = FinancialMath.CalculateGrowthPercentage(curRev, prevRev);
                 var details = tenantDetails[tid];
 
                 return new RevenueEfficiencyTenantDto(tid, details.Name, details.Type, aov, curVol, share, growth, GetEndpoint(details.OrderProviderSettings));
@@ -413,10 +413,10 @@ public class FinancialService(
             .OrderBy(volume => volume)
             .ToList();
         var medianOrderVolume = activeOrderVolumes.Count > 0
-            ? CalculateMedian(activeOrderVolumes)
+            ? FinancialMath.CalculateMedian(activeOrderVolumes)
             : 0m;
         var medianPortfolioShare = tenants.Count > 0 
-            ? CalculateMedian(tenants.Select(t => t.PortfolioSharePercentage).OrderBy(r => r).ToList()) 
+            ? FinancialMath.CalculateMedian(tenants.Select(t => t.PortfolioSharePercentage).OrderBy(r => r).ToList()) 
             : 0m;
 
         return new RevenueEfficiencyDto(globalAov, medianOrderVolume, medianPortfolioShare, tenants);
@@ -484,9 +484,9 @@ public class FinancialService(
         var tenants = rawTenants.Select(t =>
         {
             var cohortData = cohortTenantLists.GetValueOrDefault(t.Type);
-            var aovRank = cohortData != null ? CalculatePercentileRank(cohortData.Aovs, t.Aov) : 50;
-            var volRank = cohortData != null ? CalculatePercentileRank(cohortData.Volumes, t.Volume) : 50;
-            var revRank = cohortData != null ? CalculatePercentileRank(cohortData.Revenues, t.Revenue) : 50;
+            var aovRank = cohortData != null ? FinancialMath.CalculatePercentileRank(cohortData.Aovs, t.Aov) : 50;
+            var volRank = cohortData != null ? FinancialMath.CalculatePercentileRank(cohortData.Volumes, t.Volume) : 50;
+            var revRank = cohortData != null ? FinancialMath.CalculatePercentileRank(cohortData.Revenues, t.Revenue) : 50;
 
             return new CrossSegmentCohortTenantDto(
                 t.TenantId,
@@ -511,9 +511,9 @@ public class FinancialService(
                 var volumes = groupList.Select(t => (decimal)t.OrderVolume).OrderBy(v => v).ToList();
                 var revenues = groupList.Select(t => t.PeriodRevenue).OrderBy(v => v).ToList();
 
-                var (q1Aov, medianAov, q3Aov) = CalculateQuartiles(aovs);
-                var (q1Vol, medianVol, q3Vol) = CalculateQuartiles(volumes);
-                var (q1Rev, medianRev, q3Rev) = CalculateQuartiles(revenues);
+                var (q1Aov, medianAov, q3Aov) = FinancialMath.CalculateQuartiles(aovs);
+                var (q1Vol, medianVol, q3Vol) = FinancialMath.CalculateQuartiles(volumes);
+                var (q1Rev, medianRev, q3Rev) = FinancialMath.CalculateQuartiles(revenues);
 
                 return new CrossSegmentCohortGroupDto(
                     g.Key,
@@ -527,44 +527,6 @@ public class FinancialService(
         return new CrossSegmentDistributionDto(cohortGroups, tenants);
     }
 
-    private static int CalculatePercentileRank(List<decimal> sortedValues, decimal targetValue)
-    {
-        if (sortedValues.Count <= 1) return 50;
-        int countLess = 0;
-        int countEqual = 0;
-        foreach (var v in sortedValues)
-        {
-            if (v < targetValue) countLess++;
-            else if (v == targetValue) countEqual++;
-        }
-        return (int)Math.Round(((countLess + 0.5m * countEqual) / sortedValues.Count) * 100m);
-    }
-
-    private static (decimal Q1, decimal Median, decimal Q3) CalculateQuartiles(List<decimal> sortedValues)
-    {
-        if (sortedValues.Count == 0) return (0m, 0m, 0m);
-        if (sortedValues.Count == 1) return (sortedValues[0], sortedValues[0], sortedValues[0]);
-
-        var median = CalculatePercentile(sortedValues, 0.5m);
-        var q1 = CalculatePercentile(sortedValues, 0.25m);
-        var q3 = CalculatePercentile(sortedValues, 0.75m);
-        return (q1, median, q3);
-    }
-
-    private static decimal CalculatePercentile(List<decimal> sortedValues, decimal percentile)
-    {
-        if (sortedValues.Count == 0) return 0m;
-        if (sortedValues.Count == 1) return sortedValues[0];
-
-        var n = sortedValues.Count;
-        var position = (n - 1) * percentile;
-        var index = (int)Math.Floor(position);
-        var fraction = position - index;
-
-        if (index >= n - 1) return sortedValues[^1];
-        return Math.Round(sortedValues[index] + fraction * (sortedValues[index + 1] - sortedValues[index]), 2);
-    }
-    
     /// <inheritdoc />
     public async Task<PortfolioImpactDto> GetPortfolioImpactAsync(ResolvedPeriod period, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
     {
@@ -595,7 +557,7 @@ public class FinancialService(
 
         var totalCurrentRevenue = currentByTenant.Values.Sum(value => value.Revenue);
         var totalPreviousRevenue = previousByTenant.Values.Sum(value => value.Revenue);
-        var globalGrowthPct = CalculateGrowthPercentage(totalCurrentRevenue, totalPreviousRevenue);
+        var globalGrowthPct = FinancialMath.CalculateGrowthPercentage(totalCurrentRevenue, totalPreviousRevenue);
 
         var allTenantIds = currentByTenant.Keys.Union(previousByTenant.Keys).Where(tid => tenantDetails.ContainsKey(tid)).ToList();
 
@@ -608,8 +570,8 @@ public class FinancialService(
                 var previous = previousByTenant.GetValueOrDefault(tid);
                 var prev = previous?.Revenue ?? 0m;
                 var prevVolume = previous?.Volume ?? 0m;
-                var growth = CalculateGrowthPercentage(cur, prev);
-                var volumeGrowth = CalculateGrowthPercentage(volume, prevVolume);
+                var growth = FinancialMath.CalculateGrowthPercentage(cur, prev);
+                var volumeGrowth = FinancialMath.CalculateGrowthPercentage(volume, prevVolume);
                 var share = totalCurrentRevenue > 0 ? Math.Round((cur / totalCurrentRevenue) * 100, 2) : 0m;
                 var details = tenantDetails[tid];
 
@@ -618,11 +580,11 @@ public class FinancialService(
             .ToList();
 
         var medianBaselineRevenue = tenants.Count > 0 
-            ? CalculateMedian(tenants.Select(t => t.BaselineRevenue).OrderBy(r => r).ToList()) 
+            ? FinancialMath.CalculateMedian(tenants.Select(t => t.BaselineRevenue).OrderBy(r => r).ToList()) 
             : 0m;
 
         var medianPortfolioShare = tenants.Count > 0
-            ? CalculateMedian(tenants.Select(t => t.PortfolioSharePercentage).OrderBy(r => r).ToList())
+            ? FinancialMath.CalculateMedian(tenants.Select(t => t.PortfolioSharePercentage).OrderBy(r => r).ToList())
             : 0m;
 
         return new PortfolioImpactDto(medianBaselineRevenue, globalGrowthPct, medianPortfolioShare, tenants);
@@ -703,7 +665,7 @@ public class FinancialService(
 
         orderValues.Sort();
 
-        var effectiveBinCount = binCount ?? CalculateAdaptiveBinCount(orderValues);
+        var effectiveBinCount = binCount ?? FinancialMath.CalculateAdaptiveBinCount(orderValues);
         effectiveBinCount = Math.Clamp(effectiveBinCount, 5, 30);
 
         var min = orderValues[0];
@@ -1026,55 +988,6 @@ public class FinancialService(
     #endregion
 
     #region Helpers
-
-    private static decimal CalculateGrowthPercentage(decimal current, decimal previous)
-    {
-        if (previous == 0)
-            return 0m;
-
-        return Math.Round((current - previous) / previous * 100, 2);
-    }
-
-    private static decimal CalculateMedian(List<decimal> sorted)
-    {
-        if (sorted.Count == 0) return 0;
-        var mid = sorted.Count / 2;
-        return sorted.Count % 2 == 0
-            ? (sorted[mid - 1] + sorted[mid]) / 2
-            : sorted[mid];
-    }
-
-    private static int CalculateAdaptiveBinCount(List<decimal> sortedValues)
-    {
-        var n = sortedValues.Count;
-        if (n < 2) return 5;
-
-        var q1 = Percentile(sortedValues, 0.25);
-        var q3 = Percentile(sortedValues, 0.75);
-        var iqr = q3 - q1;
-
-        if (iqr == 0)
-        {
-            return (int)Math.Ceiling(Math.Log2(n) + 1);
-        }
-
-        var binWidth = 2.0 * (double)iqr * Math.Pow(n, -1.0 / 3.0);
-        var range = (double)(sortedValues[^1] - sortedValues[0]);
-        var count = (int)Math.Ceiling(range / binWidth);
-
-        return Math.Clamp(count, 5, 30);
-    }
-
-    private static decimal Percentile(List<decimal> sorted, double p)
-    {
-        var index = p * (sorted.Count - 1);
-        var lower = (int)Math.Floor(index);
-        var upper = (int)Math.Ceiling(index);
-        if (lower == upper) return sorted[lower];
-
-        var weight = (decimal)(index - lower);
-        return sorted[lower] * (1 - weight) + sorted[upper] * weight;
-    }
 
     private static string FormatBinLabel(decimal min, decimal max)
     {

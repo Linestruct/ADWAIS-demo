@@ -14,7 +14,7 @@ Frontend settings: `VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` are required.
 | --- | --- | --- |
 | `GET /api/demo/token` | Anonymous | Returns a Viewer kiosk token when `Authentication:EnableDemoAccess=true`. Returns `404` otherwise. |
 
-Demo tokens are read-only. They pass `KioskOrStaffAccess`. Write operations require `StaffAccess` or `AdminOnly` and return `403`.
+Demo tokens are read-only. They pass `KioskOrStaffAccess`. Write operations require `StaffAccess` or `AdminOnly` and return `403`. Platform-wide operations require `PlatformAdminOnly`, which checks the `is_platform_admin` claim. The claim exists only in platform scope. See `multi-organization.md` for the scope model.
 
 ## Kiosk access
 

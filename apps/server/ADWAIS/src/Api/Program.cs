@@ -46,7 +46,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAppAuthentication(builder.Configuration);
 
-builder.Services.AddScoped<IFinancialService, FinancialService>();
+builder.Services.AddScoped<IFinancialKpiService, FinancialKpiService>();
+builder.Services.AddScoped<IFinancialSeriesService, FinancialSeriesService>();
+builder.Services.AddScoped<IFinancialDistributionService, FinancialDistributionService>();
 builder.Services.AddScoped<IFinancialSeriesReader, FinancialSeriesReader>();
 builder.Services.AddScoped<IMonitorOrchestrationService, MonitorOrchestrationService>();
 builder.Services.AddHttpContextAccessor();

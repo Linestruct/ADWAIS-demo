@@ -14,7 +14,9 @@ namespace Adwais.Api.Controllers.Analytics;
 [Route("api/financial")]
 [Authorize(Policy = "KioskOrStaffAccess")]
 public class FinancialController(
-    IFinancialService financialService,
+    IFinancialKpiService kpiService,
+    IFinancialSeriesService seriesService,
+    IFinancialDistributionService distributionService,
     IReportingCalendar reportingCalendar) : ControllerBase
 {
     /// <summary>
@@ -25,7 +27,7 @@ public class FinancialController(
     public async Task<ActionResult<KpiResponseDto>> GetKpis([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetKpisAsync(period, request.TenantId, request.TenantTypes, ct);
+        var result = await kpiService.GetKpisAsync(period, request.TenantId, request.TenantTypes, ct);
         return Ok(new KpiResponseDto(
             result.CurrentRevenue,
             result.PreviousRevenue,
@@ -48,7 +50,7 @@ public class FinancialController(
     public async Task<ActionResult<IEnumerable<AccumulatedRevenuePointResponseDto>>> GetAccumulatedRevenue([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetAccumulatedRevenueAsync(period, request.TenantId, request.TenantTypes, ct);
+        var result = await seriesService.GetAccumulatedRevenueAsync(period, request.TenantId, request.TenantTypes, ct);
         return Ok(result.Select(v => new AccumulatedRevenuePointResponseDto(
                 v.Timestamp,
                 v.CurrentRevenue,
@@ -68,7 +70,7 @@ public class FinancialController(
     public async Task<ActionResult<RevenueEfficiencyResponseDto>> GetRevenueEfficiency([FromQuery] PortfolioRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetRevenueEfficiencyAsync(period, request.TenantTypes, ct);
+        var result = await seriesService.GetRevenueEfficiencyAsync(period, request.TenantTypes, ct);
         return Ok(new RevenueEfficiencyResponseDto(
             result.GlobalAverageOrderValue,
             result.MedianOrderVolume,
@@ -94,7 +96,7 @@ public class FinancialController(
     public async Task<ActionResult<CrossSegmentDistributionResponseDto>> GetCrossSegmentDistribution([FromQuery] PortfolioRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetCrossSegmentDistributionAsync(period, request.TenantTypes, ct);
+        var result = await distributionService.GetCrossSegmentDistributionAsync(period, request.TenantTypes, ct);
         return Ok(new CrossSegmentDistributionResponseDto(
             result.Cohorts.Select(c => new CrossSegmentCohortGroupResponseDto(
                 c.Type,
@@ -127,7 +129,7 @@ public class FinancialController(
     public async Task<ActionResult<PortfolioImpactResponseDto>> GetPortfolioImpact([FromQuery] PortfolioRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetPortfolioImpactAsync(period, request.TenantTypes, ct);
+        var result = await distributionService.GetPortfolioImpactAsync(period, request.TenantTypes, ct);
         return Ok(new PortfolioImpactResponseDto(
             result.MedianBaselineRevenue,
             result.GlobalGrowthPercentage,
@@ -153,7 +155,7 @@ public class FinancialController(
     public async Task<ActionResult<IEnumerable<NetGrowthAdditionPointResponseDto>>> GetNetGrowthAddition([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetNetGrowthAdditionAsync(period, request.TenantId, request.TenantTypes, ct);
+        var result = await seriesService.GetNetGrowthAdditionAsync(period, request.TenantId, request.TenantTypes, ct);
         return Ok(result.Select(n => new NetGrowthAdditionPointResponseDto(
                 n.Timestamp,
                 n.NetGrowthAddition)).ToList());
@@ -166,7 +168,7 @@ public class FinancialController(
     public async Task<ActionResult<IEnumerable<OrderBinResponseDto>>> GetOrderDistribution([FromQuery] OrderDistributionRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetOrderDistributionAsync(period, request.TenantId, request.BinCount, ct);
+        var result = await distributionService.GetOrderDistributionAsync(period, request.TenantId, request.BinCount, ct);
         return Ok(result.Select(b => new OrderBinResponseDto(
             b.BinLabel,
             b.MinValue,
@@ -183,7 +185,7 @@ public class FinancialController(
     [HttpGet("transaction-density")]
     public async Task<ActionResult<TransactionDensityResponseDto>> GetTransactionDensity([FromQuery] TransactionDensityRequestDto request, CancellationToken ct = default)
     {
-        var result = await financialService.GetTransactionDensityAsync(request.Period, request.TenantId, request.TenantTypes, ct);
+        var result = await distributionService.GetTransactionDensityAsync(request.Period, request.TenantId, request.TenantTypes, ct);
         return Ok(new TransactionDensityResponseDto(
             result.TotalCount,
             result.MinCount,
@@ -210,7 +212,7 @@ public class FinancialController(
     public async Task<ActionResult<IEnumerable<CumulativeGrowthDeltaPointResponseDto>>> GetCumulativeGrowthDelta([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetCumulativeGrowthDeltaAsync(period, request.TenantId, request.TenantTypes, ct);
+        var result = await seriesService.GetCumulativeGrowthDeltaAsync(period, request.TenantId, request.TenantTypes, ct);
         return Ok(result.Select(p => new CumulativeGrowthDeltaPointResponseDto(
                 p.Timestamp,
                 p.CurrentCumulative,
@@ -226,7 +228,7 @@ public class FinancialController(
     [HttpGet("orders")]
     public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrders([FromQuery] OrderRequestDto request, CancellationToken ct = default)
     {
-        var result = await financialService.GetOrdersAsync(request.DateSince, request.DateUntil, request.CeilingCount, ct);
+        var result = await kpiService.GetOrdersAsync(request.DateSince, request.DateUntil, request.CeilingCount, ct);
         return Ok(result.Select(p => new OrderDto(
             AdwaisOrderId: p.AdwaisOrderId,
             OrderNumber: p.OrderNumber,

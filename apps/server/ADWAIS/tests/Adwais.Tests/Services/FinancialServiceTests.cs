@@ -19,7 +19,9 @@ namespace Adwais.Tests.Services;
 public class FinancialServiceTests : IDisposable
 {
     private readonly AnalyticsDbContext _dbContext;
-    private readonly FinancialService _service;
+    private readonly FinancialKpiService _kpiService;
+    private readonly FinancialSeriesService _seriesService;
+    private readonly FinancialDistributionService _distributionService;
     private readonly Mock<ICurrentAccess> _currentAccessMock;
     private readonly ResolvedPeriod _period;
     private readonly Guid _b2bTenantId = Guid.NewGuid();
@@ -40,11 +42,11 @@ public class FinancialServiceTests : IDisposable
             .ReturnsAsync(TimeZoneInfo.Utc);
         reportingCalendarMock.Setup(calendar => calendar.GetStartOfDayUtc(It.IsAny<DateTimeOffset>(), It.IsAny<TimeZoneInfo>()))
             .Returns((DateTimeOffset instant, TimeZoneInfo _) => new DateTimeOffset(instant.Date, TimeSpan.Zero));
-        _service = new FinancialService(
-            _dbContext,
-            reportingCalendarMock.Object,
-            _currentAccessMock.Object,
-            new FinancialSeriesReader(_dbContext, reportingCalendarMock.Object));
+        var reader = new FinancialSeriesReader(_dbContext, reportingCalendarMock.Object);
+        _kpiService = new FinancialKpiService(_dbContext, _currentAccessMock.Object, reader);
+        _seriesService = new FinancialSeriesService(_dbContext, _currentAccessMock.Object, reader);
+        _distributionService = new FinancialDistributionService(
+            _dbContext, reportingCalendarMock.Object, _currentAccessMock.Object, reader);
 
         var currentStart = DateTimeOffset.UtcNow.AddHours(-2);
         _period = new ResolvedPeriod(
@@ -69,7 +71,7 @@ public class FinancialServiceTests : IDisposable
     [Fact]
     public async Task GetKpisAsync_WithTenantTypes_RecalculatesPortfolioFromMatchingTenants()
     {
-        var result = await _service.GetKpisAsync(
+        var result = await _kpiService.GetKpisAsync(
             _period,
             tenantTypes: [TenantType.B2B],
             ct: CancellationToken.None);
@@ -85,20 +87,20 @@ public class FinancialServiceTests : IDisposable
     [Fact]
     public async Task PortfolioCharts_WithTenantTypes_RecalculateReferenceValuesAndSeries()
     {
-        var accumulated = await _service.GetAccumulatedRevenueAsync(
+        var accumulated = await _seriesService.GetAccumulatedRevenueAsync(
             _period,
             tenantTypes: [TenantType.B2C],
             ct: CancellationToken.None);
-        var efficiency = await _service.GetRevenueEfficiencyAsync(
+        var efficiency = await _seriesService.GetRevenueEfficiencyAsync(
             _period,
             [TenantType.B2B],
             CancellationToken.None);
-        var portfolioImpact = await _service.GetPortfolioImpactAsync(
+        var portfolioImpact = await _distributionService.GetPortfolioImpactAsync(
             _period,
             [TenantType.B2B],
             CancellationToken.None);
 
-        var distribution = await _service.GetCrossSegmentDistributionAsync(
+        var distribution = await _distributionService.GetCrossSegmentDistributionAsync(
             _period,
             [TenantType.B2B],
             CancellationToken.None);
@@ -130,8 +132,8 @@ public class FinancialServiceTests : IDisposable
         AddOrder(_b2bTenantId, _period.CurrentStart.AddHours(1.5), 160m, "b2b-current-2");
         _dbContext.SaveChanges();
 
-        var result = await _service.GetNetGrowthAdditionAsync(_period);
-        var b2bResult = await _service.GetNetGrowthAdditionAsync(
+        var result = await _seriesService.GetNetGrowthAdditionAsync(_period);
+        var b2bResult = await _seriesService.GetNetGrowthAdditionAsync(
             _period,
             tenantTypes: [TenantType.B2B]);
 
@@ -163,7 +165,7 @@ public class FinancialServiceTests : IDisposable
         AddOrder(_b2bTenantId, start.AddHours(5), 140m, "second-bin");
         _dbContext.SaveChanges();
 
-        var result = await _service.GetNetGrowthAdditionAsync(period, _b2bTenantId);
+        var result = await _seriesService.GetNetGrowthAdditionAsync(period, _b2bTenantId);
 
         Assert.Equal(42, result.Count);
         Assert.Equal(75m, result[0].NetGrowthAddition);
@@ -183,7 +185,7 @@ public class FinancialServiceTests : IDisposable
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(400m, result.CurrentRevenue);
         Assert.Equal(2, result.TransactionVolume);
@@ -195,7 +197,7 @@ public class FinancialServiceTests : IDisposable
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_defaultOrgId, _b2bTenantId, [UserRole.TenantViewer]));
 
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(100m, result.CurrentRevenue);
         Assert.Equal(1, result.TransactionVolume);
@@ -213,7 +215,7 @@ public class FinancialServiceTests : IDisposable
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.GetKpisAsync(_period, tenantId: otherTenantId, ct: CancellationToken.None));
+            _kpiService.GetKpisAsync(_period, tenantId: otherTenantId, ct: CancellationToken.None));
     }
 
     [Fact]
@@ -238,7 +240,7 @@ public class FinancialServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         // Act
-        var points = await _service.GetNetGrowthAdditionAsync(dailyPeriod, ct: CancellationToken.None);
+        var points = await _seriesService.GetNetGrowthAdditionAsync(dailyPeriod, ct: CancellationToken.None);
 
         // Assert
         Assert.Equal(2, points.Count);
@@ -252,7 +254,7 @@ public class FinancialServiceTests : IDisposable
         _currentAccessMock.Setup(access => access.Scope)
             .Returns((AccessScope?)null);
 
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(0m, result.CurrentRevenue);
         Assert.Equal(0, result.TransactionVolume);
@@ -270,7 +272,7 @@ public class FinancialServiceTests : IDisposable
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        var orders = await _service.GetOrdersAsync(
+        var orders = await _kpiService.GetOrdersAsync(
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow,
             100,
@@ -305,7 +307,7 @@ public class FinancialServiceTests : IDisposable
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
         // Act
-        var points = await _service.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
+        var points = await _seriesService.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
 
         // Assert
         Assert.NotEmpty(points);
@@ -321,7 +323,7 @@ public class FinancialServiceTests : IDisposable
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
         // Act
-        var result = await _service.GetRevenueEfficiencyAsync(_period, ct: CancellationToken.None);
+        var result = await _seriesService.GetRevenueEfficiencyAsync(_period, ct: CancellationToken.None);
 
         // Assert
         Assert.All(result.Tenants, tenant => Assert.NotEqual(otherTenantId, tenant.TenantId));
@@ -338,7 +340,7 @@ public class FinancialServiceTests : IDisposable
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
         // Act
-        var result = await _service.GetCrossSegmentDistributionAsync(_period, ct: CancellationToken.None);
+        var result = await _distributionService.GetCrossSegmentDistributionAsync(_period, ct: CancellationToken.None);
 
         // Assert
         Assert.All(result.Tenants, tenant => Assert.NotEqual(otherTenantId, tenant.TenantId));
@@ -353,7 +355,7 @@ public class FinancialServiceTests : IDisposable
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
         // Act
-        var result = await _service.GetPortfolioImpactAsync(_period, ct: CancellationToken.None);
+        var result = await _distributionService.GetPortfolioImpactAsync(_period, ct: CancellationToken.None);
 
         // Assert
         Assert.All(result.Tenants, tenant => Assert.NotEqual(otherTenantId, tenant.TenantId));
@@ -368,7 +370,7 @@ public class FinancialServiceTests : IDisposable
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
         // Act
-        var points = await _service.GetCumulativeGrowthDeltaAsync(_period, ct: CancellationToken.None);
+        var points = await _seriesService.GetCumulativeGrowthDeltaAsync(_period, ct: CancellationToken.None);
 
         // Assert
         Assert.NotEmpty(points);
@@ -385,7 +387,7 @@ public class FinancialServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.GetOrderDistributionAsync(_period, otherTenantId, ct: CancellationToken.None));
+            _distributionService.GetOrderDistributionAsync(_period, otherTenantId, ct: CancellationToken.None));
     }
 
     [Fact]
@@ -398,7 +400,7 @@ public class FinancialServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.GetTransactionDensityAsync(TransactionDensityPeriod.Auto, tenantId: otherTenantId, ct: CancellationToken.None));
+            _distributionService.GetTransactionDensityAsync(TransactionDensityPeriod.Auto, tenantId: otherTenantId, ct: CancellationToken.None));
     }
 
     private void AddOrder(Guid tenantId, DateTimeOffset createdDate, decimal value, string litiumOrderId)

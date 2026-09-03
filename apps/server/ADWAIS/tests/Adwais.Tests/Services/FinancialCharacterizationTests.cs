@@ -25,7 +25,9 @@ namespace Adwais.Tests.Services;
 public class FinancialHourlyCharacterizationTests : IDisposable
 {
     private readonly AnalyticsDbContext _dbContext;
-    private readonly FinancialService _service;
+    private readonly FinancialKpiService _kpiService;
+    private readonly FinancialSeriesService _seriesService;
+    private readonly FinancialDistributionService _distributionService;
     private readonly Mock<ICurrentAccess> _currentAccessMock;
     private readonly ResolvedPeriod _period;
     private readonly Guid _orgA = Guid.NewGuid();
@@ -48,11 +50,11 @@ public class FinancialHourlyCharacterizationTests : IDisposable
             .ReturnsAsync(TimeZoneInfo.Utc);
         reportingCalendarMock.Setup(calendar => calendar.GetStartOfDayUtc(It.IsAny<DateTimeOffset>(), It.IsAny<TimeZoneInfo>()))
             .Returns((DateTimeOffset instant, TimeZoneInfo _) => new DateTimeOffset(instant.Date, TimeSpan.Zero));
-        _service = new FinancialService(
-            _dbContext,
-            reportingCalendarMock.Object,
-            _currentAccessMock.Object,
-            new FinancialSeriesReader(_dbContext, reportingCalendarMock.Object));
+        var reader = new FinancialSeriesReader(_dbContext, reportingCalendarMock.Object);
+        _kpiService = new FinancialKpiService(_dbContext, _currentAccessMock.Object, reader);
+        _seriesService = new FinancialSeriesService(_dbContext, _currentAccessMock.Object, reader);
+        _distributionService = new FinancialDistributionService(
+            _dbContext, reportingCalendarMock.Object, _currentAccessMock.Object, reader);
 
         var currentStart = DateTimeOffset.UtcNow.AddHours(-2);
         _period = new ResolvedPeriod(
@@ -95,7 +97,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetKpisAsync_PlatformCaller_SeesBothOrganizationsWithoutCancelledOrders()
     {
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(1600m, result.CurrentRevenue);
         Assert.Equal(650m, result.PreviousRevenue);
@@ -110,7 +112,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         UseOrgACaller();
 
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(600m, result.CurrentRevenue);
         Assert.Equal(150m, result.PreviousRevenue);
@@ -125,7 +127,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         UseDeniedCaller();
 
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(0m, result.CurrentRevenue);
         Assert.Equal(0, result.TransactionVolume);
@@ -134,7 +136,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetOrdersAsync_PlatformCaller_ExcludesCancelledAndOrdersByDate()
     {
-        var result = await _service.GetOrdersAsync(
+        var result = await _kpiService.GetOrdersAsync(
             _period.PreviousStart, _period.CurrentEnd, 100, CancellationToken.None);
 
         Assert.Equal(7, result.Count);
@@ -147,9 +149,9 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         UseOrgACaller();
 
-        var scoped = await _service.GetOrdersAsync(
+        var scoped = await _kpiService.GetOrdersAsync(
             _period.PreviousStart, _period.CurrentEnd, 100, CancellationToken.None);
-        var capped = await _service.GetOrdersAsync(
+        var capped = await _kpiService.GetOrdersAsync(
             _period.PreviousStart, _period.CurrentEnd, 2, CancellationToken.None);
 
         Assert.Equal(5, scoped.Count);
@@ -159,7 +161,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetAccumulatedRevenueAsync_PlatformCaller_BinsByHourWithTypeSplits()
     {
-        var result = await _service.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
+        var result = await _seriesService.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(1400m, result[0].CurrentRevenue);
@@ -177,7 +179,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetNetGrowthAdditionAsync_PlatformCaller_AggregatesDeploymentWide()
     {
-        var result = await _service.GetNetGrowthAdditionAsync(_period, ct: CancellationToken.None);
+        var result = await _seriesService.GetNetGrowthAdditionAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(1400m, result[0].NetGrowthAddition);
@@ -189,7 +191,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         UseOrgACaller();
 
-        var result = await _service.GetNetGrowthAdditionAsync(
+        var result = await _seriesService.GetNetGrowthAdditionAsync(
             _period, tenantTypes: [TenantType.B2B], ct: CancellationToken.None);
 
         Assert.Equal(2, result.Count);
@@ -200,7 +202,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetCumulativeGrowthDeltaAsync_PlatformCaller_TracksRunningVariance()
     {
-        var result = await _service.GetCumulativeGrowthDeltaAsync(_period, ct: CancellationToken.None);
+        var result = await _seriesService.GetCumulativeGrowthDeltaAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(1600m, result[1].CurrentCumulative);
@@ -213,7 +215,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         UseOrgACaller();
 
-        var result = await _service.GetRevenueEfficiencyAsync(_period, ct: CancellationToken.None);
+        var result = await _seriesService.GetRevenueEfficiencyAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(3, result.Tenants.Count);
         Assert.Equal(200m, result.GlobalAverageOrderValue);
@@ -227,7 +229,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetCrossSegmentDistributionAsync_PlatformCaller_RanksWithinCohorts()
     {
-        var result = await _service.GetCrossSegmentDistributionAsync(_period, ct: CancellationToken.None);
+        var result = await _distributionService.GetCrossSegmentDistributionAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(3, result.Cohorts.Count);
         var b2b = result.Cohorts.Single(c => c.Type == TenantType.B2B);
@@ -240,7 +242,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetPortfolioImpactAsync_PlatformCaller_ComputesGrowthAndMedians()
     {
-        var result = await _service.GetPortfolioImpactAsync(_period, ct: CancellationToken.None);
+        var result = await _distributionService.GetPortfolioImpactAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(4, result.Tenants.Count);
         Assert.Equal(146.15m, result.GlobalGrowthPercentage);
@@ -256,7 +258,7 @@ public class FinancialHourlyCharacterizationTests : IDisposable
         AddOrder(_b2bTenantId, _period.CurrentStart.AddMinutes(70), 400m, "h-b2b-extra-3");
         _dbContext.SaveChanges();
 
-        var result = await _service.GetOrderDistributionAsync(
+        var result = await _distributionService.GetOrderDistributionAsync(
             _period, _b2bTenantId, binCount: 5, ct: CancellationToken.None);
 
         Assert.Equal(5, result.Count);
@@ -269,13 +271,13 @@ public class FinancialHourlyCharacterizationTests : IDisposable
         UseOrgACaller();
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.GetOrderDistributionAsync(_period, _otherTenantId, ct: CancellationToken.None));
+            _distributionService.GetOrderDistributionAsync(_period, _otherTenantId, ct: CancellationToken.None));
     }
 
     [Fact]
     public async Task GetTransactionDensityAsync_AutoSelectsWidestPeriodForSmallSamples()
     {
-        var result = await _service.GetTransactionDensityAsync(
+        var result = await _distributionService.GetTransactionDensityAsync(
             TransactionDensityPeriod.Auto, ct: CancellationToken.None);
 
         Assert.Equal(7, result.TotalCount);
@@ -327,7 +329,9 @@ public class FinancialHourlyCharacterizationTests : IDisposable
 public class FinancialDailyCharacterizationTests : IDisposable
 {
     private readonly AnalyticsDbContext _dbContext;
-    private readonly FinancialService _service;
+    private readonly FinancialKpiService _kpiService;
+    private readonly FinancialSeriesService _seriesService;
+    private readonly FinancialDistributionService _distributionService;
     private readonly Mock<ICurrentAccess> _currentAccessMock;
     private readonly ResolvedPeriod _period;
     private readonly Guid _orgA = Guid.NewGuid();
@@ -351,11 +355,11 @@ public class FinancialDailyCharacterizationTests : IDisposable
             .ReturnsAsync(TimeZoneInfo.Utc);
         reportingCalendarMock.Setup(calendar => calendar.GetStartOfDayUtc(It.IsAny<DateTimeOffset>(), It.IsAny<TimeZoneInfo>()))
             .Returns((DateTimeOffset instant, TimeZoneInfo _) => new DateTimeOffset(instant.Date, TimeSpan.Zero));
-        _service = new FinancialService(
-            _dbContext,
-            reportingCalendarMock.Object,
-            _currentAccessMock.Object,
-            new FinancialSeriesReader(_dbContext, reportingCalendarMock.Object));
+        var reader = new FinancialSeriesReader(_dbContext, reportingCalendarMock.Object);
+        _kpiService = new FinancialKpiService(_dbContext, _currentAccessMock.Object, reader);
+        _seriesService = new FinancialSeriesService(_dbContext, _currentAccessMock.Object, reader);
+        _distributionService = new FinancialDistributionService(
+            _dbContext, reportingCalendarMock.Object, _currentAccessMock.Object, reader);
 
         var today = DateTimeOffset.UtcNow.Date;
         var currentStart = new DateTimeOffset(today.AddDays(-2), TimeSpan.Zero);
@@ -398,7 +402,7 @@ public class FinancialDailyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetKpisAsync_PlatformCaller_MergesRollupHistoryWithFreshRows()
     {
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(13600m, result.CurrentRevenue);
         Assert.Equal(1000m, result.PreviousRevenue);
@@ -412,7 +416,7 @@ public class FinancialDailyCharacterizationTests : IDisposable
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_orgA, null, [UserRole.Admin]));
 
-        var result = await _service.GetKpisAsync(_period, ct: CancellationToken.None);
+        var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(3900m, result.CurrentRevenue);
         Assert.Equal(1000m, result.PreviousRevenue);
@@ -422,7 +426,7 @@ public class FinancialDailyCharacterizationTests : IDisposable
     [Fact]
     public async Task GetAccumulatedRevenueAsync_PlatformCaller_BinsHistoryAndFreshRowsByDay()
     {
-        var result = await _service.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
+        var result = await _seriesService.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
 
         Assert.Equal(4, result.Count);
         Assert.Equal(12000m, result[0].CurrentRevenue);

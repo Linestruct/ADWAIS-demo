@@ -21,8 +21,6 @@ namespace Adwais.Api.Extensions;
 
 public static class ApplicationBootstrapperExtensions
 {
-    private static int Positive(int value, int fallback) => value > 0 ? value : fallback;
-
     public static async Task BootstrapApplicationAsync(this WebApplication app)
     {
         var configuration = app.Services.GetRequiredService<IConfiguration>();
@@ -93,99 +91,12 @@ public static class ApplicationBootstrapperExtensions
         using (var connection = JobStorage.Current.GetConnection())
         {
             var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
-            
-            recurringJobManager.RemoveIfExists("dispatch-uptimerobot-metrics");
-            recurringJobManager.RemoveIfExists("sync-uptimerobot-fleet");
-            recurringJobManager.RemoveIfExists("dispatch-uptimerobot-uptime");
-            recurringJobManager.RemoveIfExists("dispatch-uptimerobot-latency");
-            recurringJobManager.RemoveIfExists("dispatch-litium-orders");
-            recurringJobManager.RemoveIfExists("sync-uptimerobot-account-stats");
-            recurringJobManager.RemoveIfExists("sync-monitoring-fleet");
-            recurringJobManager.RemoveIfExists("dispatch-monitoring-uptime");
-            recurringJobManager.RemoveIfExists("dispatch-monitoring-latency");
-            recurringJobManager.RemoveIfExists("dispatch-order-fetch");
-            recurringJobManager.RemoveIfExists("sync-monitoring-account-stats");
-            recurringJobManager.RemoveIfExists("aggregate-intranet-feeds");
 
             using (var scope = app.Services.CreateScope())
             {
                 var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AnalyticsDbContext>>();
                 await using var context = await dbFactory.CreateDbContextAsync();
-                var orgConfigs = await context.OrganizationConfigs.AsNoTracking().ToListAsync();
-                var globalConfig = await context.GlobalConfigs.AsNoTracking().FirstOrDefaultAsync();
-                var matViewInterval = globalConfig?.MatViewRefreshIntervalMinutes ?? 60;
-
-                foreach (var orgConfig in orgConfigs)
-                {
-                    var orgId = orgConfig.OrganizationId;
-
-                    recurringJobManager.AddOrUpdate<OrderFetchDispatchJob>(
-                        RecurringJobId.For(RecurringJobKind.OrderFetch, orgId),
-                        newJob => newJob.ExecuteAsync(orgId),
-                        CronHelper.FromMinutes(Positive(orgConfig.OrderFetchIntervalMinutes, 60)));
-
-                    recurringJobManager.AddOrUpdate<MonitorUptimeDispatchJob>(
-                        RecurringJobId.For(RecurringJobKind.UptimeFetch, orgId),
-                        newJob => newJob.ExecuteAsync(orgId),
-                        CronHelper.FromMinutes(Positive(orgConfig.UptimeFetchIntervalMinutes, 60)));
-
-                    recurringJobManager.AddOrUpdate<MonitorLatencyDispatchJob>(
-                        RecurringJobId.For(RecurringJobKind.LatencyFetch, orgId),
-                        newJob => newJob.ExecuteAsync(orgId),
-                        CronHelper.FromMinutes(Positive(orgConfig.LatencyFetchIntervalMinutes, 10)));
-
-                    recurringJobManager.AddOrUpdate<SyncOrganizationAccountStatsJob>(
-                        RecurringJobId.For(RecurringJobKind.UserStatsFetch, orgId),
-                        newJob => newJob.ExecuteAsync(orgId),
-                        CronHelper.FromMinutes(Positive(orgConfig.UserStatsFetchIntervalMinutes, 60)));
-
-                    recurringJobManager.AddOrUpdate<SyncOrganizationFleetJob>(
-                        RecurringJobId.For(RecurringJobKind.FleetSync, orgId),
-                        newJob => newJob.ExecuteAsync(orgId),
-                        Cron.MinuteInterval(5));
-
-                    recurringJobManager.AddOrUpdate<AggregateOrganizationFeedsJob>(
-                        RecurringJobId.For(RecurringJobKind.FeedFetch, orgId),
-                        newJob => newJob.ExecuteAsync(orgId, CancellationToken.None),
-                        Cron.HourInterval(Positive(orgConfig.FeedFetchIntervalHours, 2)));
-                }
-
-                recurringJobManager.AddOrUpdate<RefreshMonitoringMaterializedViewJob>(
-                    RecurringJobId.Platform(RecurringJobKind.MonitoringViewRefresh),
-                    newJob => newJob.ExecuteAsync(),
-                    Cron.Daily);
-
-                recurringJobManager.AddOrUpdate<RefreshFinancialMaterializedViewJob>(
-                    RecurringJobId.Platform(RecurringJobKind.FinancialViewRefresh),
-                    newJob => newJob.ExecuteAsync(),
-                    Cron.Daily);
-
-                recurringJobManager.AddOrUpdate<RefreshStaleMaterializedViewsJob>(
-                    RecurringJobId.Platform(RecurringJobKind.StaleViewRefresh),
-                    newJob => newJob.ExecuteAsync(),
-                    CronHelper.FromMinutes(matViewInterval));
-
-                recurringJobManager.AddOrUpdate<SystemEventCleanupJob>(
-                    RecurringJobId.Platform(RecurringJobKind.SystemEventCleanup),
-                    newJob => newJob.ExecuteAsync(),
-                    Cron.Daily(2));
-
-                recurringJobManager.AddOrUpdate<CalendarSyncJob>(
-                    RecurringJobId.Platform(RecurringJobKind.CalendarSync),
-                    newJob => newJob.ExecuteAsync(CancellationToken.None),
-                    Cron.MinuteInterval(30));
-
-                if (enableSeeding)
-                {
-                    recurringJobManager.AddOrUpdate<RuntimeDataSeederJob>(
-                        RecurringJobId.Platform(RecurringJobKind.RuntimeDataSeeder),
-                        newJob => newJob.ExecuteAsync(),
-                        Cron.MinuteInterval(RuntimeDataSeederJob.FinancialSimulationIntervalMinutes));
-                }
-                else
-                {
-                    recurringJobManager.RemoveIfExists(RecurringJobId.Platform(RecurringJobKind.RuntimeDataSeeder));
-                }
+                await RecurringJobRegistration.RegisterAsync(context, recurringJobManager, enableSeeding);
             }
         }
     }

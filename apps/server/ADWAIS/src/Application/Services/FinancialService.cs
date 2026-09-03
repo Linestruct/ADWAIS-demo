@@ -54,14 +54,11 @@ public class FinancialService(
         IApplicationDbContext context, DateTimeOffset start, DateTimeOffset end, bool isHourly,
         Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, Guid[]? visibleTenantIds = null, CancellationToken ct = default)
     {
-        var scopedTenantTypes = !tenantId.HasValue && tenantTypes is { Count: > 0 }
-            ? tenantTypes.Distinct().ToArray()
-            : [];
+        var filter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
+        filter.ThrowIfTenantOutsideScope();
 
         if (tenantId.HasValue)
         {
-            if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
-                throw new UnauthorizedAccessException($"Tenant {tenantId.Value} is outside the current scope.");
             var tenantExists = await context.Tenants.AnyAsync(t => t.Id == tenantId.Value, ct);
             if (!tenantExists) throw new KeyNotFoundException($"Tenant {tenantId.Value} not found.");
         }
@@ -78,11 +75,10 @@ public class FinancialService(
             else
             {
                 query = query.Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid);
-                if (scopedTenantTypes.Length > 0)
-                    query = query.Where(o => o.Tenant != null && scopedTenantTypes.Contains(o.Tenant.Type));
+                if (filter.TenantTypes.Length > 0)
+                    query = query.Where(o => o.Tenant != null && filter.TenantTypes.Contains(o.Tenant.Type));
             }
-            if (visibleTenantIds is not null)
-                query = query.Where(o => visibleTenantIds.Contains(o.TenantId));
+            query = filter.ApplyToOrders(query);
 
             var rows = await query
                 .Select(o => new { o.CreatedDate, o.TenantId, o.TotalValueExcVat })
@@ -109,16 +105,15 @@ public class FinancialService(
         else
         {
             historicalQuery = historicalQuery.Where(r => r.TenantId != IApplicationDbContext.SystemTenantGuid);
-            if (scopedTenantTypes.Length > 0)
+            if (filter.TenantTypes.Length > 0)
             {
                 historicalQuery = historicalQuery.Where(r => context.Tenants
-                    .Where(t => scopedTenantTypes.Contains(t.Type))
+                    .Where(t => filter.TenantTypes.Contains(t.Type))
                     .Select(t => t.Id)
                     .Contains(r.TenantId));
             }
         }
-        if (visibleTenantIds is not null)
-            historicalQuery = historicalQuery.Where(r => visibleTenantIds.Contains(r.TenantId));
+        historicalQuery = filter.ApplyToTenantRollups(historicalQuery);
 
         var rawHist = await historicalQuery
             .Select(r => new { r.CreatedDate, r.TenantId, r.Revenue, r.Volume })
@@ -138,11 +133,10 @@ public class FinancialService(
             else
             {
                 freshQuery = freshQuery.Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid);
-                if (scopedTenantTypes.Length > 0)
-                    freshQuery = freshQuery.Where(o => o.Tenant != null && scopedTenantTypes.Contains(o.Tenant.Type));
+                if (filter.TenantTypes.Length > 0)
+                    freshQuery = freshQuery.Where(o => o.Tenant != null && filter.TenantTypes.Contains(o.Tenant.Type));
             }
-            if (visibleTenantIds is not null)
-                freshQuery = freshQuery.Where(o => visibleTenantIds.Contains(o.TenantId));
+            freshQuery = filter.ApplyToOrders(freshQuery);
 
             var freshRows = await freshQuery
                 .GroupBy(o => new { o.CreatedDate.Year, o.CreatedDate.Month, o.CreatedDate.Day, o.TenantId })
@@ -368,10 +362,10 @@ public class FinancialService(
         var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
         var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
 
-        var tenantDetails = await context.Tenants
+        var filter = TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds);
+        var tenantDetails = await filter.ApplyToTenants(context.Tenants
             .AsNoTracking()
-            .Where(t => !t.IsSystem)
-            .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
+            .Where(t => !t.IsSystem))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
 
@@ -433,10 +427,10 @@ public class FinancialService(
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
         var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
-        var tenantDetails = await context.Tenants
+        var filter = TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds);
+        var tenantDetails = await filter.ApplyToTenants(context.Tenants
             .AsNoTracking()
-            .Where(t => !t.IsSystem)
-            .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
+            .Where(t => !t.IsSystem))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
 
@@ -540,10 +534,10 @@ public class FinancialService(
 
         var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
         var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
-        var tenantDetails = await context.Tenants
+        var filter = TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds);
+        var tenantDetails = await filter.ApplyToTenants(context.Tenants
             .AsNoTracking()
-            .Where(t => !t.IsSystem)
-            .Where(t => visibleTenantIds == null || visibleTenantIds.Contains(t.Id))
+            .Where(t => !t.IsSystem))
             .Select(t => new { t.Id, t.Name, t.Type, t.OrderProviderSettings })
             .ToDictionaryAsync(t => t.Id, ct);
 
@@ -608,9 +602,11 @@ public class FinancialService(
         var lookbackStart = currentStart.AddHours(-binSizeHours);
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+        var scopeFilter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
+        scopeFilter.ThrowIfTenantOutsideScope();
 
         List<DataRow> currentRows, beforeStartRows;
-        if (tenantId.HasValue || tenantTypes is { Count: > 0 } || visibleTenantIds is not null)
+        if (scopeFilter.HasTenantFilter || scopeFilter.HasTypeFilter || scopeFilter.IsRestricted)
         {
             currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
             beforeStartRows = await GetMergedTenantDataAsync(context, lookbackStart, currentStart, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
@@ -650,8 +646,7 @@ public class FinancialService(
         var context = _dbContext;
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
-        if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
-            throw new UnauthorizedAccessException($"Tenant {tenantId} is outside the current scope.");
+        TenantSeriesFilter.Create(tenantId, null, visibleTenantIds).ThrowIfTenantOutsideScope();
 
         var orderValues = await context.Orders
             .AsNoTracking()
@@ -753,8 +748,8 @@ public class FinancialService(
         var timeZone = await _reportingCalendar.GetTimeZoneAsync(ct);
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
-        if (tenantId.HasValue && visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
-            throw new UnauthorizedAccessException($"Tenant {tenantId.Value} is outside the current scope.");
+        var filter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
+        filter.ThrowIfTenantOutsideScope();
 
         var query = context.Orders
             .AsNoTracking()
@@ -765,14 +760,12 @@ public class FinancialService(
         else
         {
             query = query.Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid);
-            if (tenantTypes is { Count: > 0 })
+            if (filter.HasTypeFilter)
             {
-                var scopedTenantTypes = tenantTypes.Distinct().ToArray();
-                query = query.Where(o => o.Tenant != null && scopedTenantTypes.Contains(o.Tenant.Type));
+                query = query.Where(o => o.Tenant != null && filter.TenantTypes.Contains(o.Tenant.Type));
             }
         }
-        if (visibleTenantIds is not null)
-            query = query.Where(o => visibleTenantIds.Contains(o.TenantId));
+        query = filter.ApplyToOrders(query);
 
         var starts = new Dictionary<TransactionDensityPeriod, DateTimeOffset>
         {
@@ -956,6 +949,7 @@ public class FinancialService(
     {
         var context = _dbContext;
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
+        var filter = TenantSeriesFilter.Create(null, null, visibleTenantIds);
 
         var query = context.Orders
             .AsNoTracking()
@@ -963,8 +957,7 @@ public class FinancialService(
                         && o.CreatedDate <= dateUntil
                         && o.OrderState != OrderState.Cancelled
                         && o.TotalValueExcVat > 0m);
-        if (visibleTenantIds is not null)
-            query = query.Where(o => visibleTenantIds.Contains(o.TenantId));
+        query = filter.ApplyToOrders(query);
 
         return await query
             .OrderByDescending(o => o.CreatedDate)

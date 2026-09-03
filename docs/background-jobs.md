@@ -79,4 +79,4 @@ The managed set lives on `GlobalConfig.VisibleRecurringJobsCsv`, stored as kind 
 
 `/hangfire` requires authentication plus the `is_platform_admin` claim. Normal browser navigation carries no org header, so the claim exists for platform members. The button in settings POSTs `/api/dashboard-session` (platform-gated, org-header-aware), which mints a five-minute cookie for the server-rendered UI.
 
-In Development, requests without an `Authorization` header authenticate as the DevMock principal. With `DEV_MOCK_ORG_ID` unset it is the platform admin. With it set, it is that org's admin. Use `docs/smoke-testing.md` for the dev workflow.
+In Development, requests without an `Authorization` header authenticate as the DevMock principal. With `DEV_MOCK_ORG_ID` unset it is the platform admin. With it set, it is that org's admin.

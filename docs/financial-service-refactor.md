@@ -6,7 +6,7 @@ Status: proposed. Not started.
 
 Split `src/Application/Services/FinancialService.cs` into focused units without changing any behavior. Reduce per-file complexity so future changes stay reviewable and testable.
 
-Evidence today: 1,104 lines, cyclomatic complexity about 165 (litmus scan 2026-08-26), coverage 53 percent, ten public endpoints, two near-duplicate data pipelines, scoping logic repeated at nine call sites.
+Evidence today: 940 lines (down from 1,104 after the multi-organization work added `ICurrentAccess` scoping), the two merge pipelines still exist as near twins (`GetMergedTenantDataAsync`, `GetMergedGlobalDataAsync`), scoping still re-applies visibility checks per consumer, nine `SystemTenantGuid` references remain, and the pure statistics helpers still sit inside the service class with no direct tests. Complexity and coverage numbers below date from the 2026-08-26 litmus scan; re-scan before starting.
 
 ## Non-goals
 

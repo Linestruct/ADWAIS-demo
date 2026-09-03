@@ -23,7 +23,8 @@ namespace Adwais.Application.Services;
 public class FinancialService(
     IApplicationDbContext dbContext,
     IReportingCalendar reportingCalendar,
-    ICurrentAccess currentAccess) : IFinancialService
+    ICurrentAccess currentAccess,
+    IFinancialSeriesReader seriesReader) : IFinancialService
 {
     private const int DensityBucketCount = 7 * 24;
     private const int SparseDensityThreshold = DensityBucketCount * 5;
@@ -31,12 +32,7 @@ public class FinancialService(
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly IReportingCalendar _reportingCalendar = reportingCalendar;
     private readonly ICurrentAccess _currentAccess = currentAccess;
-
-    #region Internal data model for the merge layer
-
-    private record DataRow(DateTimeOffset Timestamp, Guid? TenantId, decimal Revenue, int Volume);
-
-    #endregion
+    private readonly IFinancialSeriesReader _seriesReader = seriesReader;
 
     /// <summary>
     /// The tenant ids the current scope may see. Null means no restriction
@@ -47,195 +43,6 @@ public class FinancialService(
         var filter = OrganizationFilter.From(_currentAccess.Scope);
         return await TenantVisibility.ResolveAsync(filter, context.Tenants, ct);
     }
-
-    #region Historical + Fresh Data Merge
-
-    private async Task<List<DataRow>> GetMergedTenantDataAsync(
-        IApplicationDbContext context, DateTimeOffset start, DateTimeOffset end, bool isHourly,
-        Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, Guid[]? visibleTenantIds = null, CancellationToken ct = default)
-    {
-        var filter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
-        filter.ThrowIfTenantOutsideScope();
-
-        if (tenantId.HasValue)
-        {
-            var tenantExists = await context.Tenants.AnyAsync(t => t.Id == tenantId.Value, ct);
-            if (!tenantExists) throw new KeyNotFoundException($"Tenant {tenantId.Value} not found.");
-        }
-
-        if (isHourly)
-        {
-            var query = context.Orders
-                .AsNoTracking()
-                .Where(o => o.OrderState != OrderState.Cancelled)
-                .Where(o => o.CreatedDate >= start && o.CreatedDate < end);
-
-            if (tenantId.HasValue)
-                query = query.Where(o => o.TenantId == tenantId.Value);
-            else
-            {
-                query = query.Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid);
-                if (filter.TenantTypes.Length > 0)
-                    query = query.Where(o => o.Tenant != null && filter.TenantTypes.Contains(o.Tenant.Type));
-            }
-            query = filter.ApplyToOrders(query);
-
-            var rows = await query
-                .Select(o => new { o.CreatedDate, o.TenantId, o.TotalValueExcVat })
-                .ToListAsync(ct);
-
-            return rows.Select(x => new DataRow(
-                x.CreatedDate,
-                x.TenantId,
-                x.TotalValueExcVat,
-                1
-            )).ToList();
-        }
-
-        var timeZone = await _reportingCalendar.GetTimeZoneAsync(ct);
-        var currentDayStart = _reportingCalendar.GetStartOfDayUtc(DateTimeOffset.UtcNow, timeZone);
-        var viewEnd = currentDayStart < end ? currentDayStart : end;
-        
-        var historicalQuery = context.DailyTenantRollups
-            .AsNoTracking()
-            .Where(r => r.CreatedDate >= start && r.CreatedDate < viewEnd);
-
-        if (tenantId.HasValue)
-            historicalQuery = historicalQuery.Where(r => r.TenantId == tenantId.Value);
-        else
-        {
-            historicalQuery = historicalQuery.Where(r => r.TenantId != IApplicationDbContext.SystemTenantGuid);
-            if (filter.TenantTypes.Length > 0)
-            {
-                historicalQuery = historicalQuery.Where(r => context.Tenants
-                    .Where(t => filter.TenantTypes.Contains(t.Type))
-                    .Select(t => t.Id)
-                    .Contains(r.TenantId));
-            }
-        }
-        historicalQuery = filter.ApplyToTenantRollups(historicalQuery);
-
-        var rawHist = await historicalQuery
-            .Select(r => new { r.CreatedDate, r.TenantId, r.Revenue, r.Volume })
-            .ToListAsync(ct);
-        
-        var historical = rawHist.Select(r => new DataRow(r.CreatedDate, r.TenantId, r.Revenue, (int)r.Volume)).ToList();
-        
-        if (currentDayStart < end)
-        {
-            var freshQuery = context.Orders
-                .AsNoTracking()
-                .Where(o => o.OrderState != OrderState.Cancelled)
-                .Where(o => o.CreatedDate >= currentDayStart && o.CreatedDate < end);
-
-            if (tenantId.HasValue)
-                freshQuery = freshQuery.Where(o => o.TenantId == tenantId.Value);
-            else
-            {
-                freshQuery = freshQuery.Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid);
-                if (filter.TenantTypes.Length > 0)
-                    freshQuery = freshQuery.Where(o => o.Tenant != null && filter.TenantTypes.Contains(o.Tenant.Type));
-            }
-            freshQuery = filter.ApplyToOrders(freshQuery);
-
-            var freshRows = await freshQuery
-                .GroupBy(o => new { o.CreatedDate.Year, o.CreatedDate.Month, o.CreatedDate.Day, o.TenantId })
-                .Select(g => new {
-                    g.Key.Year,
-                    g.Key.Month,
-                    g.Key.Day,
-                    g.Key.TenantId,
-                    Revenue = g.Sum(o => o.TotalValueExcVat),
-                    Volume = g.Count()
-                })
-                .ToListAsync(ct);
-            
-            historical.AddRange(freshRows.Select(x => new DataRow(
-                new DateTimeOffset(x.Year, x.Month, x.Day, 0, 0, 0, TimeSpan.Zero),
-                x.TenantId,
-                x.Revenue,
-                x.Volume
-            )));
-        }
-
-        return historical;
-    }
-
-    private async Task<List<DataRow>> GetMergedGlobalDataAsync(
-        IApplicationDbContext context, DateTimeOffset start, DateTimeOffset end, bool isHourly, Guid[]? visibleTenantIds = null, CancellationToken ct = default)
-    {
-        if (visibleTenantIds is not null)
-        {
-            // Scoped principals cannot read the deployment-wide rollup. Aggregate
-            // the visible tenants from the tenant-level path instead.
-            var scopedRows = await GetMergedTenantDataAsync(context, start, end, isHourly, visibleTenantIds: visibleTenantIds, ct: ct);
-            return scopedRows
-                .GroupBy(row => row.Timestamp)
-                .Select(group => new DataRow(group.Key, null, group.Sum(row => row.Revenue), group.Sum(row => row.Volume)))
-                .OrderBy(row => row.Timestamp)
-                .ToList();
-        }
-
-        if (isHourly)
-        {
-            var rows = await context.Orders
-                .AsNoTracking()
-                .Where(o => o.OrderState != OrderState.Cancelled)
-                .Where(o => o.CreatedDate >= start && o.CreatedDate < end)
-                .Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid)
-                .Select(o => new { o.CreatedDate, o.TotalValueExcVat })
-                .ToListAsync(ct);
-
-            return rows.Select(x => new DataRow(
-                x.CreatedDate,
-                null,
-                x.TotalValueExcVat,
-                1
-            )).ToList();
-        }
-
-        var timeZone = await _reportingCalendar.GetTimeZoneAsync(ct);
-        var currentDayStart = _reportingCalendar.GetStartOfDayUtc(DateTimeOffset.UtcNow, timeZone);
-        var viewEnd = currentDayStart < end ? currentDayStart : end;
-
-        var rawHist = await context.DailyGlobalRollups
-            .AsNoTracking()
-            .Where(r => r.CreatedDate >= start && r.CreatedDate < viewEnd)
-            .GroupBy(r => r.CreatedDate)
-            .Select(g => new { CreatedDate = g.Key, GlobalRevenue = g.Sum(x => x.GlobalRevenue), GlobalVolume = g.Sum(x => x.GlobalVolume) })
-            .ToListAsync(ct);
-
-        var historical = rawHist.Select(r => new DataRow(r.CreatedDate, null, r.GlobalRevenue, (int)r.GlobalVolume)).ToList();
-
-        if (currentDayStart < end)
-        {
-            var freshRows = await context.Orders
-                .AsNoTracking()
-                .Where(o => o.OrderState != OrderState.Cancelled)
-                .Where(o => o.CreatedDate >= currentDayStart && o.CreatedDate < end)
-                .Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid)
-                .GroupBy(o => new { o.CreatedDate.Year, o.CreatedDate.Month, o.CreatedDate.Day })
-                .Select(g => new {
-                    g.Key.Year,
-                    g.Key.Month,
-                    g.Key.Day,
-                    Revenue = g.Sum(o => o.TotalValueExcVat),
-                    Volume = g.Count()
-                })
-                .ToListAsync(ct);
-
-            historical.AddRange(freshRows.Select(x => new DataRow(
-                new DateTimeOffset(x.Year, x.Month, x.Day, 0, 0, 0, TimeSpan.Zero),
-                null,
-                x.Revenue,
-                x.Volume
-            )));
-        }
-
-        return historical;
-    }
-
-    #endregion
 
     #region Widget Implementations
 
@@ -250,8 +57,8 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+        var currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
+        var previousRows = await _seriesReader.ReadTenantSeriesAsync(previousStart, period.PreviousEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
 
         var currentRevenue = currentRows.Sum(r => r.Revenue);
         var previousRevenue = previousRows.Sum(r => r.Revenue);
@@ -289,8 +96,8 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+        var currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
+        var previousRows = await _seriesReader.ReadTenantSeriesAsync(previousStart, period.PreviousEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
         var tenantTypeMap = await context.Tenants.ToDictionaryAsync(t => t.Id, t => t.Type, ct);
 
         var binnedSteps = steps;
@@ -359,8 +166,8 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
+        var currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds), ct);
+        var previousRows = await _seriesReader.ReadTenantSeriesAsync(previousStart, period.PreviousEnd, isHourly, TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds), ct);
 
         var filter = TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds);
         var tenantDetails = await filter.ApplyToTenants(context.Tenants
@@ -426,7 +233,7 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
+        var currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds), ct);
         var filter = TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds);
         var tenantDetails = await filter.ApplyToTenants(context.Tenants
             .AsNoTracking()
@@ -532,8 +339,8 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
-        var currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
-        var previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantTypes: tenantTypes, visibleTenantIds: visibleTenantIds, ct: ct);
+        var currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds), ct);
+        var previousRows = await _seriesReader.ReadTenantSeriesAsync(previousStart, period.PreviousEnd, isHourly, TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds), ct);
         var filter = TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds);
         var tenantDetails = await filter.ApplyToTenants(context.Tenants
             .AsNoTracking()
@@ -605,16 +412,16 @@ public class FinancialService(
         var scopeFilter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
         scopeFilter.ThrowIfTenantOutsideScope();
 
-        List<DataRow> currentRows, beforeStartRows;
+        IReadOnlyList<FinancialSeriesRow> currentRows, beforeStartRows;
         if (scopeFilter.HasTenantFilter || scopeFilter.HasTypeFilter || scopeFilter.IsRestricted)
         {
-            currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
-            beforeStartRows = await GetMergedTenantDataAsync(context, lookbackStart, currentStart, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+            currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
+            beforeStartRows = await _seriesReader.ReadTenantSeriesAsync(lookbackStart, currentStart, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
         }
         else
         {
-            currentRows = await GetMergedGlobalDataAsync(context, currentStart, currentEnd, isHourly, ct: ct);
-            beforeStartRows = await GetMergedGlobalDataAsync(context, lookbackStart, currentStart, isHourly, ct: ct);
+            currentRows = await _seriesReader.ReadGlobalSeriesAsync(currentStart, currentEnd, isHourly, ct: ct);
+            beforeStartRows = await _seriesReader.ReadGlobalSeriesAsync(lookbackStart, currentStart, isHourly, ct: ct);
         }
 
         var previousValue = beforeStartRows.Sum(r => r.Revenue);
@@ -902,17 +709,17 @@ public class FinancialService(
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(context, ct);
 
-        List<DataRow> currentRows, previousRows;
+        IReadOnlyList<FinancialSeriesRow> currentRows, previousRows;
 
         if (tenantId.HasValue || tenantTypes is { Count: > 0 } || visibleTenantIds is not null)
         {
-            currentRows = await GetMergedTenantDataAsync(context, currentStart, currentEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
-            previousRows = await GetMergedTenantDataAsync(context, previousStart, period.PreviousEnd, isHourly, tenantId, tenantTypes, visibleTenantIds, ct);
+            currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
+            previousRows = await _seriesReader.ReadTenantSeriesAsync(previousStart, period.PreviousEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
         }
         else
         {
-            currentRows = await GetMergedGlobalDataAsync(context, currentStart, currentEnd, isHourly, ct: ct);
-            previousRows = await GetMergedGlobalDataAsync(context, previousStart, period.PreviousEnd, isHourly, ct: ct);
+            currentRows = await _seriesReader.ReadGlobalSeriesAsync(currentStart, currentEnd, isHourly, ct: ct);
+            previousRows = await _seriesReader.ReadGlobalSeriesAsync(previousStart, period.PreviousEnd, isHourly, ct: ct);
         }
 
         var currentByStep = currentRows

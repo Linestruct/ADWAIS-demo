@@ -20,6 +20,7 @@ using Adwais.Infrastructure.Helpers;
 using Adwais.Infrastructure.Jobs;
 using Adwais.Infrastructure.Jobs.MaterializedViews;
 using Adwais.Infrastructure.Jobs.Monitor;
+using Adwais.Infrastructure.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Adwais.Api.Extensions;
@@ -46,6 +47,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAppAuthentication(builder.Configuration);
 
 builder.Services.AddScoped<IFinancialService, FinancialService>();
+builder.Services.AddScoped<IFinancialSeriesReader, FinancialSeriesReader>();
 builder.Services.AddScoped<IMonitorOrchestrationService, MonitorOrchestrationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentAccess, CurrentAccessService>();

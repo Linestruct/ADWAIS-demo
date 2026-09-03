@@ -10,6 +10,7 @@ using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.OrderData;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
+using Adwais.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 
@@ -39,7 +40,11 @@ public class FinancialServiceTests : IDisposable
             .ReturnsAsync(TimeZoneInfo.Utc);
         reportingCalendarMock.Setup(calendar => calendar.GetStartOfDayUtc(It.IsAny<DateTimeOffset>(), It.IsAny<TimeZoneInfo>()))
             .Returns((DateTimeOffset instant, TimeZoneInfo _) => new DateTimeOffset(instant.Date, TimeSpan.Zero));
-        _service = new FinancialService(_dbContext, reportingCalendarMock.Object, _currentAccessMock.Object);
+        _service = new FinancialService(
+            _dbContext,
+            reportingCalendarMock.Object,
+            _currentAccessMock.Object,
+            new FinancialSeriesReader(_dbContext, reportingCalendarMock.Object));
 
         var currentStart = DateTimeOffset.UtcNow.AddHours(-2);
         _period = new ResolvedPeriod(

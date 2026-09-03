@@ -114,12 +114,12 @@ public class FinancialSeriesService(
             _dbContext, TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds), ct);
 
         var currentByTenant = currentRows
-            .Where(r => r.TenantId.HasValue && r.TenantId.Value != IApplicationDbContext.SystemTenantGuid)
+            .Where(r => r.TenantId.HasValue)
             .GroupBy(r => r.TenantId!.Value)
             .ToDictionary(g => g.Key, g => new { Revenue = g.Sum(r => r.Revenue), Volume = g.Sum(r => r.Volume) });
 
         var previousByTenant = previousRows
-            .Where(r => r.TenantId.HasValue && r.TenantId.Value != IApplicationDbContext.SystemTenantGuid)
+            .Where(r => r.TenantId.HasValue)
             .GroupBy(r => r.TenantId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(r => r.Revenue));
 

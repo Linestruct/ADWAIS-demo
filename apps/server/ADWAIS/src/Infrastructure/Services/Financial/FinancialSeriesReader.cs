@@ -107,7 +107,7 @@ public sealed class FinancialSeriesReader(
         if (isHourly)
         {
             var rows = await OrdersInRange(start, end)
-                .Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid)
+                .Where(o => o.Tenant == null || !o.Tenant.IsSystem)
                 .Select(o => new { o.CreatedDate, o.TotalValueExcVat })
                 .ToListAsync(ct);
 
@@ -133,7 +133,7 @@ public sealed class FinancialSeriesReader(
         if (currentDayStart < end)
         {
             var freshRows = await OrdersInRange(currentDayStart, end)
-                .Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid)
+                .Where(o => o.Tenant == null || !o.Tenant.IsSystem)
                 .GroupBy(o => new { o.CreatedDate.Year, o.CreatedDate.Month, o.CreatedDate.Day })
                 .Select(g => new {
                     g.Key.Year,
@@ -166,7 +166,9 @@ public sealed class FinancialSeriesReader(
         if (filter.TenantId.HasValue)
             return query.Where(o => o.TenantId == filter.TenantId.Value);
 
-        query = query.Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid);
+        // System tenants (unassigned buckets, legacy rows) drop out by flag.
+        // Orders without a tenant lookup stay visible, as before.
+        query = query.Where(o => o.Tenant == null || !o.Tenant.IsSystem);
         if (filter.HasTypeFilter)
             query = query.Where(o => o.Tenant != null && filter.TenantTypes.Contains(o.Tenant.Type));
         return query;
@@ -178,7 +180,7 @@ public sealed class FinancialSeriesReader(
         if (filter.TenantId.HasValue)
             return query.Where(r => r.TenantId == filter.TenantId.Value);
 
-        query = query.Where(r => r.TenantId != IApplicationDbContext.SystemTenantGuid);
+        query = query.Where(r => !_dbContext.Tenants.Any(t => t.Id == r.TenantId && t.IsSystem));
         if (filter.HasTypeFilter)
         {
             query = query.Where(r => _dbContext.Tenants

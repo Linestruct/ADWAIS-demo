@@ -45,7 +45,7 @@ public class FinancialDistributionService(
             _dbContext, TenantSeriesFilter.Create(null, tenantTypes, visibleTenantIds), ct);
 
         var currentByTenant = currentRows
-            .Where(r => r.TenantId.HasValue && r.TenantId.Value != IApplicationDbContext.SystemTenantGuid)
+            .Where(r => r.TenantId.HasValue)
             .GroupBy(r => r.TenantId!.Value)
             .ToDictionary(g => g.Key, g => new { Revenue = g.Sum(r => r.Revenue), Volume = g.Sum(r => r.Volume) });
 
@@ -308,7 +308,9 @@ public class FinancialDistributionService(
             query = query.Where(o => o.TenantId == tenantId.Value);
         else
         {
-            query = query.Where(o => o.TenantId != IApplicationDbContext.SystemTenantGuid);
+            // System tenants (unassigned buckets, legacy rows) drop out by flag.
+            // Orders without a tenant lookup stay visible, as before.
+            query = query.Where(o => o.Tenant == null || !o.Tenant.IsSystem);
             if (filter.HasTypeFilter)
             {
                 query = query.Where(o => o.Tenant != null && filter.TenantTypes.Contains(o.Tenant.Type));

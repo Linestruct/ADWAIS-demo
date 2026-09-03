@@ -41,9 +41,11 @@ public static class RecurringJobRegistration
         recurringJobManager.RemoveIfExists("sync-monitoring-account-stats");
         recurringJobManager.RemoveIfExists("aggregate-intranet-feeds");
 
-        var orgConfigs = await dbContext.OrganizationConfigs.AsNoTracking().ToListAsync(ct);
         var globalConfig = await dbContext.GlobalConfigs.AsNoTracking().FirstOrDefaultAsync(ct);
         var matViewInterval = globalConfig?.MatViewRefreshIntervalMinutes ?? 60;
+
+        await EnsureOrganizationConfigsAsync(dbContext, ct);
+        var orgConfigs = await dbContext.OrganizationConfigs.AsNoTracking().ToListAsync(ct);
 
         foreach (var orgConfig in orgConfigs)
         {
@@ -115,6 +117,31 @@ public static class RecurringJobRegistration
         else
         {
             recurringJobManager.RemoveIfExists(RecurringJobId.Platform(RecurringJobKind.RuntimeDataSeeder));
+        }
+    }
+
+    private static async Task EnsureOrganizationConfigsAsync(IApplicationDbContext dbContext, CancellationToken ct)
+    {
+        var configuredOrgIds = await dbContext.OrganizationConfigs
+            .AsNoTracking()
+            .Select(c => c.OrganizationId)
+            .ToListAsync(ct);
+        var configured = configuredOrgIds.ToHashSet();
+
+        var missingOrgIds = await dbContext.Organizations
+            .AsNoTracking()
+            .Where(o => !configured.Contains(o.Id))
+            .Select(o => o.Id)
+            .ToListAsync(ct);
+
+        foreach (var orgId in missingOrgIds)
+        {
+            dbContext.OrganizationConfigs.Add(new Adwais.Domain.Entities.OrganizationConfig { OrganizationId = orgId });
+        }
+
+        if (missingOrgIds.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(ct);
         }
     }
 

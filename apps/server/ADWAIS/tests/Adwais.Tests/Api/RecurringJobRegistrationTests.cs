@@ -124,19 +124,32 @@ public class RecurringJobRegistrationTests
     }
 
     [Fact]
-    public async Task RegisterAsync_OrgsWithoutConfigRows_GetNoJobs()
+    public async Task RegisterAsync_OrgWithoutConfigRow_GetsDefaultsRowAndJobs()
     {
-        await SeedAsync(new OrganizationConfig { OrganizationId = _orgA });
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Organizations.Add(new Adwais.Domain.Entities.Organization
+            {
+                Id = _orgA,
+                Name = "Org A",
+                CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
+            });
+            await db.SaveChangesAsync();
+        }
 
         await RegisterAsync();
 
-        _recurringJobManager.Verify(
-            manager => manager.AddOrUpdate(
-                It.Is<string>(id => id.EndsWith(_orgB.ToString(), StringComparison.Ordinal)),
-                It.IsAny<Job>(),
-                It.IsAny<string>(),
-                It.IsAny<RecurringJobOptions>()),
-            Times.Never);
+        await using (var verify = new AnalyticsDbContext(_dbOptions))
+        {
+            Assert.True(await verify.OrganizationConfigs.AnyAsync(c => c.OrganizationId == _orgA));
+        }
+
+        VerifyPerOrgJob<OrderFetchDispatchJob>(RecurringJobId.For(RecurringJobKind.OrderFetch, _orgA), "0 * * * *");
+        VerifyPerOrgJob<MonitorUptimeDispatchJob>(RecurringJobId.For(RecurringJobKind.UptimeFetch, _orgA), "0 * * * *");
+        VerifyPerOrgJob<MonitorLatencyDispatchJob>(RecurringJobId.For(RecurringJobKind.LatencyFetch, _orgA), "*/10 * * * *");
+        VerifyPerOrgJob<SyncOrganizationAccountStatsJob>(RecurringJobId.For(RecurringJobKind.UserStatsFetch, _orgA), "0 * * * *");
+        VerifyPerOrgJob<SyncOrganizationFleetJob>(RecurringJobId.For(RecurringJobKind.FleetSync, _orgA), "*/5 * * * *");
+        VerifyPerOrgJob<AggregateOrganizationFeedsJob>(RecurringJobId.For(RecurringJobKind.FeedFetch, _orgA), "0 */2 * * *");
     }
 
     [Fact]

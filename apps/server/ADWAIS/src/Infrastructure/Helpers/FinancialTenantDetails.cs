@@ -8,7 +8,7 @@ using Adwais.Application.Services;
 using Adwais.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace Adwais.Infrastructure.Services;
+namespace Adwais.Infrastructure.Helpers;
 
 internal sealed record FinancialTenantDetail(string Name, TenantType Type, string? OrderProviderEndpoint);
 

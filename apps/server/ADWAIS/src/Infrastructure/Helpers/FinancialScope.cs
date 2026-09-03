@@ -5,7 +5,7 @@
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 
-namespace Adwais.Infrastructure.Services;
+namespace Adwais.Infrastructure.Helpers;
 
 /// <summary>
 /// Resolves the tenant ids the current scope may see. Null means no

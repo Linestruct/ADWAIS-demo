@@ -6,7 +6,8 @@ Status: proposed. Not started.
 
 Split `src/Application/Services/FinancialService.cs` into focused units without changing any behavior. Reduce per-file complexity so future changes stay reviewable and testable.
 
-Evidence today: 940 lines (down from 1,104 after the multi-organization work added `ICurrentAccess` scoping), the two merge pipelines still exist as near twins (`GetMergedTenantDataAsync`, `GetMergedGlobalDataAsync`), scoping still re-applies visibility checks per consumer, nine `SystemTenantGuid` references remain, and the pure statistics helpers still sit inside the service class with no direct tests. Complexity and coverage numbers below date from the 2026-08-26 litmus scan; re-scan before starting.
+Evidence today: 1,104 lines, the two merge pipelines still exist as near twins (`GetMergedTenantDataAsync`, `GetMergedGlobalDataAsync`), scoping resolves once through `OrganizationFilter` plus `TenantVisibility` but consumers still re-apply visibility checks per call site, nine `SystemTenantGuid` references remain, and the pure statistics helpers still sit inside the service class with no direct tests. Complexity and coverage numbers below date from the 2026-08-26 litmus scan; re-scan before starting.
+Pure, data-oriented functions are preferred over methods.
 
 ## Non-goals
 

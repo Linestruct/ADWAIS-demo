@@ -10,7 +10,6 @@ namespace Adwais.Infrastructure.Services;
 /// <summary>
 /// Resolves the tenant ids the current scope may see. Null means no
 /// restriction (platform admin). An empty array means no access.
-/// Shared by the financial services so the rule lives in one place.
 /// </summary>
 internal static class FinancialScope
 {

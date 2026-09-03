@@ -5,9 +5,8 @@
 namespace Adwais.Application.Services;
 
 /// <summary>
-/// Pure statistics helpers for the financial endpoints. Every method is
-/// deterministic and side-effect free. Inputs that say "sorted" must arrive
-/// sorted; the methods do not sort defensively.
+/// Statistics helpers for the financial endpoints. Parameters named
+/// "sorted" expect sorted input; the methods do not sort.
 /// </summary>
 public static class FinancialMath
 {

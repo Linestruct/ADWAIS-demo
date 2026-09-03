@@ -9,10 +9,8 @@ using Adwais.Domain.Enums;
 namespace Adwais.Application.Services;
 
 /// <summary>
-/// The tenant scoping for one financial query, built once per call. It
-/// carries the explicit tenant, the normalized tenant-type set, and the
-/// visible tenant ids for the current scope, and exposes ready-made
-/// predicates so consumers stop rephrasing the same checks.
+/// Tenant scoping for one financial query: explicit tenant, normalized
+/// type set, and visible tenant ids, with predicates that apply them.
 /// </summary>
 public sealed record TenantSeriesFilter(
     Guid? TenantId,

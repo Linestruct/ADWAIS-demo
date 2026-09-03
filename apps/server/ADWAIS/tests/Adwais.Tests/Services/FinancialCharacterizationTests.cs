@@ -17,10 +17,9 @@ using Moq;
 namespace Adwais.Tests.Services;
 
 /// <summary>
-/// Characterization tests for the hourly financial endpoints. They pin the
-/// current outputs of the service against a known fixture: mixed tenant
-/// types, a cancelled order, a second organization, and scoped, denied, and
-/// platform callers. These assertions must not change during the refactor.
+/// Characterization tests for the hourly financial endpoints, pinned
+/// against a known fixture: mixed tenant types, a cancelled order, a
+/// second organization, and scoped, denied, and platform callers.
 /// </summary>
 public class FinancialHourlyCharacterizationTests : IDisposable
 {
@@ -322,9 +321,9 @@ public class FinancialHourlyCharacterizationTests : IDisposable
 }
 
 /// <summary>
-/// Characterization tests for the daily financial endpoints. They pin the
-/// rollup-history plus same-day-live-rows merge for platform and scoped
-/// callers. These assertions must not change during the refactor.
+/// Characterization tests for the daily financial endpoints, pinned
+/// against rollup history plus same-day live rows for platform and
+/// scoped callers.
 /// </summary>
 public class FinancialDailyCharacterizationTests : IDisposable
 {

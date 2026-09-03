@@ -12,9 +12,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Adwais.Infrastructure.Services;
 
 /// <summary>
-/// The single merged series pipeline for the financial endpoints. It splices
-/// live order rows onto historical rollups, hourly or daily, on the tenant
-/// or the global path. All series consumers read through here.
+/// Merges live order rows onto historical rollups, hourly or daily, on the
+/// tenant or the global path.
 /// </summary>
 public sealed class FinancialSeriesReader(
     IApplicationDbContext dbContext,

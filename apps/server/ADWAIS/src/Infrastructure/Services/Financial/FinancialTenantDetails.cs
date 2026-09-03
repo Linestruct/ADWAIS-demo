@@ -14,7 +14,7 @@ internal sealed record FinancialTenantDetail(string Name, TenantType Type, strin
 
 /// <summary>
 /// Reads the non-system tenant lookup for the portfolio endpoints. Scope
-/// comes from the caller-built filter, so every consumer shares one query.
+/// comes from the caller-provided filter.
 /// </summary>
 internal static class FinancialTenantDetails
 {

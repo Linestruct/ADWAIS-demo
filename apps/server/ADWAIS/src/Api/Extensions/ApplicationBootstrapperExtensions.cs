@@ -150,40 +150,40 @@ public static class ApplicationBootstrapperExtensions
                 }
 
                 recurringJobManager.AddOrUpdate<RefreshMonitoringMaterializedViewJob>(
-                    "refresh-monitoring-materialized-views",
+                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.MonitoringViewRefresh),
                     newJob => newJob.ExecuteAsync(),
                     Cron.Daily);
 
                 recurringJobManager.AddOrUpdate<RefreshFinancialMaterializedViewJob>(
-                    "refresh-financial-materialized-views",
+                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.FinancialViewRefresh),
                     newJob => newJob.ExecuteAsync(),
                     Cron.Daily);
 
                 recurringJobManager.AddOrUpdate<RefreshStaleMaterializedViewsJob>(
-                    "refresh-stale-materialized-views",
+                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.StaleViewRefresh),
                     newJob => newJob.ExecuteAsync(),
                     CronHelper.FromMinutes(matViewInterval));
 
                 recurringJobManager.AddOrUpdate<SystemEventCleanupJob>(
-                    "system-event-cleanup",
+                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.SystemEventCleanup),
                     newJob => newJob.ExecuteAsync(),
                     Cron.Daily(2));
 
                 recurringJobManager.AddOrUpdate<CalendarSyncJob>(
-                    "sync-intranet-calendars",
+                    Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.CalendarSync),
                     newJob => newJob.ExecuteAsync(CancellationToken.None),
                     Cron.MinuteInterval(30));
 
                 if (enableSeeding)
                 {
                     recurringJobManager.AddOrUpdate<RuntimeDataSeederJob>(
-                        "dev-runtime-data-seeder",
+                        Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder),
                         newJob => newJob.ExecuteAsync(),
                         Cron.MinuteInterval(RuntimeDataSeederJob.FinancialSimulationIntervalMinutes));
                 }
                 else
                 {
-                    recurringJobManager.RemoveIfExists("dev-runtime-data-seeder");
+                    recurringJobManager.RemoveIfExists(Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder));
                 }
             }
         }

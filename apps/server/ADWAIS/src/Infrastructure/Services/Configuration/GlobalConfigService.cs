@@ -63,7 +63,7 @@ public class GlobalConfigService(
         if (request.MatViewRefreshIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<RefreshStaleMaterializedViewsJob>(
-                "refresh-stale-materialized-views",
+                Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.StaleViewRefresh),
                 job => job.ExecuteAsync(),
                 CronHelper.FromMinutes(config.MatViewRefreshIntervalMinutes));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Stale materialized view refresh interval updated to {config.MatViewRefreshIntervalMinutes} minutes.");

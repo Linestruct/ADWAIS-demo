@@ -15,8 +15,8 @@ public class RecurringJobVisibilityTests
     private readonly Guid _orgA = Guid.NewGuid();
     private readonly Guid _orgB = Guid.NewGuid();
 
-    private static HashSet<RecurringJobKind> Curated(string csv = RecurringJobVisibility.DefaultVisiblePlatformJobs)
-        => RecurringJobVisibility.ParseVisibleKinds(csv).ToHashSet();
+    private static HashSet<RecurringJobKind> Curated(string? csv = null)
+        => RecurringJobVisibility.ParseVisibleKinds(csv ?? RecurringJobVisibility.DefaultVisiblePlatformJobs).ToHashSet();
 
     [Fact]
     public void OrganizationJob_IsVisibleToItsOrg()

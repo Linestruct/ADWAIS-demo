@@ -17,8 +17,17 @@ namespace Adwais.Application.Common.Jobs;
 /// </summary>
 public static class RecurringJobVisibility
 {
-    public const string DefaultVisiblePlatformJobs =
-        "FinancialViewRefresh,MonitoringViewRefresh,StaleViewRefresh,SystemEventCleanup,CalendarSync";
+    public static readonly IReadOnlyCollection<RecurringJobKind> DefaultVisiblePlatformKinds =
+        new[]
+        {
+            RecurringJobKind.FinancialViewRefresh,
+            RecurringJobKind.MonitoringViewRefresh,
+            RecurringJobKind.StaleViewRefresh,
+            RecurringJobKind.SystemEventCleanup,
+            RecurringJobKind.CalendarSync
+        };
+
+    public static string DefaultVisiblePlatformJobs => JoinVisibleKinds(DefaultVisiblePlatformKinds);
 
     public static RecurringJobKind[] ParseVisibleKinds(string? csv)
         => string.IsNullOrWhiteSpace(csv)

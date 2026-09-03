@@ -28,7 +28,7 @@ public class SyncOrganizationFleetJob(
     IRecurringJobManager recurringJobManager) : IOrgScopedJob
 {
     protected virtual string? CurrentSyncCron => JobStorage.Current.GetConnection().GetRecurringJobs()
-        .SingleOrDefault(j => j.Id == $"sync-monitoring-fleet-{OrganizationIdOfLastRun}")?.Cron;
+        .SingleOrDefault(j => j.Id == Adwais.Application.Common.Jobs.RecurringJobId.For(Adwais.Application.Common.Jobs.RecurringJobKind.FleetSync, OrganizationIdOfLastRun))?.Cron;
 
     private Guid OrganizationIdOfLastRun { get; set; } = Guid.Empty;
 

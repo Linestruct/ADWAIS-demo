@@ -90,7 +90,7 @@ public class BackgroundJobController(
     [Authorize(Policy = "PlatformAdminOnly")]
     public ActionResult TriggerMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob("refresh-financial-materialized-views");
+        RecurringJob.TriggerJob(Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.FinancialViewRefresh));
         return Ok();
     }
     
@@ -101,7 +101,7 @@ public class BackgroundJobController(
     [Authorize(Policy = "PlatformAdminOnly")]
     public ActionResult TriggerMonitoringMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob("refresh-monitoring-materialized-views");
+        RecurringJob.TriggerJob(Adwais.Application.Common.Jobs.RecurringJobId.Platform(Adwais.Application.Common.Jobs.RecurringJobKind.MonitoringViewRefresh));
         return Ok();
     }
 

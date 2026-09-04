@@ -86,14 +86,15 @@ public class GlobalConfigService(
         await _jobTriggerService.TriggerFeedSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
     }
 
-    public async Task UpdateFeedIntervalAsync(int intervalHours, CancellationToken ct = default)
+    public async Task<Result> UpdateFeedIntervalAsync(int intervalHours, CancellationToken ct = default)
     {
-        if (intervalHours <= 0) throw new ArgumentException("Interval must be at least 1 hour.", nameof(intervalHours));
+        if (intervalHours <= 0)
+            return Result.Fail(new ValidationError(new Dictionary<string, string[]> { [nameof(intervalHours)] = ["Interval must be at least 1 hour."] }));
 
-        var orgId = _currentAccess.Scope?.OrganizationId
-            ?? throw new InvalidOperationException("Feed intervals require an organization scope.");
+        var orgId = _currentAccess.Scope?.OrganizationId;
+        if (orgId is null) return Result.Fail(new ScopeDeniedError("an organization scope", "platform"));
 
-        var orgConfig = await _organizationConfigService.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
+        var orgConfig = await _organizationConfigService.UpdateConfigAsync(orgId.Value, new UpdateOrganizationConfigRequestDto(
             WeatherLocation: null,
             WeatherFetchIntervalMinutes: null,
             ReportingTimeZoneId: null,
@@ -104,13 +105,15 @@ public class GlobalConfigService(
             LatencyFetchIntervalMinutes: null,
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: intervalHours), ct);
+        if (orgConfig.IsFailed) return Result.Fail(orgConfig.Errors);
 
         RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
-            RecurringJobId.For(RecurringJobKind.FeedFetch, orgId),
-            job => job.ExecuteAsync(orgId, CancellationToken.None),
+            RecurringJobId.For(RecurringJobKind.FeedFetch, orgId.Value),
+            job => job.ExecuteAsync(orgId.Value, CancellationToken.None),
             Cron.HourInterval(intervalHours));
 
         await _eventService.LogAsync(nameof(GlobalConfigService), $"Feed aggregation interval updated to {intervalHours} hours.");
+        return Result.Ok();
     }
 
     public async Task<FetchIntervalsDto> GetFetchIntervalsAsync(CancellationToken ct = default)
@@ -143,12 +146,12 @@ public class GlobalConfigService(
         };
     }
 
-    public async Task<FetchIntervalsDto> UpdateFetchIntervalsAsync(UpdateFetchIntervalsRequestDto request, CancellationToken ct = default)
+    public async Task<Result<FetchIntervalsDto>> UpdateFetchIntervalsAsync(UpdateFetchIntervalsRequestDto request, CancellationToken ct = default)
     {
-        var orgId = _currentAccess.Scope?.OrganizationId
-            ?? throw new InvalidOperationException("Fetch intervals require an organization scope.");
+        var orgId = _currentAccess.Scope?.OrganizationId;
+        if (orgId is null) return Result.Fail<FetchIntervalsDto>(new ScopeDeniedError("an organization scope", "platform"));
 
-        var orgConfig = await _organizationConfigService.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
+        var orgConfigResult = await _organizationConfigService.UpdateConfigAsync(orgId.Value, new UpdateOrganizationConfigRequestDto(
             WeatherLocation: null,
             WeatherFetchIntervalMinutes: null,
             ReportingTimeZoneId: null,
@@ -159,12 +162,14 @@ public class GlobalConfigService(
             LatencyFetchIntervalMinutes: request.LatencyFetchIntervalMinutes,
             UserStatsFetchIntervalMinutes: request.UserStatsFetchIntervalMinutes,
             FeedFetchIntervalHours: request.FeedFetchIntervalHours), ct);
+        if (orgConfigResult.IsFailed) return Result.Fail<FetchIntervalsDto>(orgConfigResult.Errors);
+        var orgConfig = orgConfigResult.Value;
 
         if (request.UptimeFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<MonitorUptimeDispatchJob>(
-                RecurringJobId.For(RecurringJobKind.UptimeFetch, orgId),
-                job => job.ExecuteAsync(orgId),
+                RecurringJobId.For(RecurringJobKind.UptimeFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.UptimeFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Uptime Fetch Interval to {request.UptimeFetchIntervalMinutes.Value} minutes");
         }
@@ -172,8 +177,8 @@ public class GlobalConfigService(
         if (request.LatencyFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<MonitorLatencyDispatchJob>(
-                RecurringJobId.For(RecurringJobKind.LatencyFetch, orgId),
-                job => job.ExecuteAsync(orgId),
+                RecurringJobId.For(RecurringJobKind.LatencyFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.LatencyFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Latency Fetch Interval to {request.LatencyFetchIntervalMinutes.Value} minutes");
         }
@@ -181,8 +186,8 @@ public class GlobalConfigService(
         if (request.UserStatsFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<SyncOrganizationAccountStatsJob>(
-                RecurringJobId.For(RecurringJobKind.UserStatsFetch, orgId),
-                job => job.ExecuteAsync(orgId),
+                RecurringJobId.For(RecurringJobKind.UserStatsFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.UserStatsFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated User Stats Fetch Interval to {request.UserStatsFetchIntervalMinutes.Value} minutes");
         }
@@ -190,8 +195,8 @@ public class GlobalConfigService(
         if (request.OrderFetchIntervalMinutes.HasValue)
         {
             RecurringJob.AddOrUpdate<OrderFetchDispatchJob>(
-                RecurringJobId.For(RecurringJobKind.OrderFetch, orgId),
-                job => job.ExecuteAsync(orgId),
+                RecurringJobId.For(RecurringJobKind.OrderFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.OrderFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated order fetch interval to {request.OrderFetchIntervalMinutes.Value} minutes");
         }
@@ -199,8 +204,8 @@ public class GlobalConfigService(
         if (request.FeedFetchIntervalHours.HasValue)
         {
             RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
-                RecurringJobId.For(RecurringJobKind.FeedFetch, orgId),
-                job => job.ExecuteAsync(orgId, CancellationToken.None),
+                RecurringJobId.For(RecurringJobKind.FeedFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value, CancellationToken.None),
                 Cron.HourInterval(request.FeedFetchIntervalHours.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Feed Fetch Interval to {request.FeedFetchIntervalHours.Value} hours");
         }
@@ -212,7 +217,7 @@ public class GlobalConfigService(
 
         var lowestIntervalMins = Math.Max(1, (lowestInterval ?? 300) / 60);
 
-        return new FetchIntervalsDto
+        return Result.Ok(new FetchIntervalsDto
         {
             LatencyFetchIntervalMinutes = orgConfig.LatencyFetchIntervalMinutes,
             UptimeFetchIntervalMinutes = orgConfig.UptimeFetchIntervalMinutes,
@@ -220,7 +225,7 @@ public class GlobalConfigService(
             OrderFetchIntervalMinutes = orgConfig.OrderFetchIntervalMinutes,
             UserStatsFetchIntervalMinutes = orgConfig.UserStatsFetchIntervalMinutes,
             FeedFetchIntervalHours = orgConfig.FeedFetchIntervalHours
-        };
+        });
     }
 
     private GlobalConfigResponseDto MapToDto(GlobalConfig config) =>

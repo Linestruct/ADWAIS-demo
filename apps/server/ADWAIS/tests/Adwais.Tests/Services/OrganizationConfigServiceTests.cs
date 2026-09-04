@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
@@ -130,10 +131,11 @@ public class OrganizationConfigServiceTests
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: null), CancellationToken.None);
 
-        Assert.Equal("Stockholm", result.WeatherLocation);
-        Assert.Equal("Europe/Stockholm", result.ReportingTimeZoneId);
-        Assert.Equal(60, result.OrderFetchIntervalMinutes);
-        Assert.Equal(15, result.WeatherFetchIntervalMinutes);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Stockholm", result.Value.WeatherLocation);
+        Assert.Equal("Europe/Stockholm", result.Value.ReportingTimeZoneId);
+        Assert.Equal(60, result.Value.OrderFetchIntervalMinutes);
+        Assert.Equal(15, result.Value.WeatherFetchIntervalMinutes);
 
         var persisted = await dbContext.OrganizationConfigs.SingleAsync(c => c.OrganizationId == orgId);
         Assert.Equal("Stockholm", persisted.WeatherLocation);
@@ -166,10 +168,11 @@ public class OrganizationConfigServiceTests
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: null), CancellationToken.None);
 
-        Assert.Equal("Goteborg", result.WeatherLocation);
-        Assert.Equal("America/New_York", result.ReportingTimeZoneId);
-        Assert.Equal(30, result.WeatherFetchIntervalMinutes);
-        Assert.Equal(120, result.OrderFetchIntervalMinutes);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Goteborg", result.Value.WeatherLocation);
+        Assert.Equal("America/New_York", result.Value.ReportingTimeZoneId);
+        Assert.Equal(30, result.Value.WeatherFetchIntervalMinutes);
+        Assert.Equal(120, result.Value.OrderFetchIntervalMinutes);
     }
 
     [Fact]
@@ -182,8 +185,7 @@ public class OrganizationConfigServiceTests
 
         var (service, _) = CreateService(context, OrgAccess(orgId));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
+        var result = await service.UpdateConfigAsync(orgId, new UpdateOrganizationConfigRequestDto(
                 WeatherLocation: null,
                 WeatherFetchIntervalMinutes: null,
                 ReportingTimeZoneId: null,
@@ -193,7 +195,10 @@ public class OrganizationConfigServiceTests
                 UptimeFetchIntervalMinutes: null,
                 LatencyFetchIntervalMinutes: null,
                 UserStatsFetchIntervalMinutes: null,
-                FeedFetchIntervalHours: null), CancellationToken.None));
+                FeedFetchIntervalHours: null), CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ValidationError>(Assert.Single(result.Errors));
 
         var persisted = await dbContext.OrganizationConfigs.SingleAsync(c => c.OrganizationId == orgId);
         Assert.Equal(IntegrationProviders.UptimeRobot, persisted.MonitoringProvider);
@@ -223,8 +228,9 @@ public class OrganizationConfigServiceTests
             OrderFetchEnabled: false,
             MonitoringFetchEnabled: false), CancellationToken.None);
 
-        Assert.False(result.OrderFetchEnabled);
-        Assert.False(result.MonitoringFetchEnabled);
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.OrderFetchEnabled);
+        Assert.False(result.Value.MonitoringFetchEnabled);
 
         var persisted = await dbContext.OrganizationConfigs.SingleAsync(c => c.OrganizationId == orgId);
         Assert.False(persisted.OrderFetchEnabled);

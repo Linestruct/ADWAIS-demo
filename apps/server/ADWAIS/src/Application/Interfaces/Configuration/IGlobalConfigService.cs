@@ -14,7 +14,7 @@ public interface IGlobalConfigService
     Task<GlobalConfigResponseDto> GetConfigAsync(CancellationToken ct = default);
     Task<Result<GlobalConfigResponseDto>> UpdateConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct = default);
     Task TriggerFeedFetchAsync(CancellationToken ct = default);
-    Task UpdateFeedIntervalAsync(int intervalHours, CancellationToken ct = default);
+    Task<Result> UpdateFeedIntervalAsync(int intervalHours, CancellationToken ct = default);
     Task<FetchIntervalsDto> GetFetchIntervalsAsync(CancellationToken ct = default);
-    Task<FetchIntervalsDto> UpdateFetchIntervalsAsync(UpdateFetchIntervalsRequestDto request, CancellationToken ct = default);
+    Task<Result<FetchIntervalsDto>> UpdateFetchIntervalsAsync(UpdateFetchIntervalsRequestDto request, CancellationToken ct = default);
 }

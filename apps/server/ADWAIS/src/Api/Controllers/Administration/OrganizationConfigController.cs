@@ -6,6 +6,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Api.Extensions;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -57,7 +58,8 @@ public class OrganizationConfigController(
             return NotFound();
         }
 
-        return Ok(await _configService.UpdateConfigAsync(id, request, ct));
+        var result = await _configService.UpdateConfigAsync(id, request, ct);
+        return result.IsFailed ? result.ToProblem(HttpContext) : Ok(result.Value);
     }
 
     [HttpGet("me/config")]
@@ -86,6 +88,7 @@ public class OrganizationConfigController(
             return Forbid();
         }
 
-        return Ok(await _configService.UpdateConfigAsync(orgId.Value, request, ct));
+        var result = await _configService.UpdateConfigAsync(orgId.Value, request, ct);
+        return result.IsFailed ? result.ToProblem(HttpContext) : Ok(result.Value);
     }
 }

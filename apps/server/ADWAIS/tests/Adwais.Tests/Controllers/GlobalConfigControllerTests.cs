@@ -152,7 +152,7 @@ public class GlobalConfigControllerTests
         };
 
         _configServiceMock.Setup(s => s.UpdateFetchIntervalsAsync(request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(responseDto);
+            .ReturnsAsync(Result.Ok(responseDto));
 
         // Act
         var result = await _controller.UpdateFetchIntervals(request);

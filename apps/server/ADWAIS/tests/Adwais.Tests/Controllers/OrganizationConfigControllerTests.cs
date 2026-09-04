@@ -10,6 +10,8 @@ using Adwais.Application.Common.Access;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Enums;
+using FluentResults;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
@@ -29,6 +31,7 @@ public class OrganizationConfigControllerTests
         _configServiceMock = new Mock<IOrganizationConfigService>();
         _accessMock = new Mock<ICurrentAccess>();
         _controller = new OrganizationConfigController(_configServiceMock.Object, _accessMock.Object);
+        _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
         _configDto = new OrganizationConfigDto(
             WeatherLocation: "Karlstad",
             WeatherFetchIntervalMinutes: 15,
@@ -151,7 +154,7 @@ public class OrganizationConfigControllerTests
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: null);
         _configServiceMock.Setup(service => service.UpdateConfigAsync(_orgId, request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_configDto);
+            .ReturnsAsync(Result.Ok(_configDto));
 
         var result = await _controller.UpdateConfig(_orgId, request, CancellationToken.None);
 
@@ -199,7 +202,7 @@ public class OrganizationConfigControllerTests
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: null);
         _configServiceMock.Setup(service => service.UpdateConfigAsync(targetOrg, request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_configDto);
+            .ReturnsAsync(Result.Ok(_configDto));
 
         var result = await _controller.UpdateConfig(targetOrg, request, CancellationToken.None);
 
@@ -222,7 +225,7 @@ public class OrganizationConfigControllerTests
             UserStatsFetchIntervalMinutes: null,
             FeedFetchIntervalHours: null);
         _configServiceMock.Setup(service => service.UpdateConfigAsync(_orgId, request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(_configDto);
+            .ReturnsAsync(Result.Ok(_configDto));
 
         var result = await _controller.UpdateMyConfig(request, CancellationToken.None);
 

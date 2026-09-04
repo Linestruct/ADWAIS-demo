@@ -75,6 +75,6 @@ public class GlobalConfigController(IGlobalConfigService globalConfigService) : 
     public async Task<ActionResult<FetchIntervalsDto>> UpdateFetchIntervals([FromBody] UpdateFetchIntervalsRequestDto request)
     {
         var updated = await _globalConfigService.UpdateFetchIntervalsAsync(request);
-        return Ok(updated);
+        return updated.IsFailed ? updated.ToProblem(HttpContext) : Ok(updated.Value);
     }
 }

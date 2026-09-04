@@ -7,11 +7,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -42,7 +44,7 @@ public class OrganizationConfigService(
         return config is null ? null : MapToDto(config);
     }
 
-    public async Task<OrganizationConfigDto> UpdateConfigAsync(Guid organizationId, UpdateOrganizationConfigRequestDto request, CancellationToken ct = default)
+    public async Task<Result<OrganizationConfigDto>> UpdateConfigAsync(Guid organizationId, UpdateOrganizationConfigRequestDto request, CancellationToken ct = default)
     {
         var config = await _dbContext.OrganizationConfigs
             .SingleOrDefaultAsync(c => c.OrganizationId == organizationId, ct);
@@ -56,15 +58,17 @@ public class OrganizationConfigService(
         if (!string.IsNullOrWhiteSpace(request.MonitoringProvider))
         {
             var provider = request.MonitoringProvider.Trim().ToLowerInvariant();
-            _monitoringProviders.ForProvider(provider);
+            if (FindProvider(provider) is null)
+                return Result.Fail<OrganizationConfigDto>(Validation("monitoringProvider", $"'{provider}' is not a supported monitoring provider."));
             config.MonitoringProvider = provider;
             config.MonitoringProviderSettings = null;
         }
         if (request.MonitoringProviderSettings != null)
         {
-            config.MonitoringProviderSettings = _monitoringProviders
-                .ForProvider(config.MonitoringProvider)
-                .MergeSettings(config.MonitoringProviderSettings, request.MonitoringProviderSettings);
+            var provider = FindProvider(config.MonitoringProvider);
+            if (provider is null)
+                return Result.Fail<OrganizationConfigDto>(new ConfigurationError("The configured monitoring provider is not available."));
+            config.MonitoringProviderSettings = provider.MergeSettings(config.MonitoringProviderSettings, request.MonitoringProviderSettings);
         }
         if (!string.IsNullOrWhiteSpace(request.WeatherLocation)) config.WeatherLocation = request.WeatherLocation.Trim();
         if (request.WeatherFetchIntervalMinutes.HasValue) config.WeatherFetchIntervalMinutes = request.WeatherFetchIntervalMinutes.Value;
@@ -83,8 +87,14 @@ public class OrganizationConfigService(
         // The timezone change invalidates the reporting calendar, so the views must
         // be rebuilt. Mark the organization dirty; the refresh jobs own the rebuild.
         if (timezoneChanged) await _viewRefreshTracker.MarkDirtyAsync(organizationId, CancellationToken.None);
-        return MapToDto(config);
+        return Result.Ok(MapToDto(config));
     }
+
+    private IMonitoringProvider? FindProvider(string provider)
+        => _monitoringProviders.SingleOrDefault(candidate => candidate.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase));
+
+    private static ValidationError Validation(string field, string message)
+        => new(new Dictionary<string, string[]> { [field] = [message] });
 
     private OrganizationConfigDto MapToDto(OrganizationConfig config)
     {

@@ -221,7 +221,9 @@ public class GlobalConfigServiceTests
 
         var service = CreateService(dbContext, OrgAccess());
 
-        await service.UpdateFeedIntervalAsync(12);
+        var result = await service.UpdateFeedIntervalAsync(12);
+
+        Assert.True(result.IsSuccess);
 
         var dbCheck = new AnalyticsDbContext(_options);
         var orgConfigDb = await dbCheck.OrganizationConfigs.SingleAsync(c => c.OrganizationId == _orgId);
@@ -280,9 +282,10 @@ public class GlobalConfigServiceTests
 
         var result = await service.UpdateFetchIntervalsAsync(request);
 
-        Assert.Equal(120, result.OrderFetchIntervalMinutes);
-        Assert.Equal(30, result.UptimeFetchIntervalMinutes);
-        Assert.Equal(5, result.FeedFetchIntervalHours);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(120, result.Value.OrderFetchIntervalMinutes);
+        Assert.Equal(30, result.Value.UptimeFetchIntervalMinutes);
+        Assert.Equal(5, result.Value.FeedFetchIntervalHours);
 
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.OrganizationConfigs.SingleAsync(c => c.OrganizationId == _orgId);

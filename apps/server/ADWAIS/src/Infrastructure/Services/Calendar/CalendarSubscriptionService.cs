@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
@@ -17,6 +18,7 @@ using Adwais.Domain.Enums;
 using Ical.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -35,6 +37,9 @@ public class CalendarSubscriptionService(
     private readonly ICurrentAccess _currentAccess = currentAccess;
 
     private OrganizationFilter OrganizationFilter => OrganizationFilter.From(_currentAccess.Scope);
+
+    private ScopeDeniedError ScopeDenied()
+        => new("an organization scope", _currentAccess.Scope?.OrganizationId?.ToString() ?? "none");
 
     public async Task<CalendarSubscriptionDto?> GetSubscriptionByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -60,11 +65,11 @@ public class CalendarSubscriptionService(
         return subs.Select(MapToDto);
     }
 
-    public async Task<CalendarSubscriptionDto> CreateSubscriptionAsync(CreateCalendarSubscriptionDto dto, CancellationToken ct = default)
+    public async Task<Result<CalendarSubscriptionDto>> CreateSubscriptionAsync(CreateCalendarSubscriptionDto dto, CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
-        if (filter.Denied) throw new UnauthorizedAccessException("The current scope cannot create calendar subscriptions.");
-        if (filter.OrganizationId is null) throw new InvalidOperationException("Calendar subscriptions require an organization scope.");
+        if (filter.Denied || filter.OrganizationId is null)
+            return Result.Fail<CalendarSubscriptionDto>(ScopeDenied());
 
         var sub = new CalendarSubscription
         {
@@ -77,40 +82,38 @@ public class CalendarSubscriptionService(
 
         _dbContext.CalendarSubscriptions.Add(sub);
         await _dbContext.SaveChangesAsync(ct);
-        return MapToDto(sub);
+        return Result.Ok(MapToDto(sub));
     }
 
-    public async Task<CalendarSubscriptionDto?> UpdateSubscriptionAsync(Guid id, UpdateCalendarSubscriptionDto dto, CancellationToken ct = default)
+    public async Task<Result<CalendarSubscriptionDto>> UpdateSubscriptionAsync(Guid id, UpdateCalendarSubscriptionDto dto, CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
         var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
-        if (filter.Denied) return null;
-        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
-
         var sub = await query.SingleOrDefaultAsync(ct);
-        if (sub == null) return null;
+        if (sub is null) return Result.Fail<CalendarSubscriptionDto>(new NotFoundError("calendar subscription", id));
+        if (filter.Denied || (filter.OrganizationId is { } orgId && sub.OrganizationId != orgId))
+            return Result.Fail<CalendarSubscriptionDto>(ScopeDenied());
 
         if (dto.Name != null) sub.Name = dto.Name;
         if (dto.Url != null) sub.Url = dto.Url;
         if (dto.IsActive.HasValue) sub.IsActive = dto.IsActive.Value;
 
         await _dbContext.SaveChangesAsync(ct);
-        return MapToDto(sub);
+        return Result.Ok(MapToDto(sub));
     }
 
-    public async Task<bool> DeleteSubscriptionAsync(Guid id, CancellationToken ct = default)
+    public async Task<Result> DeleteSubscriptionAsync(Guid id, CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
         var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
-        if (filter.Denied) return false;
-        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
-
         var sub = await query.SingleOrDefaultAsync(ct);
-        if (sub == null) return false;
+        if (sub is null) return Result.Fail(new NotFoundError("calendar subscription", id));
+        if (filter.Denied || (filter.OrganizationId is { } orgId && sub.OrganizationId != orgId))
+            return Result.Fail(ScopeDenied());
 
         _dbContext.CalendarSubscriptions.Remove(sub);
         await _dbContext.SaveChangesAsync(ct);
-        return true;
+        return Result.Ok();
     }
 
     public async Task TriggerSyncAsync(Guid id, CancellationToken ct = default)

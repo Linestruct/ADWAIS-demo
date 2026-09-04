@@ -4,6 +4,7 @@
 
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
+using Adwais.Api.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -40,7 +41,8 @@ public class GlobalConfigController(IGlobalConfigService globalConfigService) : 
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<GlobalConfigResponseDto>> UpdateConfig([FromBody] UpdateGlobalConfigRequestDto request)
     {
-        return Ok(await _globalConfigService.UpdateConfigAsync(request));
+        var result = await _globalConfigService.UpdateConfigAsync(request);
+        return result.IsFailed ? result.ToProblem(HttpContext) : Ok(result.Value);
     }
 
     /// <summary>

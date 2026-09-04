@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
@@ -125,7 +126,8 @@ public class GlobalConfigServiceTests
 
         var result = await service.UpdateConfigAsync(request);
 
-        Assert.Equal(30, result.SystemEventRetentionDays);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(30, result.Value.SystemEventRetentionDays);
 
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
@@ -147,7 +149,8 @@ public class GlobalConfigServiceTests
 
         var result = await service.UpdateConfigAsync(request);
 
-        Assert.Equal(30, result.MatViewRefreshIntervalMinutes);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(30, result.Value.MatViewRefreshIntervalMinutes);
 
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
@@ -165,7 +168,9 @@ public class GlobalConfigServiceTests
         var service = CreateService(dbContext, OrgAccess());
         var request = new UpdateGlobalConfigRequestDto(MatViewRefreshIntervalMinutes: 4);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateConfigAsync(request));
+        var result = await service.UpdateConfigAsync(request);
+        Assert.True(result.IsFailed);
+        Assert.IsType<ValidationError>(Assert.Single(result.Errors));
 
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);
@@ -185,7 +190,8 @@ public class GlobalConfigServiceTests
 
         var result = await service.UpdateConfigAsync(request);
 
-        Assert.Equal(new[] { Adwais.Application.Common.Jobs.RecurringJobKind.CalendarSync, Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder }, result.VisibleRecurringJobs);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(new[] { Adwais.Application.Common.Jobs.RecurringJobKind.CalendarSync, Adwais.Application.Common.Jobs.RecurringJobKind.RuntimeDataSeeder }, result.Value.VisibleRecurringJobs);
 
         var dbCheck = new AnalyticsDbContext(_options);
         var configDb = await dbCheck.GlobalConfigs.FindAsync(1);

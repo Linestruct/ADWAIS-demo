@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Common.Jobs;
 using Adwais.Application.DTOs.GlobalConfig;
@@ -19,6 +20,7 @@ using Adwais.Infrastructure.Jobs.MaterializedViews;
 using Adwais.Infrastructure.Jobs.Monitor;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -43,7 +45,7 @@ public class GlobalConfigService(
         return MapToDto(config);
     }
 
-    public async Task<GlobalConfigResponseDto> UpdateConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct = default)
+    public async Task<Result<GlobalConfigResponseDto>> UpdateConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct = default)
     {
         var config = await _dbContext.GlobalConfigs.SingleOrDefaultAsync(ct);
         if (config == null) throw new KeyNotFoundException("Global configuration not found.");
@@ -52,7 +54,11 @@ public class GlobalConfigService(
         if (request.MatViewRefreshIntervalMinutes.HasValue)
         {
             var interval = request.MatViewRefreshIntervalMinutes.Value;
-            if (interval < 5) throw new ArgumentException("Interval must be at least 5 minutes.", nameof(request.MatViewRefreshIntervalMinutes));
+            if (interval < 5)
+                return Result.Fail<GlobalConfigResponseDto>(new ValidationError(new Dictionary<string, string[]>
+                {
+                    [nameof(request.MatViewRefreshIntervalMinutes)] = ["Interval must be at least 5 minutes."]
+                }));
             config.MatViewRefreshIntervalMinutes = interval;
         }
         if (request.VisibleRecurringJobs is not null)
@@ -72,7 +78,7 @@ public class GlobalConfigService(
 
         await _eventService.LogAsync(nameof(GlobalConfigService), "Global configuration updated.");
 
-        return MapToDto(config);
+        return Result.Ok(MapToDto(config));
     }
 
     public async Task TriggerFeedFetchAsync(CancellationToken ct = default)

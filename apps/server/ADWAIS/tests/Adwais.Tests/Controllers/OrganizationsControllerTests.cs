@@ -75,17 +75,40 @@ public class OrganizationsControllerTests
         await _dbContext.SaveChangesAsync();
     }
 
+    private List<OrganizationSummary> Summaries(params (Guid id, string name)[] orgs) =>
+        orgs.Select(o => new OrganizationSummary(o.id, o.name, 1, 2)).ToList();
+
     [Fact]
     public async Task GetOrganizations_PlatformScope_ReturnsEveryOrganization()
     {
         GivenPlatformScope();
         await SeedAsync();
+        _organizationServiceMock.Setup(s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Summaries((_orgA, "Alpha"), (_orgB, "Beta"), (_orgC, "Gamma")));
 
-        var result = await _controller.GetOrganizations(CancellationToken.None);
+        var result = await _controller.GetOrganizations(null, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var orgs = Assert.IsAssignableFrom<IEnumerable<object>>(ok.Value).Cast<dynamic>().ToList();
+        var orgs = Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(ok.Value);
         Assert.Equal(3, orgs.Count);
+        Assert.Equal(1, orgs[0].MemberCount);
+        Assert.Equal(2, orgs[0].MonitorCount);
+    }
+
+    [Fact]
+    public async Task GetOrganizations_PlatformScope_WithId_ReturnsSingleOrganization()
+    {
+        GivenPlatformScope();
+        _organizationServiceMock.Setup(s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Summaries((_orgA, "Alpha"), (_orgB, "Beta")));
+
+        var found = await _controller.GetOrganizations(_orgA, CancellationToken.None);
+        var foundOk = Assert.IsType<OkObjectResult>(found.Result);
+        Assert.Single(Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(foundOk.Value));
+
+        var missing = await _controller.GetOrganizations(Guid.NewGuid(), CancellationToken.None);
+        var missingOk = Assert.IsType<OkObjectResult>(missing.Result);
+        Assert.Empty(Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(missingOk.Value));
     }
 
     [Fact]
@@ -98,15 +121,32 @@ public class OrganizationsControllerTests
             new UserAccess { Id = Guid.NewGuid(), UserId = _userId, OrganizationId = _orgA, Role = UserRole.Admin, CreatedAt = DateTimeOffset.UtcNow },
             new UserAccess { Id = Guid.NewGuid(), UserId = _userId, OrganizationId = _orgB, Role = UserRole.Employee, CreatedAt = DateTimeOffset.UtcNow });
         await _dbContext.SaveChangesAsync();
+        _organizationServiceMock.Setup(s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Summaries((_orgA, "Alpha"), (_orgB, "Beta"), (_orgC, "Gamma")));
 
-        var result = await _controller.GetOrganizations(CancellationToken.None);
+        var result = await _controller.GetOrganizations(null, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var orgs = Assert.IsAssignableFrom<IEnumerable<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>>(ok.Value).ToList();
+        var orgs = Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(ok.Value).ToList();
         var ids = orgs.Select(org => org.Id).ToList();
         Assert.Contains(_orgA, ids);
         Assert.Contains(_orgB, ids);
         Assert.DoesNotContain(_orgC, ids);
+    }
+
+    [Fact]
+    public async Task GetOrganizations_OrgScope_WithForeignId_ReturnsEmpty()
+    {
+        GivenOrgScope(_orgA);
+        GivenPrincipal(_userId);
+        await SeedAsync();
+        _organizationServiceMock.Setup(s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Summaries((_orgA, "Alpha"), (_orgB, "Beta")));
+
+        var result = await _controller.GetOrganizations(_orgB, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Empty(Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(ok.Value));
     }
 
     [Fact]
@@ -115,11 +155,13 @@ public class OrganizationsControllerTests
         GivenOrgScope(_orgA);
         GivenPrincipal(_userId);
         await SeedAsync();
+        _organizationServiceMock.Setup(s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Summaries((_orgA, "Alpha"), (_orgB, "Beta")));
 
-        var result = await _controller.GetOrganizations(CancellationToken.None);
+        var result = await _controller.GetOrganizations(null, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var orgs = Assert.IsAssignableFrom<IEnumerable<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>>(ok.Value).ToList();
+        var orgs = Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(ok.Value).ToList();
         Assert.Single(orgs);
         Assert.Equal(_orgA, orgs[0].Id);
     }
@@ -129,40 +171,13 @@ public class OrganizationsControllerTests
     {
         GivenDeniedScope();
 
-        var result = await _controller.GetOrganizations(CancellationToken.None);
+        var result = await _controller.GetOrganizations(null, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var orgs = Assert.IsAssignableFrom<IEnumerable<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>>(ok.Value).ToList();
-        Assert.Empty(orgs);
-    }
-
-    [Fact]
-    public async Task GetOrganization_PlatformScope_ReturnsAnyOrganization()
-    {
-        GivenPlatformScope();
-        _organizationServiceMock.Setup(s => s.GetOrganizationAsync(_orgA, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Organization { Id = _orgA, Name = "Alpha" });
-
-        var result = await _controller.GetOrganization(_orgA, CancellationToken.None);
-
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.Equal("Alpha", Assert.IsType<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>(ok.Value).Name);
-    }
-
-    [Fact]
-    public async Task GetOrganization_OrgScope_ReturnsOwnOrganizationOnly()
-    {
-        GivenOrgScope(_orgA);
-        _organizationServiceMock.Setup(s => s.GetOrganizationAsync(_orgA, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Organization { Id = _orgA, Name = "Alpha" });
-
-        var own = await _controller.GetOrganization(_orgA, CancellationToken.None);
-        Assert.IsType<OkObjectResult>(own.Result);
-
-        var foreign = await _controller.GetOrganization(_orgB, CancellationToken.None);
-        Assert.IsType<NotFoundResult>(foreign.Result);
+        Assert.Empty(
+            Assert.IsAssignableFrom<IEnumerable<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(ok.Value));
         _organizationServiceMock.Verify(
-            s => s.GetOrganizationAsync(_orgB, It.IsAny<CancellationToken>()), Times.Never);
+            s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -238,26 +253,5 @@ public class OrganizationsControllerTests
         var conflict = Assert.IsType<ConflictObjectResult>(
             await _controller.DeleteOrganization(_orgC, CancellationToken.None));
         Assert.NotNull(conflict.Value);
-    }
-
-    [Fact]
-    public async Task GetOrganizationSummaries_ReturnsMappedSummaries()
-    {
-        GivenPlatformScope();
-        _organizationServiceMock
-            .Setup(s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<OrganizationSummary>
-            {
-                new(_orgA, "Alpha", 2, 3),
-            });
-
-        var result = await _controller.GetOrganizationSummaries(CancellationToken.None);
-
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var summaries = Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(ok.Value);
-        var single = Assert.Single(summaries);
-        Assert.Equal(_orgA, single.Id);
-        Assert.Equal(2, single.MemberCount);
-        Assert.Equal(3, single.MonitorCount);
     }
 }

@@ -40,79 +40,40 @@ public class OrganizationsController(
 
     [HttpGet]
     [Authorize(Policy = "KioskOrStaffAccess")]
-    public async Task<ActionResult<OrganizationResponseDto[]>> GetOrganizations(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<OrganizationSummaryResponseDto>>> GetOrganizations(
+        [FromQuery] Guid? id, CancellationToken ct)
     {
         var filter = OrganizationFilter.From(_currentAccess.Scope);
         if (filter.Denied)
         {
-            return Ok(Array.Empty<OrganizationResponseDto>());
+            return Ok(Array.Empty<OrganizationSummaryResponseDto>());
         }
 
-        if (filter.OrganizationId is null)
+        List<Guid>? visibleOrgIds = null;
+        if (filter.OrganizationId is not null)
         {
-            var all = await _dbContext.Organizations
-                .AsNoTracking()
-                .OrderBy(org => org.Name)
-                .Select(org => new OrganizationResponseDto(org.Id, org.Name))
-                .ToArrayAsync(ct);
-            return Ok(all);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var membershipOrgIds = Guid.TryParse(userId, out var parsedUserId)
+                ? await _dbContext.UserAccesses
+                    .AsNoTracking()
+                    .Where(access => access.UserId == parsedUserId && access.OrganizationId != null)
+                    .Select(access => access.OrganizationId!.Value)
+                    .Distinct()
+                    .ToListAsync(ct)
+                : [];
+
+            visibleOrgIds = membershipOrgIds.Count > 0
+                ? membershipOrgIds
+                : [filter.OrganizationId.Value];
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var membershipOrgIds = Guid.TryParse(userId, out var parsedUserId)
-            ? await _dbContext.UserAccesses
-                .AsNoTracking()
-                .Where(access => access.UserId == parsedUserId && access.OrganizationId != null)
-                .Select(access => access.OrganizationId!.Value)
-                .Distinct()
-                .ToListAsync(ct)
-            : [];
-
-        var visibleOrgIds = membershipOrgIds.Count > 0
-            ? membershipOrgIds
-            : [filter.OrganizationId.Value];
-
-        var orgs = await _dbContext.Organizations
-            .AsNoTracking()
-            .Where(org => visibleOrgIds.Contains(org.Id))
-            .OrderBy(org => org.Name)
-            .Select(org => new OrganizationResponseDto(org.Id, org.Name))
-            .ToArrayAsync(ct);
-        return Ok(orgs);
-    }
-
-    /// <summary>
-    /// Lists every organization with member and monitor counts.
-    /// Platform admins only.
-    /// </summary>
-    [HttpGet("summaries")]
-    [Authorize(Policy = "PlatformAdminOnly")]
-    public async Task<ActionResult<IReadOnlyList<OrganizationSummaryResponseDto>>> GetOrganizationSummaries(
-        CancellationToken ct)
-    {
         var summaries = await _organizationService.GetOrganizationSummariesAsync(ct);
-        return Ok(summaries
+        var result = summaries
+            .Where(s => visibleOrgIds == null || visibleOrgIds.Contains(s.Id))
+            .Where(s => !id.HasValue || s.Id == id.Value)
             .Select(s => new OrganizationSummaryResponseDto(s.Id, s.Name, s.MemberCount, s.MonitorCount))
-            .ToList());
-    }
-
-    /// <summary>
-    /// Gets one organization. Platform admins address any organization;
-    /// staff see their own organization only.
-    /// </summary>
-    [HttpGet("{id:guid}")]
-    [Authorize(Policy = "KioskOrStaffAccess")]
-    public async Task<ActionResult<OrganizationResponseDto>> GetOrganization(Guid id, CancellationToken ct)
-    {
-        if (!CanRead(id))
-        {
-            return NotFound();
-        }
-
-        var org = await _organizationService.GetOrganizationAsync(id, ct);
-        return org is null
-            ? NotFound()
-            : Ok(new OrganizationResponseDto(org.Id, org.Name));
+            .ToList();
+        return Ok(result);
     }
 
     /// <summary>
@@ -125,7 +86,7 @@ public class OrganizationsController(
         [FromBody] CreateOrganizationRequestDto request, CancellationToken ct)
     {
         var org = await _organizationService.CreateOrganizationAsync(request.Name, ct);
-        return CreatedAtAction(nameof(GetOrganization), new { id = org.Id },
+        return CreatedAtAction(nameof(GetOrganizations), new { id = org.Id },
             new OrganizationResponseDto(org.Id, org.Name));
     }
 

@@ -3142,6 +3142,16 @@
         "tags": [
           "Organizations"
         ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -3150,7 +3160,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/OrganizationResponseDto"
+                    "$ref": "#/components/schemas/OrganizationSummaryResponseDto"
                   }
                 }
               },
@@ -3158,7 +3168,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/OrganizationResponseDto"
+                    "$ref": "#/components/schemas/OrganizationSummaryResponseDto"
                   }
                 }
               },
@@ -3166,7 +3176,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/OrganizationResponseDto"
+                    "$ref": "#/components/schemas/OrganizationSummaryResponseDto"
                   }
                 }
               }
@@ -3222,85 +3232,7 @@
         }
       }
     },
-    "/api/organizations/summaries": {
-      "get": {
-        "tags": [
-          "Organizations"
-        ],
-        "summary": "Lists every organization with member and monitor counts.\r\nPlatform admins only.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationSummaryResponseDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationSummaryResponseDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/OrganizationSummaryResponseDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/organizations/{id}": {
-      "get": {
-        "tags": [
-          "Organizations"
-        ],
-        "summary": "Gets one organization. Platform admins address any organization;\r\nstaff see their own organization only.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrganizationResponseDto"
-                }
-              }
-            }
-          }
-        }
-      },
       "patch": {
         "tags": [
           "Organizations"

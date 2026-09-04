@@ -65,6 +65,7 @@ import type {
   GetApiMonitorsIdLatencyParams,
   GetApiMonitorsParams,
   GetApiMonitorsUnassignedParams,
+  GetApiOrganizationsParams,
   GetApiSystemEventParams,
   GetApiTenantsParams,
   GlobalConfigResponseDto,
@@ -7880,17 +7881,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     }
 
 export type getApiOrganizationsResponse200TextPlain = {
-  data: OrganizationResponseDto[]
+  data: OrganizationSummaryResponseDto[]
   status: 200
 }
 
 export type getApiOrganizationsResponse200ApplicationJson = {
-  data: OrganizationResponseDto[]
+  data: OrganizationSummaryResponseDto[]
   status: 200
 }
 
 export type getApiOrganizationsResponse200TextJson = {
-  data: OrganizationResponseDto[]
+  data: OrganizationSummaryResponseDto[]
   status: 200
 }
 
@@ -7901,17 +7902,24 @@ export type getApiOrganizationsResponseSuccess = (getApiOrganizationsResponse200
 
 export type getApiOrganizationsResponse = (getApiOrganizationsResponseSuccess)
 
-export const getGetApiOrganizationsUrl = () => {
+export const getGetApiOrganizationsUrl = (params?: GetApiOrganizationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/organizations`
+  return stringifiedParams.length > 0 ? `/api/organizations?${stringifiedParams}` : `/api/organizations`
 }
 
-export const getApiOrganizations = async ( options?: RequestInit): Promise<getApiOrganizationsResponse> => {
+export const getApiOrganizations = async (params?: GetApiOrganizationsParams, options?: RequestInit): Promise<getApiOrganizationsResponse> => {
 
-  return customClient<getApiOrganizationsResponse>(getGetApiOrganizationsUrl(),
+  return customClient<getApiOrganizationsResponse>(getGetApiOrganizationsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -7924,23 +7932,23 @@ export const getApiOrganizations = async ( options?: RequestInit): Promise<getAp
 
 
 
-export const getGetApiOrganizationsQueryKey = () => {
+export const getGetApiOrganizationsQueryKey = (params?: GetApiOrganizationsParams,) => {
     return [
-    `/api/organizations`
+    `/api/organizations`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetApiOrganizationsQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiOrganizationsQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(params?: GetApiOrganizationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizations>>> = ({ signal }) => getApiOrganizations({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizations>>> = ({ signal }) => getApiOrganizations(params, { signal, ...requestOptions });
 
 
 
@@ -7954,7 +7962,7 @@ export type GetApiOrganizationsQueryError = unknown
 
 
 export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>> & Pick<
+ params: undefined |  GetApiOrganizationsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiOrganizations>>,
           TError,
@@ -7964,7 +7972,7 @@ export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiO
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>> & Pick<
+ params?: GetApiOrganizationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiOrganizations>>,
           TError,
@@ -7974,16 +7982,16 @@ export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiO
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ params?: GetApiOrganizationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiOrganizations>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ params?: GetApiOrganizationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizations>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetApiOrganizationsQueryOptions(options)
+  const queryOptions = getGetApiOrganizationsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -8089,256 +8097,6 @@ export const usePostApiOrganizations = <TError = unknown,
       > => {
       return useMutation(getPostApiOrganizationsMutationOptions(options), queryClient);
     }
-
-export type getApiOrganizationsSummariesResponse200TextPlain = {
-  data: OrganizationSummaryResponseDto[]
-  status: 200
-}
-
-export type getApiOrganizationsSummariesResponse200ApplicationJson = {
-  data: OrganizationSummaryResponseDto[]
-  status: 200
-}
-
-export type getApiOrganizationsSummariesResponse200TextJson = {
-  data: OrganizationSummaryResponseDto[]
-  status: 200
-}
-
-export type getApiOrganizationsSummariesResponseSuccess = (getApiOrganizationsSummariesResponse200TextPlain | getApiOrganizationsSummariesResponse200ApplicationJson | getApiOrganizationsSummariesResponse200TextJson) & {
-  headers: Headers;
-};
-;
-
-export type getApiOrganizationsSummariesResponse = (getApiOrganizationsSummariesResponseSuccess)
-
-export const getGetApiOrganizationsSummariesUrl = () => {
-
-
-
-
-  return `/api/organizations/summaries`
-}
-
-/**
- * @summary Lists every organization with member and monitor counts.
-Platform admins only.
- */
-export const getApiOrganizationsSummaries = async ( options?: RequestInit): Promise<getApiOrganizationsSummariesResponse> => {
-
-  return customClient<getApiOrganizationsSummariesResponse>(getGetApiOrganizationsSummariesUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetApiOrganizationsSummariesQueryKey = () => {
-    return [
-    `/api/organizations/summaries`
-    ] as const;
-    }
-
-
-export const getGetApiOrganizationsSummariesQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsSummariesQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>> = ({ signal }) => getApiOrganizationsSummaries({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetApiOrganizationsSummariesQueryResult = NonNullable<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>>
-export type GetApiOrganizationsSummariesQueryError = unknown
-
-
-export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>,
-          TError,
-          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>,
-          TError,
-          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Lists every organization with member and monitor counts.
-Platform admins only.
- */
-
-export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetApiOrganizationsSummariesQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export type getApiOrganizationsIdResponse200TextPlain = {
-  data: OrganizationResponseDto
-  status: 200
-}
-
-export type getApiOrganizationsIdResponse200ApplicationJson = {
-  data: OrganizationResponseDto
-  status: 200
-}
-
-export type getApiOrganizationsIdResponse200TextJson = {
-  data: OrganizationResponseDto
-  status: 200
-}
-
-export type getApiOrganizationsIdResponseSuccess = (getApiOrganizationsIdResponse200TextPlain | getApiOrganizationsIdResponse200ApplicationJson | getApiOrganizationsIdResponse200TextJson) & {
-  headers: Headers;
-};
-;
-
-export type getApiOrganizationsIdResponse = (getApiOrganizationsIdResponseSuccess)
-
-export const getGetApiOrganizationsIdUrl = (id: string,) => {
-
-
-
-
-  return `/api/organizations/${id}`
-}
-
-/**
- * @summary Gets one organization. Platform admins address any organization;
-staff see their own organization only.
- */
-export const getApiOrganizationsId = async (id: string, options?: RequestInit): Promise<getApiOrganizationsIdResponse> => {
-
-  return customClient<getApiOrganizationsIdResponse>(getGetApiOrganizationsIdUrl(id),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetApiOrganizationsIdQueryKey = (id: string,) => {
-    return [
-    `/api/organizations/${id}`
-    ] as const;
-    }
-
-
-export const getGetApiOrganizationsIdQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsIdQueryKey(id);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizationsId>>> = ({ signal }) => getApiOrganizationsId(id, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetApiOrganizationsIdQueryResult = NonNullable<Awaited<ReturnType<typeof getApiOrganizationsId>>>
-export type GetApiOrganizationsIdQueryError = unknown
-
-
-export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
- id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiOrganizationsId>>,
-          TError,
-          Awaited<ReturnType<typeof getApiOrganizationsId>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiOrganizationsId>>,
-          TError,
-          Awaited<ReturnType<typeof getApiOrganizationsId>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Gets one organization. Platform admins address any organization;
-staff see their own organization only.
- */
-
-export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetApiOrganizationsIdQueryOptions(id,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
 
 export type patchApiOrganizationsIdResponse200TextPlain = {
   data: OrganizationResponseDto

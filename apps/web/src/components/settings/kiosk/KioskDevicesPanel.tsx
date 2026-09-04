@@ -33,7 +33,7 @@ export function KioskDevicesPanel() {
         Displays authorized for this organization. Removing one returns it to the activation screen.
       </p>
 
-      <div className="border border-outline-variant bg-surface custom-scrollbar overflow-auto">
+      <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface custom-scrollbar overflow-auto">
         <table className="w-full whitespace-nowrap text-left text-sm">
           <thead className="sticky top-0 z-10 border-b border-outline-variant bg-surface-container-high text-on-surface-variant">
             <tr>

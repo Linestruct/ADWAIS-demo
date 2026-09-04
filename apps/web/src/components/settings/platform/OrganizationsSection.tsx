@@ -106,7 +106,7 @@ export function OrganizationsSection() {
         </div>
       )}
 
-      <div className="mt-4 border border-outline-variant bg-surface custom-scrollbar overflow-auto">
+      <div className="mt-4 border border-outline-variant rounded-xl overflow-hidden bg-surface custom-scrollbar overflow-auto">
         <table className="w-full whitespace-nowrap text-left text-sm">
           <thead className="sticky top-0 z-10 border-b border-outline-variant bg-surface-container-high text-on-surface-variant">
             <tr>

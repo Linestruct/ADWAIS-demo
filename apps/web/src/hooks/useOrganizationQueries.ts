@@ -5,7 +5,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useDeleteApiOrganizationsId,
-  useGetApiOrganizationsSummaries,
+  useGetApiOrganizations,
   usePatchApiOrganizationsId,
   usePostApiOrganizations,
   useGetApiOrganizationsIdConfig,
@@ -16,11 +16,12 @@ import { toast } from 'sonner';
 
 function invalidateOrganizationQueries(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ['organization-summaries'] });
+  queryClient.invalidateQueries({ queryKey: ['organizations'] });
   queryClient.invalidateQueries({ queryKey: ['/api/organizations'] });
 }
 
 export function useOrganizationSummariesQuery() {
-  return useGetApiOrganizationsSummaries<OrganizationSummaryDto[], Error>({
+  return useGetApiOrganizations<OrganizationSummaryDto[], Error>(undefined, {
     query: {
       queryKey: ['organization-summaries'],
       select: (res) => res.data as OrganizationSummaryDto[],

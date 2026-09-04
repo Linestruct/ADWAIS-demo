@@ -11,6 +11,7 @@ import { KeyRound, LogOut, MonitorSmartphone } from 'lucide-react';
 import { useActivateKioskMutation } from '../../hooks/useKioskAuth';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { SecureButton } from '../../components/common/ui/SecureButton';
+import { Button } from '../../components/common/ui/Button';
 import { FormField } from '../../components/common/ui/FormField';
 import { removeKioskToken } from '../../utils/auth';
 import { ErrorAlert } from '../../components/common/ui/ErrorAlert';
@@ -77,8 +78,8 @@ export function AuthenticationSettings() {
         icon={<KeyRound size={24} />}
       />
       <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-6">
-        <div className="flex flex-col gap-6 max-w-3xl">
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+          <div className="rounded-xl border border-outline-variant p-6 space-y-4">
             <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
               <MonitorSmartphone size={20} /> Kiosk activation
             </h3>
@@ -123,13 +124,7 @@ export function AuthenticationSettings() {
             </form>
           </div>
 
-          <hr className="border-outline-variant" />
-
-          {isStaff && <KioskDevicesPanel />}
-
-          <hr className="border-outline-variant" />
-
-          <div className="space-y-4">
+          <div className="rounded-xl border border-outline-variant p-6 space-y-4">
             <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
               <KeyRound size={20} /> Current session
             </h3>
@@ -141,20 +136,27 @@ export function AuthenticationSettings() {
                 {auth?.user?.profile?.preferred_username || auth?.user?.profile?.email || 'Kiosk session'}
               </p>
             </div>
-            
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm font-medium text-on-surface-variant">This only signs out the current device.</span>
-              <button
+              <Button
                 type="button"
                 onClick={handleSignOut}
-                className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full hover:bg-error px-5 text-base font-bold hover:text-on-error transition-colors bg-error-container text-on-error-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+                variant="tonal"
+                color="error"
+                icon={<LogOut size={18} aria-hidden="true" />}
               >
-                <LogOut size={18} aria-hidden="true" />
                 Sign Out
-              </button>
+              </Button>
             </div>
           </div>
         </div>
+
+        {isStaff && (
+          <div className="mt-6 rounded-xl border border-outline-variant p-6">
+            <KioskDevicesPanel />
+          </div>
+        )}
       </div>
     </SettingsPanel>
     </div>

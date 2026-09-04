@@ -9,7 +9,7 @@ import {
   useDeleteApiUsersIdMembershipsMembershipId,
   useGetApiOrganizations,
 } from '../api/generated/endpoints';
-import type { AddUserMembershipRequestDto, OrganizationResponseDto, UserMembershipResponseDto } from '@types';
+import type { AddUserMembershipRequestDto, OrganizationSummaryDto, UserMembershipResponseDto } from '@types';
 import { toast } from 'sonner';
 
 export function useMembershipsQuery(userId: string) {
@@ -23,10 +23,10 @@ export function useMembershipsQuery(userId: string) {
 }
 
 export function useOrganizationsForPickerQuery() {
-  return useGetApiOrganizations<OrganizationResponseDto[], Error>({
+  return useGetApiOrganizations<OrganizationSummaryDto[], Error>(undefined, {
     query: {
       queryKey: ['organizations'],
-      select: (res) => res.data,
+      select: (res) => res.data as OrganizationSummaryDto[],
       retry: false,
     },
   });

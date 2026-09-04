@@ -66,8 +66,7 @@ describe('organizations section', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('lists organizations with member and monitor counts', () => {
-    testState.organizations = twoOrgs;
+  it('lists organizations with member and monitor counts', () => {    testState.organizations = twoOrgs;
     render(<OrganizationsSection />);
     expect(screen.getByText('Acme')).toBeInTheDocument();
     expect(screen.getByText('Other')).toBeInTheDocument();
@@ -121,5 +120,17 @@ describe('organizations section', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Acme' }));
     expect(testState.deleteOrganization).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
+  });
+
+  it('shows a loading state', () => {
+    testState.isLoading = true;
+    render(<OrganizationsSection />);
+    expect(screen.getByLabelText('Loading organizations')).toBeInTheDocument();
+  });
+
+  it('explains a failed organizations query', () => {
+    testState.isError = true;
+    render(<OrganizationsSection />);
+    expect(screen.getByText('Unable to load organizations.')).toBeInTheDocument();
   });
 });

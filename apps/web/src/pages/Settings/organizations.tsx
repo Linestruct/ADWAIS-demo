@@ -15,6 +15,7 @@ import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { SettingsPanelHeader } from '../../components/common/layout/SettingsPanelHeader';
 import { EmptyState } from '../../components/common/ui/EmptyState';
 import { Button } from '../../components/common/ui/Button';
+import { FormField } from '../../components/common/ui/FormField';
 import { TableSkeletonRows } from '../../components/common/ui/TableSkeletonRows';
 
 export function OrganizationsView() {
@@ -94,12 +95,14 @@ export function OrganizationsView() {
 
           {isCreating && (
             <div className="flex flex-wrap items-center gap-3 px-6 py-4">
-              <input
-                aria-label="New organization name"
-                className="min-h-11 min-w-52 flex-1 rounded-xl border border-outline-variant bg-surface px-4 text-base"
+              <FormField
+                id="new-organization-name"
+                label="New organization name"
+                hideLabel
                 placeholder="Organization name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                containerClassName="min-w-52 flex-1"
               />
               <Button
                 onClick={handleCreate}
@@ -134,11 +137,13 @@ export function OrganizationsView() {
                     <tr key={org.id}>
                       <td className="px-4 py-3 sm:px-5">
                         {editingId === org.id ? (
-                          <input
-                            aria-label={`Rename ${org.name}`}
-                            className="min-h-10 w-full max-w-64 rounded-xl border border-outline-variant bg-surface px-3 text-sm"
+                          <FormField
+                            id={`rename-organization-${org.id}`}
+                            label={`Rename ${org.name}`}
+                            hideLabel
                             value={draftName}
                             onChange={(e) => setDraftName(e.target.value)}
+                            containerClassName="w-full max-w-64"
                           />
                         ) : (
                           <span className="font-bold">{org.name}</span>

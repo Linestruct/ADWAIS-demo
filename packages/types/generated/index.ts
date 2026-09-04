@@ -53,6 +53,7 @@ export * from './getApiMonitorsAvailabilityParams';
 export * from './getApiMonitorsIdLatencyParams';
 export * from './getApiMonitorsParams';
 export * from './getApiMonitorsUnassignedParams';
+export * from './getApiOrganizationsParams';
 export * from './getApiSystemEventParams';
 export * from './getApiTenantsParams';
 export * from './globalConfigResponseDto';

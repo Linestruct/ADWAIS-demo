@@ -5783,7 +5783,7 @@ export const getGetApiKioskTokenUrl = (params?: GetApiKioskTokenParams,) => {
 }
 
 /**
- * @summary Retrieves a valid 30-day JWT local token for an authorized kiosk device.
+ * @summary Retrieves a valid 1-hour JWT local token for an authorized kiosk device.
  */
 export const getApiKioskToken = async (params?: GetApiKioskTokenParams, options?: RequestInit): Promise<getApiKioskTokenResponse> => {
 
@@ -5854,7 +5854,7 @@ export function useGetApiKioskToken<TData = Awaited<ReturnType<typeof getApiKios
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Retrieves a valid 30-day JWT local token for an authorized kiosk device.
+ * @summary Retrieves a valid 1-hour JWT local token for an authorized kiosk device.
  */
 
 export function useGetApiKioskToken<TData = Awaited<ReturnType<typeof getApiKioskToken>>, TError = unknown>(
@@ -5874,6 +5874,205 @@ export function useGetApiKioskToken<TData = Awaited<ReturnType<typeof getApiKios
 
 
 
+
+export type getApiKioskDevicesResponse200 = {
+  data: void
+  status: 200
+}
+
+export type getApiKioskDevicesResponseSuccess = (getApiKioskDevicesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getApiKioskDevicesResponse = (getApiKioskDevicesResponseSuccess)
+
+export const getGetApiKioskDevicesUrl = () => {
+
+
+
+
+  return `/api/kiosk/devices`
+}
+
+/**
+ * @summary Lists kiosk devices. Platform admins see every device; staff see
+their own organization's devices.
+ */
+export const getApiKioskDevices = async ( options?: RequestInit): Promise<getApiKioskDevicesResponse> => {
+
+  return customClient<getApiKioskDevicesResponse>(getGetApiKioskDevicesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiKioskDevicesQueryKey = () => {
+    return [
+    `/api/kiosk/devices`
+    ] as const;
+    }
+
+
+export const getGetApiKioskDevicesQueryOptions = <TData = Awaited<ReturnType<typeof getApiKioskDevices>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKioskDevices>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiKioskDevicesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiKioskDevices>>> = ({ signal }) => getApiKioskDevices({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiKioskDevices>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiKioskDevicesQueryResult = NonNullable<Awaited<ReturnType<typeof getApiKioskDevices>>>
+export type GetApiKioskDevicesQueryError = unknown
+
+
+export function useGetApiKioskDevices<TData = Awaited<ReturnType<typeof getApiKioskDevices>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKioskDevices>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiKioskDevices>>,
+          TError,
+          Awaited<ReturnType<typeof getApiKioskDevices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiKioskDevices<TData = Awaited<ReturnType<typeof getApiKioskDevices>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKioskDevices>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiKioskDevices>>,
+          TError,
+          Awaited<ReturnType<typeof getApiKioskDevices>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiKioskDevices<TData = Awaited<ReturnType<typeof getApiKioskDevices>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKioskDevices>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Lists kiosk devices. Platform admins see every device; staff see
+their own organization's devices.
+ */
+
+export function useGetApiKioskDevices<TData = Awaited<ReturnType<typeof getApiKioskDevices>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKioskDevices>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiKioskDevicesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type deleteApiKioskDevicesDeviceIdResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteApiKioskDevicesDeviceIdResponseSuccess = (deleteApiKioskDevicesDeviceIdResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deleteApiKioskDevicesDeviceIdResponse = (deleteApiKioskDevicesDeviceIdResponseSuccess)
+
+export const getDeleteApiKioskDevicesDeviceIdUrl = (deviceId: string,) => {
+
+
+
+
+  return `/api/kiosk/devices/${deviceId}`
+}
+
+/**
+ * @summary Removes a kiosk device row. The display drops to the activation
+screen at its next token refresh.
+ */
+export const deleteApiKioskDevicesDeviceId = async (deviceId: string, options?: RequestInit): Promise<deleteApiKioskDevicesDeviceIdResponse> => {
+
+  return customClient<deleteApiKioskDevicesDeviceIdResponse>(getDeleteApiKioskDevicesDeviceIdUrl(deviceId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteApiKioskDevicesDeviceIdMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiKioskDevicesDeviceId>>, TError,{deviceId: string}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteApiKioskDevicesDeviceId>>, TError,{deviceId: string}, TContext> => {
+
+const mutationKey = ['deleteApiKioskDevicesDeviceId'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteApiKioskDevicesDeviceId>>, {deviceId: string}> = (props) => {
+          const {deviceId} = props ?? {};
+
+          return  deleteApiKioskDevicesDeviceId(deviceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteApiKioskDevicesDeviceIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiKioskDevicesDeviceId>>>
+
+    export type DeleteApiKioskDevicesDeviceIdMutationError = unknown
+
+    /**
+ * @summary Removes a kiosk device row. The display drops to the activation
+screen at its next token refresh.
+ */
+export const useDeleteApiKioskDevicesDeviceId = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiKioskDevicesDeviceId>>, TError,{deviceId: string}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteApiKioskDevicesDeviceId>>,
+        TError,
+        {deviceId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteApiKioskDevicesDeviceIdMutationOptions(options), queryClient);
+    }
 
 export type postApiKioskSwaggerAdminTokenResponse200 = {
   data: void

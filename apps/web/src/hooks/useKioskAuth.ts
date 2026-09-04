@@ -19,7 +19,7 @@ export interface ActivateKioskRequest {
 
 export interface TokenResponse {
   token: string;
-  expiresInDays: number;
+  expiresInHours: number;
 }
 
 export const kioskKeys = {

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { isDemoMode, userManager } from './utils/oidcConfig';
-import { removeKioskToken } from './utils/auth';
+import { removeKioskToken, tryRefreshKioskToken } from './utils/auth';
 import { readStoredOrgId, setSelectedOrgId, notifyOrgSelectionCheck } from './utils/orgSelection';
 
 export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Headers> {
@@ -53,6 +53,10 @@ const user = await userManager?.getUser();
     sessionStorage.clear();
     window.location.href = '/login';
   } else {
+    if (await tryRefreshKioskToken()) {
+      window.location.reload();
+      return;
+    }
     localStorage.removeItem('kiosk_token');
     if (isDemoMode) {
       window.location.reload();

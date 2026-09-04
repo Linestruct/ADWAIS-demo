@@ -302,4 +302,46 @@ test('apiFetch does not redirect on 403 for non-profile routes even if session i
   expect(mockLocation.href).toBe('http://localhost/financial');
 });
 
+test('apiFetch reloads with a fresh kiosk token when the device is still authorized', async () => {
+  const reload = vi.fn();
+  const location = {
+    pathname: '/fleet-status',
+    href: 'http://localhost/fleet-status',
+    reload,
+  };
+  vi.stubGlobal('window', { location });
+  vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+    key === 'kiosk_device_id' ? 'kiosk-1' : key === 'kiosk_token' ? 'expired-token' : null);
+  vi.stubGlobal('fetch', vi.fn()
+    .mockResolvedValueOnce({ ok: false, status: 401, text: async () => 'Unauthorized' })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ token: 'fresh-token', expiresInHours: 1 }) }));
+
+  await expect(apiFetch('http://test.local/api/users/me')).rejects.toThrow();
+
+  expect(localStorage.setItem).toHaveBeenCalledWith('kiosk_token', 'fresh-token');
+  expect(reload).toHaveBeenCalledOnce();
+  expect(location.href).toBe('http://localhost/fleet-status');
+});
+
+test('apiFetch falls through to /kiosk when the device is no longer authorized', async () => {
+  const location = {
+    pathname: '/fleet-status',
+    href: 'http://localhost/fleet-status',
+    reload: vi.fn(),
+  };
+  vi.stubGlobal('window', { location });
+  vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
+    key === 'kiosk_device_id' ? 'kiosk-1' : key === 'kiosk_token' ? 'expired-token' : null);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false,
+    status: 401,
+    text: async () => 'Unauthorized',
+    json: async () => ({}),
+  }));
+
+  await expect(apiFetch('http://test.local/api/users/me')).rejects.toThrow();
+
+  expect(location.href).toBe('/kiosk');
+  expect(location.reload).not.toHaveBeenCalled();
+});
 

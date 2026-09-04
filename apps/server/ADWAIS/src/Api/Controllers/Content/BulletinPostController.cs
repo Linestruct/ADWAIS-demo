@@ -4,10 +4,12 @@
 
 using System.Security.Claims;
 using Adwais.Api.DTOs.Intranet;
+using Adwais.Api.Extensions;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Intranet;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Adwais.Api.Controllers.Content;
@@ -36,6 +38,9 @@ public class BulletinPostController(IBulletinPostService postService) : Controll
 
     [HttpPost]
     [Authorize(Policy = "StaffAccess")]
+    [ProducesResponseType(typeof(BulletinPostResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BulletinPostResponseDto>> CreatePost([FromBody] CreateBulletinPostDto dto, CancellationToken ct)
     {
         var nameIdentifier = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -46,12 +51,17 @@ public class BulletinPostController(IBulletinPostService postService) : Controll
         }
 
         var post = await _postService.CreatePostAsync(userId, dto.Title, dto.Body, ct);
+        if (post.IsFailed) return post.ToProblem(HttpContext);
 
-        return CreatedAtAction(nameof(GetPost), new { id = post.Id }, ToResponse(post));
+        return CreatedAtAction(nameof(GetPost), new { id = post.Value.Id }, ToResponse(post.Value));
     }
 
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = "StaffAccess")]
+    [ProducesResponseType(typeof(BulletinPostResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BulletinPostResponseDto>> UpdatePost(
         Guid id,
         [FromBody] UpdateBulletinPostDto dto,
@@ -66,11 +76,14 @@ public class BulletinPostController(IBulletinPostService postService) : Controll
         if (!isAdmin && !isAuthor) return Forbid();
 
         var updated = await _postService.UpdatePostAsync(id, dto.Title, dto.Body, ct);
-        return updated == null ? NotFound() : Ok(ToResponse(updated));
+        return updated.IsFailed ? updated.ToProblem(HttpContext) : Ok(ToResponse(updated.Value));
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "StaffAccess")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeletePost(Guid id, CancellationToken ct)
     {
         var post = await _postService.GetPostByIdAsync(id, ct);
@@ -82,7 +95,7 @@ public class BulletinPostController(IBulletinPostService postService) : Controll
         if (!isAdmin && !isAuthor) return Forbid();
 
         var deleted = await _postService.DeletePostAsync(id, ct);
-        return deleted ? NoContent() : NotFound();
+        return deleted.IsFailed ? deleted.ToProblem(HttpContext) : NoContent();
     }
 
     private static BulletinPostResponseDto ToResponse(BulletinPost post)

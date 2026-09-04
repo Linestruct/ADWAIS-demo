@@ -8,10 +8,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Intranet;
 using Microsoft.EntityFrameworkCore;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -21,6 +23,9 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
     private readonly ICurrentAccess _currentAccess = currentAccess;
 
     private OrganizationFilter OrganizationFilter => OrganizationFilter.From(_currentAccess.Scope);
+
+    private ScopeDeniedError ScopeDenied()
+        => new("an organization scope", _currentAccess.Scope?.OrganizationId?.ToString() ?? "none");
 
     public async Task<BulletinPost?> GetPostByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -38,12 +43,18 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
         return post;
     }
 
-    public Task<BulletinPost> CreatePostAsync(
+    public async Task<Result<BulletinPost>> CreatePostAsync(
         Guid userId,
         string title,
         string body,
         CancellationToken ct = default)
-        => CreatePostAsync(userId, title, body, organizationId: null, ct);
+    {
+        var filter = OrganizationFilter;
+        if (filter.Denied || filter.OrganizationId is null)
+            return Result.Fail<BulletinPost>(ScopeDenied());
+
+        return Result.Ok(await CreatePostInOrganizationAsync(userId, title, body, filter.OrganizationId.Value, ct));
+    }
 
     public async Task<BulletinPost> CreatePostAsync(
         Guid userId,
@@ -75,10 +86,16 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
             targetOrgId = filter.OrganizationId.Value;
         }
 
+        return await CreatePostInOrganizationAsync(userId, title, body, targetOrgId, ct);
+    }
+
+    private async Task<BulletinPost> CreatePostInOrganizationAsync(
+        Guid userId, string title, string body, Guid organizationId, CancellationToken ct)
+    {
         var post = new BulletinPost
         {
             Id = Guid.NewGuid(),
-            OrganizationId = targetOrgId,
+            OrganizationId = organizationId,
             UserId = userId,
             Title = title,
             Body = body,
@@ -105,7 +122,7 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
         return await query.ToListAsync(ct);
     }
 
-    public async Task<BulletinPost?> UpdatePostAsync(
+    public async Task<Result<BulletinPost>> UpdatePostAsync(
         Guid id,
         string? title,
         string? body,
@@ -113,32 +130,30 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
     {
         var filter = OrganizationFilter;
         var query = _dbContext.BulletinPosts.Where(p => p.Id == id);
-        if (filter.Denied) return null;
-        if (filter.OrganizationId is { } orgId) query = query.Where(p => p.OrganizationId == orgId);
-
         var post = await query.SingleOrDefaultAsync(ct);
-        if (post == null) return null;
+        if (post is null) return Result.Fail<BulletinPost>(new NotFoundError("bulletin post", id));
+        if (filter.Denied || (filter.OrganizationId is { } orgId && post.OrganizationId != orgId))
+            return Result.Fail<BulletinPost>(ScopeDenied());
 
         if (title != null) post.Title = title;
         if (body != null) post.Body = body;
         post.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(ct);
-        return await GetPostByIdAsync(post.Id, ct) ?? post;
+        return Result.Ok(await GetPostByIdAsync(post.Id, ct) ?? post);
     }
 
-    public async Task<bool> DeletePostAsync(Guid id, CancellationToken ct = default)
+    public async Task<Result> DeletePostAsync(Guid id, CancellationToken ct = default)
     {
         var filter = OrganizationFilter;
         var query = _dbContext.BulletinPosts.Where(p => p.Id == id);
-        if (filter.Denied) return false;
-        if (filter.OrganizationId is { } orgId) query = query.Where(p => p.OrganizationId == orgId);
-
         var post = await query.SingleOrDefaultAsync(ct);
-        if (post == null) return false;
+        if (post is null) return Result.Fail(new NotFoundError("bulletin post", id));
+        if (filter.Denied || (filter.OrganizationId is { } orgId && post.OrganizationId != orgId))
+            return Result.Fail(ScopeDenied());
 
         _dbContext.BulletinPosts.Remove(post);
         await _dbContext.SaveChangesAsync(ct);
-        return true;
+        return Result.Ok();
     }
 }

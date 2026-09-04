@@ -36,12 +36,13 @@ public class BulletinPostServiceTests
         var result = await service.CreatePostAsync(userId, "Post Title", "Post Body", CancellationToken.None);
 
         // Assert
-        Assert.NotEqual(Guid.Empty, result.Id);
-        Assert.Equal(userId, result.UserId);
-        Assert.Equal("Post Title", result.Title);
-        Assert.Equal("Post Body", result.Body);
+        Assert.True(result.IsSuccess);
+        Assert.NotEqual(Guid.Empty, result.Value.Id);
+        Assert.Equal(userId, result.Value.UserId);
+        Assert.Equal("Post Title", result.Value.Title);
+        Assert.Equal("Post Body", result.Value.Body);
 
-        var saved = await dbContext.BulletinPosts.FindAsync(result.Id);
+        var saved = await dbContext.BulletinPosts.FindAsync(result.Value.Id);
         Assert.NotNull(saved);
         Assert.Equal("Post Title", saved.Title);
     }
@@ -118,13 +119,13 @@ public class BulletinPostServiceTests
 
         var service = new BulletinPostService(dbContext, PlatformAccess());
 
-        Assert.True(await service.DeletePostAsync(post.Id, CancellationToken.None));
-        Assert.False(await service.DeletePostAsync(post.Id, CancellationToken.None));
+        Assert.True((await service.DeletePostAsync(post.Id, CancellationToken.None)).IsSuccess);
+        Assert.True((await service.DeletePostAsync(post.Id, CancellationToken.None)).IsFailed);
         Assert.Null(await dbContext.BulletinPosts.FindAsync(post.Id));
     }
 
     [Fact]
-    public async Task CreatePostAsync_WithoutOrganizationScope_Throws()
+    public async Task CreatePostAsync_WithoutOrganizationScope_ReturnsScopeDenied()
     {
         var dbName = Guid.NewGuid().ToString();
         var options = new DbContextOptionsBuilder<AnalyticsDbContext>().UseInMemoryDatabase(dbName).Options;
@@ -132,8 +133,9 @@ public class BulletinPostServiceTests
 
         var service = new BulletinPostService(dbContext, PlatformAccess());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.CreatePostAsync(Guid.NewGuid(), "Title", "Body", CancellationToken.None));
+        var result = await service.CreatePostAsync(Guid.NewGuid(), "Title", "Body", CancellationToken.None);
+
+        Assert.True(result.IsFailed);
     }
 
     [Fact]

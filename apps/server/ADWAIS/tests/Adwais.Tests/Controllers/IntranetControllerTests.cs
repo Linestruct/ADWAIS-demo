@@ -303,7 +303,7 @@ public class IntranetControllerTests
         };
         var postServiceMock = new Mock<IBulletinPostService>();
         postServiceMock.Setup(s => s.GetPostByIdAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(post);
-        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(FluentResults.Result.Ok());
         var controller = CreatePostsController(postServiceMock, adminId, "Admin");
 
         var result = await controller.DeletePost(post.Id, CancellationToken.None);
@@ -326,7 +326,7 @@ public class IntranetControllerTests
         };
         var postServiceMock = new Mock<IBulletinPostService>();
         postServiceMock.Setup(s => s.GetPostByIdAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(post);
-        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(FluentResults.Result.Ok());
         var controller = CreatePostsController(postServiceMock, authorId, "Employee");
 
         var result = await controller.DeletePost(post.Id, CancellationToken.None);

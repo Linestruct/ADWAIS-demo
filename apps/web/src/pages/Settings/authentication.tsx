@@ -7,7 +7,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { isStaffRole } from '../../utils/roles';
 import { useContext } from 'react';
 import { AuthContext } from 'react-oidc-context';
-import { KeyRound, LogOut, MonitorSmartphone } from 'lucide-react';
+import { KeyRound, LogOut } from 'lucide-react';
 import { useActivateKioskMutation } from '../../hooks/useKioskAuth';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { SecureButton } from '../../components/common/ui/SecureButton';
@@ -79,10 +79,8 @@ export function AuthenticationSettings() {
       />
       <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-6">
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
-          <div className="rounded-xl border border-outline-variant p-6 space-y-4">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
-              <MonitorSmartphone size={20} /> Kiosk activation
-            </h3>
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold text-on-surface">Kiosk activation</h3>
             <p className="text-sm text-on-surface-variant">Enter the code shown on a kiosk to authorize that display.</p>
 
             <form onSubmit={handleActivate} className="flex flex-col gap-4">
@@ -124,10 +122,8 @@ export function AuthenticationSettings() {
             </form>
           </div>
 
-          <div className="rounded-xl border border-outline-variant p-6 space-y-4">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
-              <KeyRound size={20} /> Current session
-            </h3>
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold text-on-surface">Current session</h3>
             <p className="text-sm text-on-surface-variant">Review the signed-in account or remove access from this device.</p>
 
             <div className="rounded-xl bg-surface-container-high p-4">
@@ -152,7 +148,7 @@ export function AuthenticationSettings() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-xl border border-outline-variant p-6">
+        <div className="mt-6">
           <KioskDevicesPanel />
         </div>
       </div>

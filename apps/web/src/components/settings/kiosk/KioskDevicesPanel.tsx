@@ -2,7 +2,7 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: BUSL-1.1
 
-import { MonitorSmartphone, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useDeleteKioskDeviceMutation, useKioskDevicesQuery } from '../../../hooks/useKioskAuth';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
 import { isStaffRole } from '../../../utils/roles';
@@ -32,9 +32,7 @@ export function KioskDevicesPanel() {
 
   return (
     <div className="rounded-xl border border-outline-variant p-6 space-y-4">
-      <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
-        <MonitorSmartphone size={20} /> Kiosk displays
-      </h3>
+      <h3 className="text-lg font-bold text-on-surface">Kiosk displays</h3>
       <p className="text-sm text-on-surface-variant">
         Displays authorized for this organization. Removing one returns it to the activation screen.
       </p>

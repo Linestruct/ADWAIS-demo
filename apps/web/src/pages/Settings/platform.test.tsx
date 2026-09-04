@@ -33,6 +33,13 @@ vi.mock('../../api/generated/endpoints', () => ({
   usePostApiDashboardSession: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
+vi.mock('../../hooks/useOrganizationQueries', () => ({
+  useOrganizationSummariesQuery: () => ({ data: [], isLoading: false, isError: false }),
+  useCreateOrganizationMutation: () => ({ mutate: vi.fn(), isPending: false }),
+  useRenameOrganizationMutation: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteOrganizationMutation: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;

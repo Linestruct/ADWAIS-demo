@@ -6,6 +6,7 @@ import { Settings2 } from 'lucide-react';
 import { useGlobalConfigQuery, useUpdateConfigMutation, useRecurringJobsQuery } from '../../hooks/useJobSettingsQueries';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { GlobalConfigurationForm } from '../../components/settings/configuration/GlobalConfigurationForm';
+import { OrganizationsSection } from '../../components/settings/platform/OrganizationsSection';
 import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { SettingsPanelHeader } from '../../components/common/layout/SettingsPanelHeader';
 import { SecureButton } from '../../components/common/ui/SecureButton';
@@ -99,6 +100,10 @@ export function PlatformConfigurationView() {
                                     ))}
                             </div>
                         </section>
+                    </div>
+
+                    <div className="mt-10">
+                        <OrganizationsSection />
                     </div>
                 </div>
             </SettingsPanel>

@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrganizationSummaryDto } from '@types';
-import { OrganizationsView } from './organizations';
+import { OrganizationsSection } from './OrganizationsSection';
 
 const testState = vi.hoisted(() => ({
   isPlatformAdmin: true,
@@ -17,14 +17,14 @@ const testState = vi.hoisted(() => ({
   deleteOrganization: vi.fn(),
 }));
 
-vi.mock('../../hooks/useCurrentUser', () => ({
+vi.mock('../../../hooks/useCurrentUser', () => ({
   useCurrentUser: () => ({
     role: testState.isPlatformAdmin ? 'PlatformAdmin' : 'Admin',
     user: testState.isPlatformAdmin ? { isPlatformAdmin: true } : { isPlatformAdmin: false },
   }),
 }));
 
-vi.mock('../../hooks/useOrganizationQueries', () => ({
+vi.mock('../../../hooks/useOrganizationQueries', () => ({
   useOrganizationSummariesQuery: () => ({
     data: testState.organizations,
     isLoading: testState.isLoading,
@@ -49,7 +49,7 @@ const twoOrgs: OrganizationSummaryDto[] = [
   { id: 'org-2', name: 'Other', memberCount: 0, monitorCount: 0 },
 ];
 
-describe('organizations page', () => {
+describe('organizations section', () => {
   beforeEach(() => {
     testState.isPlatformAdmin = true;
     testState.organizations = undefined;
@@ -60,22 +60,22 @@ describe('organizations page', () => {
     testState.deleteOrganization.mockReset();
   });
 
-  it('hides the page from non-platform users', () => {
+  it('renders nothing for non-platform users', () => {
     testState.isPlatformAdmin = false;
-    render(<OrganizationsView />);
-    expect(screen.getByText('Platform administrators only.')).toBeInTheDocument();
+    const { container } = render(<OrganizationsSection />);
+    expect(container.firstChild).toBeNull();
   });
 
   it('lists organizations with member and monitor counts', () => {
     testState.organizations = twoOrgs;
-    render(<OrganizationsView />);
+    render(<OrganizationsSection />);
     expect(screen.getByText('Acme')).toBeInTheDocument();
     expect(screen.getByText('Other')).toBeInTheDocument();
   });
 
   it('creates an organization from the inline form', () => {
     testState.organizations = twoOrgs;
-    render(<OrganizationsView />);
+    render(<OrganizationsSection />);
     fireEvent.click(screen.getByRole('button', { name: 'Add organization' }));
     fireEvent.change(screen.getByLabelText('New organization name'), { target: { value: 'NewCo' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
@@ -84,7 +84,7 @@ describe('organizations page', () => {
 
   it('renames an organization inline', () => {
     testState.organizations = twoOrgs;
-    render(<OrganizationsView />);
+    render(<OrganizationsSection />);
     fireEvent.click(screen.getByRole('button', { name: 'Rename Acme' }));
     fireEvent.change(screen.getByLabelText('Rename Acme'), { target: { value: 'Renamed' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -94,10 +94,20 @@ describe('organizations page', () => {
     );
   });
 
+  it('aborts a rename without saving', () => {
+    testState.organizations = twoOrgs;
+    render(<OrganizationsSection />);
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Acme' }));
+    fireEvent.change(screen.getByLabelText('Rename Acme'), { target: { value: 'Renamed' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(testState.renameOrganization).not.toHaveBeenCalled();
+    expect(screen.getByText('Acme')).toBeInTheDocument();
+  });
+
   it('confirms before deleting an organization', () => {
     testState.organizations = twoOrgs;
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<OrganizationsView />);
+    render(<OrganizationsSection />);
     fireEvent.click(screen.getByRole('button', { name: 'Delete Acme' }));
     expect(confirmSpy).toHaveBeenCalledOnce();
     expect(testState.deleteOrganization).toHaveBeenCalledWith({ id: 'org-1' });
@@ -107,7 +117,7 @@ describe('organizations page', () => {
   it('skips deletion when the confirmation is dismissed', () => {
     testState.organizations = twoOrgs;
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    render(<OrganizationsView />);
+    render(<OrganizationsSection />);
     fireEvent.click(screen.getByRole('button', { name: 'Delete Acme' }));
     expect(testState.deleteOrganization).not.toHaveBeenCalled();
     confirmSpy.mockRestore();

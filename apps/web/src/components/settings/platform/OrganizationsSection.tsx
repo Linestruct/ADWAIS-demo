@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useState } from 'react';
-import { Building2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   useCreateOrganizationMutation,
   useDeleteOrganizationMutation,
@@ -69,9 +69,7 @@ export function OrganizationsSection() {
 
   return (
     <section>
-      <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
-        <Building2 size={20} /> Organizations
-      </h3>
+      <h3 className="text-lg font-bold text-on-surface">Organizations</h3>
       <p className="mt-1 text-sm text-on-surface-variant">
         Manage the organizations on this deployment.
       </p>

@@ -10,4 +10,6 @@ export interface CreateUserRequestDto {
   /** @nullable */
   email?: string | null;
   role?: UserRole;
+  /** @nullable */
+  organizationId?: string | null;
 }

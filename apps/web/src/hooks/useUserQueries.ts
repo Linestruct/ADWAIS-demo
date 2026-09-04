@@ -44,13 +44,14 @@ export function useCreateUserMutation(onSuccessCallback?: () => void) {
   return {
     ...mutation,
     mutate: (
-      user: { email: string; role: string },
+      user: { email: string; role: string; organizationId?: string | null },
       options?: Parameters<typeof mutation.mutate>[1]
     ) => 
       mutation.mutate({ 
         data: {
           email: user.email,
-          role: user.role as UserRole
+          role: user.role as UserRole,
+          organizationId: user.organizationId ?? null,
         }
       }, options),
   };

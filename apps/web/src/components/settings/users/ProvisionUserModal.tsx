@@ -5,29 +5,41 @@
 import { useState } from 'react';
 import { UserPlus, X } from 'lucide-react';
 import { FormField } from '../../common/ui/FormField';
+import { useCurrentUser } from '../../../hooks/useCurrentUser';
+import { useOrganizationsForPickerQuery } from '../../../hooks/useMembershipQueries';
 
 interface ProvisionUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   createUser: {
-    mutate: (user: { email: string; role: string }, options?: { onSuccess?: () => void }) => void;
+    mutate: (user: { email: string; role: string; organizationId?: string | null }, options?: { onSuccess?: () => void }) => void;
     isPending: boolean;
   };
 }
 
 export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUserModalProps) {
-  const [newUser, setNewUser] = useState({ email: '', role: 'Admin' });
+  const [newUser, setNewUser] = useState({ email: '', role: 'Admin', organizationId: '' });
+  const { user } = useCurrentUser();
+  const { data: organizations } = useOrganizationsForPickerQuery();
+  const showOrgSelect = user?.isPlatformAdmin === true;
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createUser.mutate(newUser, {
-      onSuccess: () => {
-        setNewUser({ email: '', role: 'Admin' });
-        onClose();
-      }
-    });
+    createUser.mutate(
+      {
+        email: newUser.email,
+        role: newUser.role,
+        organizationId: showOrgSelect && newUser.organizationId ? newUser.organizationId : null,
+      },
+      {
+        onSuccess: () => {
+          setNewUser({ email: '', role: 'Admin', organizationId: '' });
+          onClose();
+        },
+      },
+    );
   };
 
   return (
@@ -79,13 +91,31 @@ export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUse
             <option value="Viewer">Viewer</option>
             <option value="Employee">Employee</option>
           </FormField>
+
+          {showOrgSelect && (
+            <FormField
+              as="select"
+              id="new-user-organization"
+              label="Organization"
+              value={newUser.organizationId}
+              onChange={e => setNewUser({ ...newUser, organizationId: e.target.value })}
+              required
+            >
+              <option value="">Select organization</option>
+              {(organizations || []).map((org) => (
+                <option key={org.id} value={org.id ?? ''}>
+                  {org.name}
+                </option>
+              ))}
+            </FormField>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 bg-surface px-6 py-4">
           <button type="button" onClick={onClose} disabled={createUser.isPending} className="inline-flex min-h-11 items-center justify-center rounded-full px-4 text-base font-bold transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:text-on-surface/[0.38] disabled:hover:bg-transparent">
             Cancel
           </button>
-          <button type="submit" disabled={!newUser.email || createUser.isPending} className="inline-flex min-h-11 items-center justify-center rounded-full bg-on-primary-container px-5 text-base font-bold text-primary-container transition-colors hover:bg-brand-btn-quaternary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary disabled:cursor-not-allowed disabled:bg-on-surface/[0.1] disabled:text-on-surface/[0.38] disabled:hover:bg-on-surface/[0.1] disabled:hover:text-on-surface/[0.38]">
+          <button type="submit" disabled={!newUser.email || (showOrgSelect && !newUser.organizationId) || createUser.isPending} className="inline-flex min-h-11 items-center justify-center rounded-full bg-on-primary-container px-5 text-base font-bold text-primary-container transition-colors hover:bg-brand-btn-quaternary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary disabled:cursor-not-allowed disabled:bg-on-surface/[0.1] disabled:text-on-surface/[0.38] disabled:hover:bg-on-surface/[0.1] disabled:hover:text-on-surface/[0.38]">
             {createUser.isPending ? 'Adding...' : 'Add user'}
           </button>
         </div>

@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { UserPlus, X } from 'lucide-react';
+import { Button } from '../../common/ui/Button';
 import { FormField } from '../../common/ui/FormField';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
 import { useOrganizationsForPickerQuery } from '../../../hooks/useMembershipQueries';
@@ -60,9 +61,14 @@ export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUse
             <UserPlus size={20} className="text-on-surface-variant" aria-hidden="true" />
             Provision a user
           </h3>
-          <button type="button" onClick={onClose} aria-label="Close dialog" className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary">
-            <X size={20} aria-hidden="true" />
-          </button>
+          <Button
+            type="button"
+            onClick={onClose}
+            aria-label="Close dialog"
+            variant="text"
+            color="surface"
+            icon={<X size={20} aria-hidden="true" />}
+          />
         </div>
 
         <div className="flex flex-col gap-4 bg-surface px-6 pb-6">
@@ -112,12 +118,17 @@ export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUse
         </div>
 
         <div className="flex justify-end gap-3 bg-surface px-6 py-4">
-          <button type="button" onClick={onClose} disabled={createUser.isPending} className="inline-flex min-h-11 items-center justify-center rounded-full px-4 text-base font-bold transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:text-on-surface/[0.38] disabled:hover:bg-transparent">
+          <Button type="button" onClick={onClose} disabled={createUser.isPending} variant="text" color="surface">
             Cancel
-          </button>
-          <button type="submit" disabled={!newUser.email || (showOrgSelect && !newUser.organizationId) || createUser.isPending} className="inline-flex min-h-11 items-center justify-center rounded-full bg-on-primary-container px-5 text-base font-bold text-primary-container transition-colors hover:bg-brand-btn-quaternary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary disabled:cursor-not-allowed disabled:bg-on-surface/[0.1] disabled:text-on-surface/[0.38] disabled:hover:bg-on-surface/[0.1] disabled:hover:text-on-surface/[0.38]">
+          </Button>
+          <Button
+            type="submit"
+            disabled={!newUser.email || (showOrgSelect && !newUser.organizationId) || createUser.isPending}
+            variant="filled"
+            color="secondary"
+          >
             {createUser.isPending ? 'Adding...' : 'Add user'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

@@ -13,6 +13,7 @@ import {useConnectivityStatus} from '../hooks/useConnectivityStatus';
 import {useMobileMenu} from '../hooks/useMobileMenu';
 import {RootProviders} from '../components/common/layout/RootProviders';
 import {AuthRouteShell} from '../components/common/layout/AuthRouteShell';
+import {AccessPendingPanel} from '../components/common/layout/AccessPendingPanel';
 import {AppShell} from '../components/common/layout/AppShell';
 
 export const Route = createRootRoute({
@@ -37,7 +38,7 @@ function RootComponent() {
   useSearch({strict: false});
 
   const auth = useContext(AuthContext);
-  const {user} = useCurrentUser();
+  const {user, isUnprovisioned} = useCurrentUser();
   const {isOnline, isBackendOnline} = useConnectivityStatus();
   const location = useRouterState({select: (state) => state.location});
   const mobileMenu = useMobileMenu(location.pathname);
@@ -56,6 +57,8 @@ function RootComponent() {
     <RootProviders>
       {isAuthRoute ? (
         <AuthRouteShell routeKey={location.pathname} />
+      ) : isUnprovisioned ? (
+        <AccessPendingPanel />
       ) : (
         <AppShell
           pathname={location.pathname}

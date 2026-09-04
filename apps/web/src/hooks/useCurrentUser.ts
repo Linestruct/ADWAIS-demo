@@ -60,7 +60,10 @@ export function useCurrentUser() {
 
   const oidcQuery = useQuery<UserProfile>({
     queryKey: ['current-user', selectedOrgId],
-    queryFn: () => apiFetch<UserProfile>('/api/users/me'),
+    queryFn: () =>
+      apiFetch<UserProfile>('/api/users/me', {
+        headers: { 'X-Bypass-Global-401': 'true' },
+      }),
     enabled: hasOidcUser,
     retry: false,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
@@ -76,11 +79,13 @@ export function useCurrentUser() {
   // Calculate profile and role dynamically on render
   if (hasOidcUser) {
     const user = oidcQuery.data || null;
+    const oidcError = oidcQuery.error as (Error & { status?: number }) | null;
     return {
       isLoading: oidcQuery.isLoading,
       user,
       role: user?.role || null,
       scope: deriveScope(user),
+      isUnprovisioned: !oidcQuery.isLoading && user === null && oidcError?.status === 401,
     };
   }
 
@@ -100,6 +105,7 @@ export function useCurrentUser() {
       user,
       role: kioskRole || 'Viewer',
       scope: deriveScope(user),
+      isUnprovisioned: false,
     };
   }
 
@@ -108,5 +114,6 @@ export function useCurrentUser() {
     user: null,
     role: null,
     scope: EMPTY_SCOPE,
+    isUnprovisioned: false,
   };
 }

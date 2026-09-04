@@ -10,6 +10,7 @@ export const queryClient = new QueryClient({
     onError: (error, query) => {
       const queryKey = query.queryKey[0];
       if (queryKey === 'kiosk') return; // Suppress toasts for background kiosk polling
+      if (queryKey === 'current-user') return; // The shell renders the access-pending panel instead
 
       let title = 'Failed to load data';
       if (typeof queryKey === 'string') {

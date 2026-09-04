@@ -124,7 +124,11 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
     } catch {
       // Not JSON
     }
-    throw new Error(errorMessage || `Request failed with status ${response.status}`);
+    const fetchError = new Error(errorMessage || `Request failed with status ${response.status}`) as Error & {
+      status?: number;
+    };
+    fetchError.status = response.status;
+    throw fetchError;
   }
 
   const text = await response.text();
@@ -191,7 +195,11 @@ if (typeof first === 'string') {
       } catch {
         // Not JSON
       }
-      throw new Error(errorMessage || `Request failed with status ${response.status}`);
+      const fetchError = new Error(errorMessage || `Request failed with status ${response.status}`) as Error & {
+        status?: number;
+      };
+      fetchError.status = response.status;
+      throw fetchError;
     }
 
     const text = await response.text();

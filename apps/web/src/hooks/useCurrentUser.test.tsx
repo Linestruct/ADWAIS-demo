@@ -30,7 +30,7 @@ vi.mock('../utils/jwt', () => ({
 
 const mockApiFetch = vi.hoisted(() => vi.fn());
 vi.mock('../apiClient', () => ({
-  apiFetch: (url: string) => mockApiFetch(url),
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
 const selectionState = vi.hoisted(() => ({ selectedOrgId: null as string | null }));
@@ -54,6 +54,7 @@ function createWrapper() {
 describe('useCurrentUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuthState.isAuthenticated = true;
     mockKioskToken.mockReturnValue(null);
     selectionState.selectedOrgId = null;
   });
@@ -171,6 +172,7 @@ describe('useCurrentUser', () => {
   });
 
   it('returns an empty scope when signed out', () => {
+
     const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
 
     expect(result.current.scope).toEqual({
@@ -180,5 +182,42 @@ describe('useCurrentUser', () => {
       organizationName: null,
       tenantId: null,
     });
+  });
+
+  it('flags an authenticated user the identity endpoint rejects as unprovisioned', async () => {
+    mockApiFetch.mockRejectedValue(Object.assign(new Error('User context is invalid.'), { status: 401 }));
+
+    const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isUnprovisioned).toBe(true));
+    expect(result.current.user).toBeNull();
+  });
+
+  it('sends the session-preserving bypass header on the identity query', async () => {
+    mockApiFetch.mockResolvedValue({
+      id: 'u4',
+      name: 'Cara',
+      role: 'Viewer',
+      isPlatformAdmin: false,
+    } satisfies UserProfile);
+
+    const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.user).not.toBeNull());
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/api/users/me',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'X-Bypass-Global-401': 'true' }),
+      }),
+    );
+  });
+
+  it('does not flag non-401 identity failures as unprovisioned', async () => {
+    mockApiFetch.mockRejectedValue(Object.assign(new Error('Server error.'), { status: 500 }));
+
+    const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isUnprovisioned).toBe(false));
+    expect(result.current.user).toBeNull();
   });
 });

@@ -9,6 +9,7 @@ import { OrganizationsSection } from './OrganizationsSection';
 
 const testState = vi.hoisted(() => ({
   isPlatformAdmin: true,
+  forceNullUser: false,
   isUserLoading: false,
   organizations: undefined as OrganizationSummaryDto[] | undefined,
   isLoading: false,
@@ -21,7 +22,11 @@ const testState = vi.hoisted(() => ({
 vi.mock('../../../hooks/useCurrentUser', () => ({
   useCurrentUser: () => ({
     role: testState.isPlatformAdmin ? 'PlatformAdmin' : 'Admin',
-    user: testState.isPlatformAdmin ? { isPlatformAdmin: true } : { isPlatformAdmin: false },
+    user: testState.forceNullUser
+      ? null
+      : testState.isPlatformAdmin
+        ? { isPlatformAdmin: true }
+        : { isPlatformAdmin: false },
     isLoading: testState.isUserLoading,
   }),
 }));
@@ -54,6 +59,7 @@ const twoOrgs: OrganizationSummaryDto[] = [
 describe('organizations section', () => {
   beforeEach(() => {
     testState.isPlatformAdmin = true;
+    testState.forceNullUser = false;
     testState.isUserLoading = false;
     testState.organizations = undefined;
     testState.isLoading = false;
@@ -67,6 +73,14 @@ describe('organizations section', () => {
     testState.isPlatformAdmin = false;
     const { container } = render(<OrganizationsSection />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it('keeps the table shell when the user fails to load', () => {
+    testState.forceNullUser = true;
+    testState.isError = true;
+    render(<OrganizationsSection />);
+    expect(screen.getByText('Organizations')).toBeInTheDocument();
+    expect(screen.getByText('Unable to load organizations.')).toBeInTheDocument();
   });
 
   it('shows a skeleton while the user loads', () => {

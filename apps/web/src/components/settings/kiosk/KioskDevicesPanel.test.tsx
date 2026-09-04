@@ -8,7 +8,8 @@ import type { KioskDeviceDto } from '@types';
 import { KioskDevicesPanel } from './KioskDevicesPanel';
 
 const testState = vi.hoisted(() => ({
-  role: 'Admin',
+  role: 'Admin' as string | null,
+  user: { id: 'u' } as { id: string } | null,
   isUserLoading: false,
   devices: undefined as KioskDeviceDto[] | undefined,
   isLoading: false,
@@ -19,7 +20,7 @@ const testState = vi.hoisted(() => ({
 vi.mock('../../../hooks/useCurrentUser', () => ({
   useCurrentUser: () => ({
     role: testState.role,
-    user: null,
+    user: testState.user,
     isLoading: testState.isUserLoading,
   }),
 }));
@@ -58,6 +59,7 @@ const twoDevices: KioskDeviceDto[] = [
 describe('kiosk devices panel', () => {
   beforeEach(() => {
     testState.role = 'Admin';
+    testState.user = { id: 'u' };
     testState.isUserLoading = false;
     testState.devices = undefined;
     testState.isLoading = false;
@@ -75,6 +77,15 @@ describe('kiosk devices panel', () => {
     testState.role = 'Viewer';
     const { container } = render(<KioskDevicesPanel />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it('keeps the table shell when the user fails to load', () => {
+    testState.role = null;
+    testState.user = null;
+    testState.isError = true;
+    render(<KioskDevicesPanel />);
+    expect(screen.getByText('Kiosk displays')).toBeInTheDocument();
+    expect(screen.getByText('Unable to load kiosk displays.')).toBeInTheDocument();
   });
 
   it('shows a loading state', () => {

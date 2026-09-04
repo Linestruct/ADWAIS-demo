@@ -27,14 +27,14 @@ export function KioskDevicesPanel() {
     }
   };
 
-  if (!isUserLoading && !isStaffRole(role)) {
+  if (role !== null && !isStaffRole(role)) {
     return null;
   }
 
   const showSkeleton = isUserLoading || isLoading;
 
   return (
-    <div className="space-y-4">
+    <div className="rounded-xl border border-outline-variant p-6 space-y-4">
       <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
         <MonitorSmartphone size={20} /> Kiosk displays
       </h3>

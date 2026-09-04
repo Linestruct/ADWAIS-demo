@@ -29,7 +29,7 @@ export function OrganizationsSection() {
   const renameOrganization = useRenameOrganizationMutation();
   const deleteOrganization = useDeleteOrganizationMutation();
 
-  if (!isUserLoading && user?.isPlatformAdmin !== true) {
+  if (user !== null && user.isPlatformAdmin !== true) {
     return null;
   }
 

@@ -82,6 +82,21 @@ public class OrganizationsController(
     }
 
     /// <summary>
+    /// Lists every organization with member and monitor counts.
+    /// Platform admins only.
+    /// </summary>
+    [HttpGet("summaries")]
+    [Authorize(Policy = "PlatformAdminOnly")]
+    public async Task<ActionResult<IReadOnlyList<OrganizationSummaryResponseDto>>> GetOrganizationSummaries(
+        CancellationToken ct)
+    {
+        var summaries = await _organizationService.GetOrganizationSummariesAsync(ct);
+        return Ok(summaries
+            .Select(s => new OrganizationSummaryResponseDto(s.Id, s.Name, s.MemberCount, s.MonitorCount))
+            .ToList());
+    }
+
+    /// <summary>
     /// Gets one organization. Platform admins address any organization;
     /// staff see their own organization only.
     /// </summary>

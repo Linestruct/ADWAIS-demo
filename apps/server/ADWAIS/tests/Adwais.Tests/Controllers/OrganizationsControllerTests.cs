@@ -239,4 +239,25 @@ public class OrganizationsControllerTests
             await _controller.DeleteOrganization(_orgC, CancellationToken.None));
         Assert.NotNull(conflict.Value);
     }
+
+    [Fact]
+    public async Task GetOrganizationSummaries_ReturnsMappedSummaries()
+    {
+        GivenPlatformScope();
+        _organizationServiceMock
+            .Setup(s => s.GetOrganizationSummariesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrganizationSummary>
+            {
+                new(_orgA, "Alpha", 2, 3),
+            });
+
+        var result = await _controller.GetOrganizationSummaries(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var summaries = Assert.IsType<List<Adwais.Api.DTOs.Organizations.OrganizationSummaryResponseDto>>(ok.Value);
+        var single = Assert.Single(summaries);
+        Assert.Equal(_orgA, single.Id);
+        Assert.Equal(2, single.MemberCount);
+        Assert.Equal(3, single.MonitorCount);
+    }
 }

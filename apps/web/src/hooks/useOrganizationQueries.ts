@@ -3,9 +3,85 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useQueryClient } from '@tanstack/react-query';
-import { useGetApiOrganizationsIdConfig, usePatchApiOrganizationsIdConfig } from '../api/generated/endpoints';
-import type { OrganizationConfigDto, UpdateOrganizationConfigRequestDto } from '@types';
+import {
+  useDeleteApiOrganizationsId,
+  useGetApiOrganizationsSummaries,
+  usePatchApiOrganizationsId,
+  usePostApiOrganizations,
+  useGetApiOrganizationsIdConfig,
+  usePatchApiOrganizationsIdConfig,
+} from '../api/generated/endpoints';
+import type { OrganizationConfigDto, OrganizationSummaryDto, UpdateOrganizationConfigRequestDto } from '@types';
 import { toast } from 'sonner';
+
+function invalidateOrganizationQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['organization-summaries'] });
+  queryClient.invalidateQueries({ queryKey: ['/api/organizations'] });
+}
+
+export function useOrganizationSummariesQuery() {
+  return useGetApiOrganizationsSummaries<OrganizationSummaryDto[], Error>({
+    query: {
+      queryKey: ['organization-summaries'],
+      select: (res) => res.data as OrganizationSummaryDto[],
+    },
+  });
+}
+
+export function useCreateOrganizationMutation(onSuccessCallback?: () => void) {
+  const queryClient = useQueryClient();
+  return usePostApiOrganizations<Error>({
+    mutation: {
+      onSuccess: () => {
+        toast.success('Organization created.');
+        invalidateOrganizationQueries(queryClient);
+        if (onSuccessCallback) onSuccessCallback();
+      },
+      onError: (err: Error) => {
+        toast.error('Failed to create organization', {
+          description: err.message || String(err),
+          duration: Infinity,
+        });
+      },
+    },
+  });
+}
+
+export function useRenameOrganizationMutation() {
+  const queryClient = useQueryClient();
+  return usePatchApiOrganizationsId<Error>({
+    mutation: {
+      onSuccess: () => {
+        toast.success('Organization renamed.');
+        invalidateOrganizationQueries(queryClient);
+      },
+      onError: (err: Error) => {
+        toast.error('Failed to rename organization', {
+          description: err.message || String(err),
+          duration: Infinity,
+        });
+      },
+    },
+  });
+}
+
+export function useDeleteOrganizationMutation() {
+  const queryClient = useQueryClient();
+  return useDeleteApiOrganizationsId<Error>({
+    mutation: {
+      onSuccess: () => {
+        toast.success('Organization deleted.');
+        invalidateOrganizationQueries(queryClient);
+      },
+      onError: (err: Error) => {
+        toast.error('Failed to delete organization', {
+          description: err.message || String(err),
+          duration: Infinity,
+        });
+      },
+    },
+  });
+}
 
 export function useOrganizationConfigQuery(orgId: string | null) {
   return useGetApiOrganizationsIdConfig<OrganizationConfigDto, Error>(orgId ?? '', {

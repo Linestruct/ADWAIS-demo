@@ -37,6 +37,7 @@ import type {
   CreateCalendarEventDto,
   CreateCalendarSubscriptionDto,
   CreateMonitorRequestDto,
+  CreateOrganizationRequestDto,
   CreateTenantRequestDto,
   CreateUserRequestDto,
   CrossSegmentDistributionResponseDto,
@@ -79,6 +80,7 @@ import type {
   OrderDto,
   OrganizationConfigDto,
   OrganizationResponseDto,
+  OrganizationSummaryResponseDto,
   PortfolioImpactResponseDto,
   PostApiIngestionBackfillParams,
   PostApiMonitorsParams,
@@ -97,6 +99,7 @@ import type {
   UpdateGlobalConfigRequestDto,
   UpdateMonitorRequestDto,
   UpdateOrganizationConfigRequestDto,
+  UpdateOrganizationRequestDto,
   UpdateTenantRequestDto,
   UpdateUserRequestDto,
   UptimeMonitorDto,
@@ -7992,6 +7995,529 @@ export function useGetApiOrganizations<TData = Awaited<ReturnType<typeof getApiO
 
 
 
+
+export type postApiOrganizationsResponse200TextPlain = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type postApiOrganizationsResponse200ApplicationJson = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type postApiOrganizationsResponse200TextJson = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type postApiOrganizationsResponseSuccess = (postApiOrganizationsResponse200TextPlain | postApiOrganizationsResponse200ApplicationJson | postApiOrganizationsResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type postApiOrganizationsResponse = (postApiOrganizationsResponseSuccess)
+
+export const getPostApiOrganizationsUrl = () => {
+
+
+
+
+  return `/api/organizations`
+}
+
+/**
+ * @summary Creates an organization. Platform admins only. Configuration is
+created lazily on first edit.
+ */
+export const postApiOrganizations = async (createOrganizationRequestDto?: CreateOrganizationRequestDto, options?: RequestInit): Promise<postApiOrganizationsResponse> => {
+
+  return customClient<postApiOrganizationsResponse>(getPostApiOrganizationsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createOrganizationRequestDto)
+  }
+);}
+
+
+
+
+export const getPostApiOrganizationsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiOrganizations>>, TError,{data?: CreateOrganizationRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof postApiOrganizations>>, TError,{data?: CreateOrganizationRequestDto}, TContext> => {
+
+const mutationKey = ['postApiOrganizations'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postApiOrganizations>>, {data?: CreateOrganizationRequestDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postApiOrganizations(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostApiOrganizationsMutationResult = NonNullable<Awaited<ReturnType<typeof postApiOrganizations>>>
+    export type PostApiOrganizationsMutationBody = CreateOrganizationRequestDto | undefined
+    export type PostApiOrganizationsMutationError = unknown
+
+    /**
+ * @summary Creates an organization. Platform admins only. Configuration is
+created lazily on first edit.
+ */
+export const usePostApiOrganizations = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiOrganizations>>, TError,{data?: CreateOrganizationRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postApiOrganizations>>,
+        TError,
+        {data?: CreateOrganizationRequestDto},
+        TContext
+      > => {
+      return useMutation(getPostApiOrganizationsMutationOptions(options), queryClient);
+    }
+
+export type getApiOrganizationsSummariesResponse200TextPlain = {
+  data: OrganizationSummaryResponseDto[]
+  status: 200
+}
+
+export type getApiOrganizationsSummariesResponse200ApplicationJson = {
+  data: OrganizationSummaryResponseDto[]
+  status: 200
+}
+
+export type getApiOrganizationsSummariesResponse200TextJson = {
+  data: OrganizationSummaryResponseDto[]
+  status: 200
+}
+
+export type getApiOrganizationsSummariesResponseSuccess = (getApiOrganizationsSummariesResponse200TextPlain | getApiOrganizationsSummariesResponse200ApplicationJson | getApiOrganizationsSummariesResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type getApiOrganizationsSummariesResponse = (getApiOrganizationsSummariesResponseSuccess)
+
+export const getGetApiOrganizationsSummariesUrl = () => {
+
+
+
+
+  return `/api/organizations/summaries`
+}
+
+/**
+ * @summary Lists every organization with member and monitor counts.
+Platform admins only.
+ */
+export const getApiOrganizationsSummaries = async ( options?: RequestInit): Promise<getApiOrganizationsSummariesResponse> => {
+
+  return customClient<getApiOrganizationsSummariesResponse>(getGetApiOrganizationsSummariesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiOrganizationsSummariesQueryKey = () => {
+    return [
+    `/api/organizations/summaries`
+    ] as const;
+    }
+
+
+export const getGetApiOrganizationsSummariesQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsSummariesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>> = ({ signal }) => getApiOrganizationsSummaries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiOrganizationsSummariesQueryResult = NonNullable<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>>
+export type GetApiOrganizationsSummariesQueryError = unknown
+
+
+export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsSummaries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Lists every organization with member and monitor counts.
+Platform admins only.
+ */
+
+export function useGetApiOrganizationsSummaries<TData = Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsSummaries>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiOrganizationsSummariesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type getApiOrganizationsIdResponse200TextPlain = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type getApiOrganizationsIdResponse200ApplicationJson = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type getApiOrganizationsIdResponse200TextJson = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type getApiOrganizationsIdResponseSuccess = (getApiOrganizationsIdResponse200TextPlain | getApiOrganizationsIdResponse200ApplicationJson | getApiOrganizationsIdResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type getApiOrganizationsIdResponse = (getApiOrganizationsIdResponseSuccess)
+
+export const getGetApiOrganizationsIdUrl = (id: string,) => {
+
+
+
+
+  return `/api/organizations/${id}`
+}
+
+/**
+ * @summary Gets one organization. Platform admins address any organization;
+staff see their own organization only.
+ */
+export const getApiOrganizationsId = async (id: string, options?: RequestInit): Promise<getApiOrganizationsIdResponse> => {
+
+  return customClient<getApiOrganizationsIdResponse>(getGetApiOrganizationsIdUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiOrganizationsIdQueryKey = (id: string,) => {
+    return [
+    `/api/organizations/${id}`
+    ] as const;
+    }
+
+
+export const getGetApiOrganizationsIdQueryOptions = <TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiOrganizationsIdQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiOrganizationsId>>> = ({ signal }) => getApiOrganizationsId(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiOrganizationsIdQueryResult = NonNullable<Awaited<ReturnType<typeof getApiOrganizationsId>>>
+export type GetApiOrganizationsIdQueryError = unknown
+
+
+export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsId>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsId>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiOrganizationsId>>,
+          TError,
+          Awaited<ReturnType<typeof getApiOrganizationsId>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Gets one organization. Platform admins address any organization;
+staff see their own organization only.
+ */
+
+export function useGetApiOrganizationsId<TData = Awaited<ReturnType<typeof getApiOrganizationsId>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiOrganizationsId>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiOrganizationsIdQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type patchApiOrganizationsIdResponse200TextPlain = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type patchApiOrganizationsIdResponse200ApplicationJson = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type patchApiOrganizationsIdResponse200TextJson = {
+  data: OrganizationResponseDto
+  status: 200
+}
+
+export type patchApiOrganizationsIdResponseSuccess = (patchApiOrganizationsIdResponse200TextPlain | patchApiOrganizationsIdResponse200ApplicationJson | patchApiOrganizationsIdResponse200TextJson) & {
+  headers: Headers;
+};
+;
+
+export type patchApiOrganizationsIdResponse = (patchApiOrganizationsIdResponseSuccess)
+
+export const getPatchApiOrganizationsIdUrl = (id: string,) => {
+
+
+
+
+  return `/api/organizations/${id}`
+}
+
+/**
+ * @summary Renames an organization. Platform admins address any organization;
+organization admins rename their own organization only.
+ */
+export const patchApiOrganizationsId = async (id: string,
+    updateOrganizationRequestDto?: UpdateOrganizationRequestDto, options?: RequestInit): Promise<patchApiOrganizationsIdResponse> => {
+
+  return customClient<patchApiOrganizationsIdResponse>(getPatchApiOrganizationsIdUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateOrganizationRequestDto)
+  }
+);}
+
+
+
+
+export const getPatchApiOrganizationsIdMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsId>>, TError,{id: string;data?: UpdateOrganizationRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsId>>, TError,{id: string;data?: UpdateOrganizationRequestDto}, TContext> => {
+
+const mutationKey = ['patchApiOrganizationsId'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchApiOrganizationsId>>, {id: string;data?: UpdateOrganizationRequestDto}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchApiOrganizationsId(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchApiOrganizationsIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiOrganizationsId>>>
+    export type PatchApiOrganizationsIdMutationBody = UpdateOrganizationRequestDto | undefined
+    export type PatchApiOrganizationsIdMutationError = unknown
+
+    /**
+ * @summary Renames an organization. Platform admins address any organization;
+organization admins rename their own organization only.
+ */
+export const usePatchApiOrganizationsId = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiOrganizationsId>>, TError,{id: string;data?: UpdateOrganizationRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchApiOrganizationsId>>,
+        TError,
+        {id: string;data?: UpdateOrganizationRequestDto},
+        TContext
+      > => {
+      return useMutation(getPatchApiOrganizationsIdMutationOptions(options), queryClient);
+    }
+
+export type deleteApiOrganizationsIdResponse200 = {
+  data: void
+  status: 200
+}
+
+export type deleteApiOrganizationsIdResponseSuccess = (deleteApiOrganizationsIdResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deleteApiOrganizationsIdResponse = (deleteApiOrganizationsIdResponseSuccess)
+
+export const getDeleteApiOrganizationsIdUrl = (id: string,) => {
+
+
+
+
+  return `/api/organizations/${id}`
+}
+
+/**
+ * @summary Hard-deletes an organization with its full data graph and per-org
+schedules. Platform admins only. The default organization is refused.
+ */
+export const deleteApiOrganizationsId = async (id: string, options?: RequestInit): Promise<deleteApiOrganizationsIdResponse> => {
+
+  return customClient<deleteApiOrganizationsIdResponse>(getDeleteApiOrganizationsIdUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteApiOrganizationsIdMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiOrganizationsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteApiOrganizationsId>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteApiOrganizationsId'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteApiOrganizationsId>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteApiOrganizationsId(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteApiOrganizationsIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiOrganizationsId>>>
+
+    export type DeleteApiOrganizationsIdMutationError = unknown
+
+    /**
+ * @summary Hard-deletes an organization with its full data graph and per-org
+schedules. Platform admins only. The default organization is refused.
+ */
+export const useDeleteApiOrganizationsId = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiOrganizationsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteApiOrganizationsId>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteApiOrganizationsIdMutationOptions(options), queryClient);
+    }
 
 export type getApiSystemEventResponse200TextPlain = {
   data: SystemEvent[]

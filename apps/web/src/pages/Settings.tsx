@@ -9,6 +9,7 @@ import { RefreshCw } from 'lucide-react';
 import { useState, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { RightSidebarSlotContext } from '../components/common/ui/RightSidebarSlotContext';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 export function Settings() {
     const queryClient = useQueryClient();
@@ -16,11 +17,15 @@ export function Settings() {
     const location = useLocation();
     const currentPath = location.pathname;
     const rightSidebar = useContext(RightSidebarSlotContext);
+    const { user } = useCurrentUser();
 
     const tabs = [
         { id: 'jobs', label: 'Jobs', path: '/settings/jobs' },
         { id: 'configuration', label: 'Configuration', path: '/settings/configuration' },
         { id: 'platform', label: 'Platform', path: '/settings/platform' },
+        ...(user?.isPlatformAdmin === true
+            ? [{ id: 'organizations', label: 'Organizations', path: '/settings/organizations' }]
+            : []),
         { id: 'tenants', label: 'Tenants', path: '/settings/tenants' },
         { id: 'monitors', label: 'Monitors', path: '/settings/monitors' },
         { id: 'events', label: 'Health & events', path: '/settings/events' },

@@ -76,7 +76,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
     }
 
     /// <inheritdoc />
-    public async Task<User> CreateUserAsync(string email, UserRole role, CancellationToken ct)
+    public async Task<User> CreateUserAsync(string email, UserRole role, Guid? organizationId = null, CancellationToken ct = default)
     {
         var filter = Filter;
         if (filter.Denied)
@@ -84,7 +84,38 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
             throw new UnauthorizedAccessException("The current scope cannot create users.");
         }
 
-        var organizationId = filter.OrganizationId ?? AnalyticsDbContext.DefaultOrganizationGuid;
+        if (role == UserRole.TenantViewer)
+        {
+            throw new ArgumentException("Tenant viewers are added through memberships, not user creation.");
+        }
+
+        Guid? targetOrg;
+        if (role == UserRole.PlatformAdmin)
+        {
+            if (filter.OrganizationId is not null)
+                throw new UnauthorizedAccessException("Only platform admins can create platform admins.");
+            if (organizationId.HasValue)
+                throw new ArgumentException("Platform admins do not belong to an organization.");
+            targetOrg = null;
+        }
+        else if (organizationId.HasValue)
+        {
+            if (filter.OrganizationId is not null && filter.OrganizationId.Value != organizationId.Value)
+                throw new UnauthorizedAccessException("The organization is outside the current scope.");
+            var orgExists = await _dbContext.Organizations.AnyAsync(o => o.Id == organizationId.Value, ct);
+            if (!orgExists)
+                throw new KeyNotFoundException($"Organization {organizationId.Value} not found.");
+            targetOrg = organizationId.Value;
+        }
+        else if (filter.OrganizationId is { } callerOrgId)
+        {
+            targetOrg = callerOrgId;
+        }
+        else
+        {
+            throw new InvalidOperationException("An organization is required to create this user.");
+        }
+
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -97,7 +128,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            OrganizationId = organizationId,
+            OrganizationId = targetOrg,
             Role = role,
             CreatedAt = DateTimeOffset.UtcNow
         });

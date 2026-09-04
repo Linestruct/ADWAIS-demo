@@ -121,10 +121,10 @@ public class UserControllerTests
     public async Task CreateUser_ShouldReturnCreatedWithUser_WhenRequestContainsEmail()
     {
         // Arrange
-        var request = new CreateUserRequestDto("new@example.com", UserRole.Employee);
+        var request = new CreateUserRequestDto("new@example.com", UserRole.Employee, Guid.NewGuid());
         var createdUser = new User { Id = Guid.NewGuid(), Name = "new@example.com", Email = "new@example.com" };
 
-        _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, It.IsAny<CancellationToken>()))
+        _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(createdUser);
 
         // Act
@@ -136,7 +136,7 @@ public class UserControllerTests
         Assert.Equal("new@example.com", returnedUser.Name);
         Assert.Equal("new@example.com", returnedUser.Email);
         Assert.Null(returnedUser.Role);
-        _userServiceMock.Verify(s => s.CreateUserAsync(request.Email, request.Role, It.IsAny<CancellationToken>()), Times.Once);
+        _userServiceMock.Verify(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

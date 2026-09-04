@@ -201,8 +201,11 @@ public class UserServiceTests
     [Fact]
     public async Task CreateUserAsync_ShouldAddUserToDatabase_WithEmailAsNamePlaceholder()
     {
+        // Arrange
+        GivenOrgScope(Guid.NewGuid());
+
         // Act
-        var user = await _userService.CreateUserAsync("newuser@example.com", UserRole.Admin, CancellationToken.None);
+        var user = await _userService.CreateUserAsync("newuser@example.com", UserRole.Admin, ct: CancellationToken.None);
 
         // Assert
         Assert.NotEqual(Guid.Empty, user.Id);
@@ -223,7 +226,7 @@ public class UserServiceTests
         GivenOrgScope(orgId);
 
         // Act
-        var user = await _userService.CreateUserAsync("member@example.com", UserRole.Viewer, CancellationToken.None);
+        var user = await _userService.CreateUserAsync("member@example.com", UserRole.Viewer, ct: CancellationToken.None);
 
         // Assert
         await using var db = new AnalyticsDbContext(_dbOptions);
@@ -234,16 +237,101 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldCreateMembershipInDefaultOrganization_ForPlatformAdminWithoutOrgSelection()
+    public async Task CreateUserAsync_ShouldThrow_WhenPlatformScopeHasNoOrganization()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _userService.CreateUserAsync("platform-created@example.com", UserRole.Employee, ct: CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldCreateMembershipInExplicitOrganization_ForPlatformScope()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Organizations.Add(new Organization { Id = orgId, Name = "Target", CreatedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var user = await _userService.CreateUserAsync("targeted@example.com", UserRole.Viewer, orgId, CancellationToken.None);
+
+        // Assert
+        await using var dbCtx = new AnalyticsDbContext(_dbOptions);
+        var membership = await dbCtx.UserAccesses.SingleAsync(access => access.UserId == user.Id);
+        Assert.Equal(orgId, membership.OrganizationId);
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldThrow_WhenExplicitOrganizationIsOutsideScope()
+    {
+        // Arrange
+        GivenOrgScope(Guid.NewGuid());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _userService.CreateUserAsync("foreign@example.com", UserRole.Viewer, Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldThrow_WhenExplicitOrganizationIsMissing()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => _userService.CreateUserAsync("missing@example.com", UserRole.Viewer, Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldCreatePlatformRow_ForPlatformAdminRole()
     {
         // Act
-        var user = await _userService.CreateUserAsync("platform-created@example.com", UserRole.Employee, CancellationToken.None);
+        var user = await _userService.CreateUserAsync("owner@example.com", UserRole.PlatformAdmin, ct: CancellationToken.None);
 
         // Assert
         await using var db = new AnalyticsDbContext(_dbOptions);
-        var membership = await db.UserAccesses.SingleOrDefaultAsync(access => access.UserId == user.Id);
-        Assert.NotNull(membership);
-        Assert.Equal(AnalyticsDbContext.DefaultOrganizationGuid, membership.OrganizationId);
+        var membership = await db.UserAccesses.SingleAsync(access => access.UserId == user.Id);
+        Assert.Null(membership.OrganizationId);
+        Assert.Equal(UserRole.PlatformAdmin, membership.Role);
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldThrow_WhenOrgScopeCreatesPlatformAdmin()
+    {
+        // Arrange
+        GivenOrgScope(Guid.NewGuid());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _userService.CreateUserAsync("escalation@example.com", UserRole.PlatformAdmin, ct: CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldThrow_WhenPlatformAdminTargetsOrganization()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.Organizations.Add(new Organization { Id = orgId, Name = "Target", CreatedAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _userService.CreateUserAsync("confused@example.com", UserRole.PlatformAdmin, orgId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldThrow_ForTenantViewerRole()
+    {
+        // Arrange
+        GivenOrgScope(Guid.NewGuid());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _userService.CreateUserAsync("viewer@example.com", UserRole.TenantViewer, ct: CancellationToken.None));
     }
 
     [Fact]
@@ -254,7 +342,7 @@ public class UserServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _userService.CreateUserAsync("denied@example.com", UserRole.Admin, CancellationToken.None));
+            () => _userService.CreateUserAsync("denied@example.com", UserRole.Admin, ct: CancellationToken.None));
     }
 
     [Fact]

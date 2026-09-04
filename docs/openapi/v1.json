@@ -4660,6 +4660,11 @@
           },
           "role": {
             "$ref": "#/components/schemas/UserRole"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false

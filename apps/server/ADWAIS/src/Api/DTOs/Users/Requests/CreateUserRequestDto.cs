@@ -8,7 +8,8 @@ namespace Adwais.Api.DTOs.Users;
 
 public record CreateUserRequestDto(
     string Email,
-    UserRole Role
+    UserRole Role,
+    Guid? OrganizationId = null
 );
 
 

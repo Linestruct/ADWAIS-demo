@@ -139,7 +139,7 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserRequestDto request, CancellationToken ct)
     {
-        var user = await _userService.CreateUserAsync(request.Email, request.Role, ct);
+        var user = await _userService.CreateUserAsync(request.Email, request.Role, request.OrganizationId, ct);
         var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Id, ct);
         return CreatedAtAction(nameof(GetUser), new { id = user.Id },
             new UserResponseDto(user.Id, user.Name, user.Email, role, IsPlatformAdmin: isPlatformAdmin));

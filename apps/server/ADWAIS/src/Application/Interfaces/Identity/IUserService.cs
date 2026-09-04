@@ -44,9 +44,10 @@ public interface IUserService
     /// </summary>
     /// <param name="email">The email of the user.</param>
     /// <param name="role">The access role assigned to the user.</param>
+    /// <param name="organizationId">The target organization. Defaults to the caller's organization.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The newly created user record.</returns>
-    Task<User> CreateUserAsync(string email, UserRole role, CancellationToken ct);
+    Task<User> CreateUserAsync(string email, UserRole role, Guid? organizationId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Updates an existing user record.

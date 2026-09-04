@@ -52,9 +52,9 @@ public class TokenServiceTests
         Assert.Equal($"Kiosk-Device-{deviceId}", nameClaim);
         Assert.Equal("Viewer", roleClaim);
 
-        // Verify expiration is around 30 days from now
+        // Verify expiration is around one hour from now
         var diff = jwtToken.ValidTo - DateTime.UtcNow;
-        Assert.True(diff.TotalDays >= 29 && diff.TotalDays <= 31);
+        Assert.True(diff.TotalHours >= 0.9 && diff.TotalHours <= 1.1);
     }
 
     [Fact]

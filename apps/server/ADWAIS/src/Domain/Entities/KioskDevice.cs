@@ -15,5 +15,6 @@ public class KioskDevice
     public DateTimeOffset ActivationCodeExpires { get; set; }
     public bool IsAuthorized { get; set; }
     public DateTimeOffset? AuthorizedAt { get; set; }
+    public DateTimeOffset? LastSeenAt { get; set; }
     public DateTimeOffset CreatedDate { get; set; }
 }

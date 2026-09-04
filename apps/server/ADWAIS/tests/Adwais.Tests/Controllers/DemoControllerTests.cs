@@ -40,7 +40,7 @@ public class DemoControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<KioskTokenResponseDto>(ok.Value);
         Assert.Equal("demo-token", response.Token);
-        Assert.Equal(30, response.ExpiresInDays);
+        Assert.Equal(1, response.ExpiresInHours);
     }
 
     private static IConfiguration CreateConfiguration(bool enabled)

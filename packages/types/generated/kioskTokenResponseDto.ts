@@ -8,5 +8,5 @@
 export interface KioskTokenResponseDto {
   /** @nullable */
   token: string | null;
-  expiresInDays?: number;
+  expiresInHours?: number;
 }

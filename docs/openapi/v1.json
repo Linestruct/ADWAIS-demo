@@ -2131,12 +2131,48 @@
         "tags": [
           "KioskAuth"
         ],
-        "summary": "Retrieves a valid 30-day JWT local token for an authorized kiosk device.",
+        "summary": "Retrieves a valid 1-hour JWT local token for an authorized kiosk device.",
         "parameters": [
           {
             "name": "deviceId",
             "in": "query",
             "description": "The unique device identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/kiosk/devices": {
+      "get": {
+        "tags": [
+          "KioskAuth"
+        ],
+        "summary": "Lists kiosk devices. Platform admins see every device; staff see\r\ntheir own organization's devices.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/kiosk/devices/{deviceId}": {
+      "delete": {
+        "tags": [
+          "KioskAuth"
+        ],
+        "summary": "Removes a kiosk device row. The display drops to the activation\r\nscreen at its next token refresh.",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -4725,7 +4761,7 @@
             "type": "string",
             "nullable": true
           },
-          "expiresInDays": {
+          "expiresInHours": {
             "type": "integer",
             "format": "int32"
           }

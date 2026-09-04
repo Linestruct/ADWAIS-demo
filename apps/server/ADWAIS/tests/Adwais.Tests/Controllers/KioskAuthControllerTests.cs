@@ -132,7 +132,7 @@ public class KioskAuthControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<KioskTokenResponseDto>(okResult.Value);
         Assert.Equal(expectedToken, response.Token);
-        Assert.Equal(30, response.ExpiresInDays);
+        Assert.Equal(1, response.ExpiresInHours);
         _kioskServiceMock.Verify(s => s.GetTokenAsync(deviceId), Times.Once);
     }
 
@@ -181,8 +181,7 @@ public class KioskAuthControllerTests
 
     [Fact]
     public void GenerateSwaggerAdminToken_InProduction_ReturnsNotFound()
-    {
-        // Arrange
+    {        // Arrange
         var mockConfig = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
         var mockTokenService = new Mock<ITokenService>();
         
@@ -197,6 +196,60 @@ public class KioskAuthControllerTests
             mockEnv.Object);
 
         // Assert
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task GetDevices_OrgStaff_PassesOwnOrganization()
+    {
+        var devices = new List<Adwais.Domain.Entities.KioskDevice>
+        {
+            new() { Id = Guid.NewGuid(), DeviceId = "kiosk-a1", OrganizationId = _organizationId, ActivationCode = "A00001", ActivationCodeExpires = DateTimeOffset.UtcNow, IsAuthorized = true, CreatedDate = DateTimeOffset.UtcNow }
+        };
+        _kioskServiceMock.Setup(s => s.GetDevicesAsync(_organizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(devices);
+
+        var result = await _controller.GetDevices(CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<List<KioskDeviceResponseDto>>(okResult.Value);
+        Assert.Single(response);
+        Assert.Equal("kiosk-a1", response[0].DeviceId);
+    }
+
+    [Fact]
+    public async Task GetDevices_PlatformAdmin_PassesNoOrganization()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
+        _kioskServiceMock.Setup(s => s.GetDevicesAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Adwais.Domain.Entities.KioskDevice>());
+
+        var result = await _controller.GetDevices(CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        _kioskServiceMock.Verify(s => s.GetDevicesAsync(null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteDevice_ReachableDevice_ReturnsNoContent()
+    {
+        _kioskServiceMock.Setup(s => s.DeleteDeviceAsync("kiosk-a1", _organizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _controller.DeleteDevice("kiosk-a1", CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteDevice_UnreachableDevice_ReturnsNotFound()
+    {
+        _kioskServiceMock.Setup(s => s.DeleteDeviceAsync("kiosk-b1", _organizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.DeleteDevice("kiosk-b1", CancellationToken.None);
+
         Assert.IsType<NotFoundResult>(result);
     }
 }

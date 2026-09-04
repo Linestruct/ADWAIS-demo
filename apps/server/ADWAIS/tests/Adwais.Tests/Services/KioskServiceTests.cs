@@ -160,8 +160,7 @@ public class KioskServiceTests
 
     [Fact]
     public async Task GetTokenAsync_ShouldReturnNull_WhenDeviceIsNotAuthorized()
-    {
-        // Arrange
+    {        // Arrange
         var deviceId = "kiosk-device-5";
         await using (var db = new AnalyticsDbContext(_dbOptions))
         {
@@ -183,5 +182,130 @@ public class KioskServiceTests
         // Assert
         Assert.Null(token);
         _tokenServiceMock.Verify(s => s.GenerateKioskToken(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_ShouldStampLastSeenAt_WhenDeviceIsAuthorized()
+    {
+        var deviceId = "kiosk-device-6";
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.KioskDevices.Add(new KioskDevice
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                OrganizationId = Guid.NewGuid(),
+                ActivationCode = "CODE56",
+                ActivationCodeExpires = DateTimeOffset.UtcNow.AddMinutes(10),
+                IsAuthorized = true,
+                CreatedDate = DateTimeOffset.UtcNow.AddDays(-2),
+                AuthorizedAt = DateTimeOffset.UtcNow.AddDays(-2),
+                LastSeenAt = null
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _tokenServiceMock.Setup(s => s.GenerateKioskToken(deviceId, "Viewer", It.IsAny<Guid?>()))
+            .Returns("mock-jwt-token");
+
+        var before = DateTimeOffset.UtcNow;
+        await _kioskService.GetTokenAsync(deviceId);
+
+        await using var dbCtx = new AnalyticsDbContext(_dbOptions);
+        var device = await dbCtx.KioskDevices.SingleAsync(d => d.DeviceId == deviceId);
+        Assert.NotNull(device.LastSeenAt);
+        Assert.True(device.LastSeenAt >= before);
+    }
+
+    [Fact]
+    public async Task RegisterDeviceAsync_ShouldPurgeStalePendingDevices()
+    {
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.KioskDevices.AddRange(
+                new KioskDevice
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = "kiosk-stale-pending",
+                    ActivationCode = "OLD001",
+                    ActivationCodeExpires = DateTimeOffset.UtcNow.AddDays(-8),
+                    IsAuthorized = false,
+                    CreatedDate = DateTimeOffset.UtcNow.AddDays(-9)
+                },
+                new KioskDevice
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = "kiosk-fresh-pending",
+                    ActivationCode = "NEW001",
+                    ActivationCodeExpires = DateTimeOffset.UtcNow.AddMinutes(5),
+                    IsAuthorized = false,
+                    CreatedDate = DateTimeOffset.UtcNow.AddMinutes(-5)
+                },
+                new KioskDevice
+                {
+                    Id = Guid.NewGuid(),
+                    DeviceId = "kiosk-authorized",
+                    OrganizationId = Guid.NewGuid(),
+                    ActivationCode = "AUTH01",
+                    ActivationCodeExpires = DateTimeOffset.UtcNow.AddDays(-30),
+                    IsAuthorized = true,
+                    CreatedDate = DateTimeOffset.UtcNow.AddDays(-31),
+                    AuthorizedAt = DateTimeOffset.UtcNow.AddDays(-31),
+                    LastSeenAt = DateTimeOffset.UtcNow.AddDays(-20)
+                });
+            await db.SaveChangesAsync();
+        }
+
+        await _kioskService.RegisterDeviceAsync("kiosk-brand-new");
+
+        await using var dbCtx = new AnalyticsDbContext(_dbOptions);
+        Assert.Null(await dbCtx.KioskDevices.SingleOrDefaultAsync(d => d.DeviceId == "kiosk-stale-pending"));
+        Assert.NotNull(await dbCtx.KioskDevices.SingleOrDefaultAsync(d => d.DeviceId == "kiosk-fresh-pending"));
+        Assert.NotNull(await dbCtx.KioskDevices.SingleOrDefaultAsync(d => d.DeviceId == "kiosk-authorized"));
+        Assert.NotNull(await dbCtx.KioskDevices.SingleOrDefaultAsync(d => d.DeviceId == "kiosk-brand-new"));
+    }
+
+    [Fact]
+    public async Task GetDevicesAsync_ShouldFilterByOrganization()
+    {
+        var orgA = Guid.NewGuid();
+        var orgB = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.KioskDevices.AddRange(
+                new KioskDevice { Id = Guid.NewGuid(), DeviceId = "kiosk-a1", OrganizationId = orgA, ActivationCode = "A00001", ActivationCodeExpires = DateTimeOffset.UtcNow, IsAuthorized = true, CreatedDate = DateTimeOffset.UtcNow },
+                new KioskDevice { Id = Guid.NewGuid(), DeviceId = "kiosk-b1", OrganizationId = orgB, ActivationCode = "B00001", ActivationCodeExpires = DateTimeOffset.UtcNow, IsAuthorized = true, CreatedDate = DateTimeOffset.UtcNow },
+                new KioskDevice { Id = Guid.NewGuid(), DeviceId = "kiosk-orphan", OrganizationId = null, ActivationCode = "C00001", ActivationCodeExpires = DateTimeOffset.UtcNow, IsAuthorized = false, CreatedDate = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        var orgADevices = await _kioskService.GetDevicesAsync(orgA);
+        var allDevices = await _kioskService.GetDevicesAsync(null);
+
+        Assert.Single(orgADevices);
+        Assert.Equal("kiosk-a1", orgADevices[0].DeviceId);
+        Assert.Equal(3, allDevices.Count);
+    }
+
+    [Fact]
+    public async Task DeleteDeviceAsync_ShouldRemoveOnlyReachableDevice()
+    {
+        var orgA = Guid.NewGuid();
+        var orgB = Guid.NewGuid();
+        await using (var db = new AnalyticsDbContext(_dbOptions))
+        {
+            db.KioskDevices.AddRange(
+                new KioskDevice { Id = Guid.NewGuid(), DeviceId = "kiosk-del-own", OrganizationId = orgA, ActivationCode = "D00001", ActivationCodeExpires = DateTimeOffset.UtcNow, IsAuthorized = true, CreatedDate = DateTimeOffset.UtcNow },
+                new KioskDevice { Id = Guid.NewGuid(), DeviceId = "kiosk-del-other", OrganizationId = orgB, ActivationCode = "D00002", ActivationCodeExpires = DateTimeOffset.UtcNow, IsAuthorized = true, CreatedDate = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+
+        Assert.True(await _kioskService.DeleteDeviceAsync("kiosk-del-own", orgA));
+        Assert.False(await _kioskService.DeleteDeviceAsync("kiosk-del-other", orgA));
+        Assert.False(await _kioskService.DeleteDeviceAsync("kiosk-missing", null));
+
+        await using var dbCtx = new AnalyticsDbContext(_dbOptions);
+        Assert.Null(await dbCtx.KioskDevices.SingleOrDefaultAsync(d => d.DeviceId == "kiosk-del-own"));
+        Assert.NotNull(await dbCtx.KioskDevices.SingleOrDefaultAsync(d => d.DeviceId == "kiosk-del-other"));
     }
 }

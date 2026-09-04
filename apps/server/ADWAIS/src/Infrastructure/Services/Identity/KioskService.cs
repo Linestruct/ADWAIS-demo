@@ -59,6 +59,16 @@ public class KioskService(
             device.IsAuthorized = false;
             device.AuthorizedAt = null;
         }
+
+        // Fingerprints change: a new local id orphans the old row. Remove
+        // rows that never authorized and whose code expired over a week ago.
+        // Authorized rows stay: they let a returning display skip staff.
+        var staleCutoff = DateTimeOffset.UtcNow.AddDays(-7);
+        var stale = await _dbContext.KioskDevices
+            .Where(kd => !kd.IsAuthorized && kd.ActivationCodeExpires < staleCutoff)
+            .ToListAsync(ct);
+        _dbContext.KioskDevices.RemoveRange(stale);
+
         await _dbContext.SaveChangesAsync(ct);
         return code;
     }
@@ -94,6 +104,35 @@ public class KioskService(
             return null;
         }
 
+        device.LastSeenAt = DateTimeOffset.UtcNow;
+        await _dbContext.SaveChangesAsync(ct);
+
         return _tokenService.GenerateKioskToken(deviceId, organizationId: device.OrganizationId);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<KioskDevice>> GetDevicesAsync(Guid? organizationId, CancellationToken ct = default)
+    {
+        var query = _dbContext.KioskDevices.AsNoTracking();
+        if (organizationId.HasValue)
+            query = query.Where(kd => kd.OrganizationId == organizationId.Value);
+
+        return await query
+            .OrderByDescending(kd => kd.CreatedDate)
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteDeviceAsync(string deviceId, Guid? organizationId, CancellationToken ct = default)
+    {
+        var device = await _dbContext.KioskDevices.SingleOrDefaultAsync(kd => kd.DeviceId == deviceId, ct);
+        if (device is null)
+            return false;
+        if (organizationId.HasValue && device.OrganizationId != organizationId.Value)
+            return false;
+
+        _dbContext.KioskDevices.Remove(device);
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
     }
 }

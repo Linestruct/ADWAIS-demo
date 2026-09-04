@@ -36,6 +36,6 @@ public class DemoController(ITokenService tokenService, IConfiguration configura
         }
 
         var token = tokenService.GenerateKioskToken("demo-visitor", "Viewer", AnalyticsDbContext.DefaultOrganizationGuid);
-        return Ok(new KioskTokenResponseDto { Token = token, ExpiresInDays = 30 });
+        return Ok(new KioskTokenResponseDto { Token = token, ExpiresInHours = 1 });
     }
 }

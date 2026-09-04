@@ -100,6 +100,11 @@
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.1, 11.0.0)"
         }
       },
+      "FluentResults": {
+        "type": "Transitive",
+        "resolved": "4.0.0",
+        "contentHash": "wKfdLvDnDVhXlSreU7u/NFNHH6EfoOhAloEID4ePAyk+ZliowKZJvX+aCL4hxhFc9Jj74t62amS4LyOYTjXGCg=="
+      },
       "FluentValidation": {
         "type": "Transitive",
         "resolved": "12.1.1",
@@ -498,6 +503,7 @@
         "type": "Project",
         "dependencies": {
           "Adwais.Domain": "[1.0.0, )",
+          "FluentResults": "[4.0.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.10, )"
         }
       },

@@ -31,7 +31,7 @@ export function KioskDevicesPanel() {
   const canWrite = isStaffRole(role);
 
   return (
-    <div className="rounded-xl border border-outline-variant p-6 space-y-4">
+    <div className="space-y-4">
       <h3 className="text-lg font-bold text-on-surface">Kiosk displays</h3>
       <p className="text-sm text-on-surface-variant">
         Displays authorized for this organization. Removing one returns it to the activation screen.

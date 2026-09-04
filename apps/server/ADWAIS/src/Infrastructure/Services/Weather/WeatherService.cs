@@ -11,9 +11,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Exceptions;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.DTOs.Weather;
 using Adwais.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -36,26 +38,43 @@ public class WeatherService(
         PropertyNameCaseInsensitive = true
     };
 
-    public async Task<WeatherDto> GetCurrentWeatherAsync(CancellationToken ct = default)
+    public async Task<Result<WeatherDto>> GetCurrentWeatherAsync(CancellationToken ct = default)
     {
-        var orgId = currentAccess.Scope?.OrganizationId
-            ?? throw new InvalidOperationException("Weather requires an organization scope.");
+        var orgId = currentAccess.Scope?.OrganizationId;
+        if (orgId is null)
+            return Result.Fail<WeatherDto>(new ScopeDeniedError("an organization scope", "none"));
 
-        var config = await configService.GetConfigAsync(orgId, ct);
+        var config = await configService.GetConfigAsync(orgId.Value, ct);
         var location = config?.WeatherLocation;
         if (string.IsNullOrWhiteSpace(location))
-            throw new ConfigurationException("Weather location is not configured.");
+            return Result.Fail<WeatherDto>(new ConfigurationError("Weather location is not configured."));
 
         var cacheKey = $"{CacheKeyPrefix}{orgId}";
         if (cache.TryGetValue(cacheKey, out WeatherDto? cached) && cached is not null)
-            return cached;
+            return Result.Ok(cached);
 
-        var (latitude, longitude, resolvedLocation) = await GeocodeAsync(location, ct);
-        var dto = await FetchForecastAsync(latitude, longitude, resolvedLocation, ct);
+        WeatherDto dto;
+        try
+        {
+            var (latitude, longitude, resolvedLocation) = await GeocodeAsync(location, ct);
+            dto = await FetchForecastAsync(latitude, longitude, resolvedLocation, ct);
+        }
+        catch (ConfigurationException exception)
+        {
+            return Result.Fail<WeatherDto>(new ConfigurationError(exception.Message));
+        }
+        catch (TaskCanceledException exception) when (!ct.IsCancellationRequested)
+        {
+            return Result.Fail<WeatherDto>(new ProviderTimeoutError(exception.Message));
+        }
+        catch (HttpRequestException exception)
+        {
+            return Result.Fail<WeatherDto>(new ProviderError(exception.Message));
+        }
 
         var duration = TimeSpan.FromMinutes(config!.WeatherFetchIntervalMinutes > 0 ? config.WeatherFetchIntervalMinutes : 15);
         cache.Set(cacheKey, dto, duration);
-        return dto;
+        return Result.Ok(dto);
     }
 
     private async Task<(double latitude, double longitude, string location)> GeocodeAsync(

@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Exceptions;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Enums;
@@ -73,15 +74,19 @@ public class WeatherServiceTests
             .ReturnsAsync(CreateConfig(null));
         var service = new WeatherService(new HttpClient(), _configServiceMock.Object, _cacheMock.Object, OrgAccess(orgId));
 
-        await Assert.ThrowsAsync<ConfigurationException>(() => service.GetCurrentWeatherAsync());
+        var result = await service.GetCurrentWeatherAsync();
+        Assert.True(result.IsFailed);
+        Assert.IsType<ConfigurationError>(Assert.Single(result.Errors));
     }
 
     [Fact]
-    public async Task GetCurrentWeatherAsync_WithPlatformScope_Throws()
+    public async Task GetCurrentWeatherAsync_WithPlatformScope_ReturnsScopeDenied()
     {
         var service = new WeatherService(new HttpClient(), _configServiceMock.Object, _cacheMock.Object, PlatformAccess());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.GetCurrentWeatherAsync());
+        var result = await service.GetCurrentWeatherAsync();
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]
@@ -219,12 +224,12 @@ public class WeatherServiceTests
         var result = await service.GetCurrentWeatherAsync();
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal("Karlstad", result.Location);
-        Assert.Equal(18.5, result.Temperature);
-        Assert.Equal(17.2, result.ApparentTemperature);
-        Assert.Equal(65, result.PrecipitationProbability);
-        Assert.Equal(0.4, result.Precipitation);
-        Assert.Equal(1, result.WeatherCode);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Karlstad", result.Value.Location);
+        Assert.Equal(18.5, result.Value.Temperature);
+        Assert.Equal(17.2, result.Value.ApparentTemperature);
+        Assert.Equal(65, result.Value.PrecipitationProbability);
+        Assert.Equal(0.4, result.Value.Precipitation);
+        Assert.Equal(1, result.Value.WeatherCode);
     }
 }

@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Api.Controllers.Administration;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
@@ -25,6 +26,7 @@ public class OrganizationsControllerTests
 {
     private readonly AnalyticsDbContext _dbContext;
     private readonly Mock<ICurrentAccess> _accessMock;
+    private readonly Mock<IOrganizationService> _organizationServiceMock;
     private readonly OrganizationsController _controller;
     private readonly Guid _orgA = Guid.NewGuid();
     private readonly Guid _orgB = Guid.NewGuid();
@@ -38,7 +40,8 @@ public class OrganizationsControllerTests
             .Options;
         _dbContext = new AnalyticsDbContext(options);
         _accessMock = new Mock<ICurrentAccess>();
-        _controller = new OrganizationsController(_dbContext, _accessMock.Object);
+        _organizationServiceMock = new Mock<IOrganizationService>();
+        _controller = new OrganizationsController(_dbContext, _accessMock.Object, _organizationServiceMock.Object);
     }
 
     private void GivenPlatformScope()
@@ -131,5 +134,109 @@ public class OrganizationsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var orgs = Assert.IsAssignableFrom<IEnumerable<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>>(ok.Value).ToList();
         Assert.Empty(orgs);
+    }
+
+    [Fact]
+    public async Task GetOrganization_PlatformScope_ReturnsAnyOrganization()
+    {
+        GivenPlatformScope();
+        _organizationServiceMock.Setup(s => s.GetOrganizationAsync(_orgA, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Organization { Id = _orgA, Name = "Alpha" });
+
+        var result = await _controller.GetOrganization(_orgA, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Equal("Alpha", Assert.IsType<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>(ok.Value).Name);
+    }
+
+    [Fact]
+    public async Task GetOrganization_OrgScope_ReturnsOwnOrganizationOnly()
+    {
+        GivenOrgScope(_orgA);
+        _organizationServiceMock.Setup(s => s.GetOrganizationAsync(_orgA, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Organization { Id = _orgA, Name = "Alpha" });
+
+        var own = await _controller.GetOrganization(_orgA, CancellationToken.None);
+        Assert.IsType<OkObjectResult>(own.Result);
+
+        var foreign = await _controller.GetOrganization(_orgB, CancellationToken.None);
+        Assert.IsType<NotFoundResult>(foreign.Result);
+        _organizationServiceMock.Verify(
+            s => s.GetOrganizationAsync(_orgB, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateOrganization_ReturnsCreatedResponse()
+    {
+        GivenPlatformScope();
+        _organizationServiceMock.Setup(s => s.CreateOrganizationAsync("NewCo", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Organization { Id = _orgA, Name = "NewCo" });
+
+        var result = await _controller.CreateOrganization(
+            new Adwais.Api.DTOs.Organizations.CreateOrganizationRequestDto("NewCo"), CancellationToken.None);
+
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal("NewCo", Assert.IsType<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>(created.Value).Name);
+    }
+
+    [Fact]
+    public async Task RenameOrganization_OrgScope_RefusesForeignOrganization()
+    {
+        GivenOrgScope(_orgA);
+
+        var result = await _controller.RenameOrganization(
+            _orgB, new Adwais.Api.DTOs.Organizations.UpdateOrganizationRequestDto("Nope"), CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result.Result);
+        _organizationServiceMock.Verify(
+            s => s.RenameOrganizationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RenameOrganization_PlatformScope_ReturnsRenamedOrganization()
+    {
+        GivenPlatformScope();
+        _organizationServiceMock.Setup(s => s.RenameOrganizationAsync(_orgA, "Renamed", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _organizationServiceMock.Setup(s => s.GetOrganizationAsync(_orgA, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Organization { Id = _orgA, Name = "Renamed" });
+
+        var result = await _controller.RenameOrganization(
+            _orgA, new Adwais.Api.DTOs.Organizations.UpdateOrganizationRequestDto("Renamed"), CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Equal("Renamed", Assert.IsType<Adwais.Api.DTOs.Organizations.OrganizationResponseDto>(ok.Value).Name);
+    }
+
+    [Fact]
+    public async Task RenameOrganization_MissingOrganization_ReturnsNotFound()
+    {
+        GivenPlatformScope();
+        _organizationServiceMock.Setup(s => s.RenameOrganizationAsync(_orgA, "Nope", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.RenameOrganization(
+            _orgA, new Adwais.Api.DTOs.Organizations.UpdateOrganizationRequestDto("Nope"), CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task DeleteOrganization_MapsServiceResults()
+    {
+        GivenPlatformScope();
+        _organizationServiceMock.Setup(s => s.DeleteOrganizationAsync(_orgA, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OrganizationDeleteResult.Deleted);
+        _organizationServiceMock.Setup(s => s.DeleteOrganizationAsync(_orgB, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OrganizationDeleteResult.NotFound);
+        _organizationServiceMock.Setup(s => s.DeleteOrganizationAsync(_orgC, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OrganizationDeleteResult.RefusedDefaultOrganization);
+
+        Assert.IsType<NoContentResult>(await _controller.DeleteOrganization(_orgA, CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await _controller.DeleteOrganization(_orgB, CancellationToken.None));
+        var conflict = Assert.IsType<ConflictObjectResult>(
+            await _controller.DeleteOrganization(_orgC, CancellationToken.None));
+        Assert.NotNull(conflict.Value);
     }
 }

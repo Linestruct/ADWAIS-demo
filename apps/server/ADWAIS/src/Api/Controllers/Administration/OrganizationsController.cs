@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Adwais.Api.DTOs.Organizations;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
+using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,10 +25,18 @@ namespace Adwais.Api.Controllers.Administration;
 [Route("api/organizations")]
 public class OrganizationsController(
     IApplicationDbContext dbContext,
-    ICurrentAccess currentAccess) : ControllerBase
+    ICurrentAccess currentAccess,
+    IOrganizationService organizationService) : ControllerBase
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly ICurrentAccess _currentAccess = currentAccess;
+    private readonly IOrganizationService _organizationService = organizationService;
+
+    private bool CanRead(Guid organizationId)
+    {
+        var filter = OrganizationFilter.From(_currentAccess.Scope);
+        return !filter.Denied && (filter.OrganizationId is null || filter.OrganizationId.Value == organizationId);
+    }
 
     [HttpGet]
     [Authorize(Policy = "KioskOrStaffAccess")]
@@ -70,5 +79,80 @@ public class OrganizationsController(
             .Select(org => new OrganizationResponseDto(org.Id, org.Name))
             .ToArrayAsync(ct);
         return Ok(orgs);
+    }
+
+    /// <summary>
+    /// Gets one organization. Platform admins address any organization;
+    /// staff see their own organization only.
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    [Authorize(Policy = "KioskOrStaffAccess")]
+    public async Task<ActionResult<OrganizationResponseDto>> GetOrganization(Guid id, CancellationToken ct)
+    {
+        if (!CanRead(id))
+        {
+            return NotFound();
+        }
+
+        var org = await _organizationService.GetOrganizationAsync(id, ct);
+        return org is null
+            ? NotFound()
+            : Ok(new OrganizationResponseDto(org.Id, org.Name));
+    }
+
+    /// <summary>
+    /// Creates an organization. Platform admins only. Configuration is
+    /// created lazily on first edit.
+    /// </summary>
+    [HttpPost]
+    [Authorize(Policy = "PlatformAdminOnly")]
+    public async Task<ActionResult<OrganizationResponseDto>> CreateOrganization(
+        [FromBody] CreateOrganizationRequestDto request, CancellationToken ct)
+    {
+        var org = await _organizationService.CreateOrganizationAsync(request.Name, ct);
+        return CreatedAtAction(nameof(GetOrganization), new { id = org.Id },
+            new OrganizationResponseDto(org.Id, org.Name));
+    }
+
+    /// <summary>
+    /// Renames an organization. Platform admins address any organization;
+    /// organization admins rename their own organization only.
+    /// </summary>
+    [HttpPatch("{id:guid}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult<OrganizationResponseDto>> RenameOrganization(
+        Guid id, [FromBody] UpdateOrganizationRequestDto request, CancellationToken ct)
+    {
+        if (!CanRead(id))
+        {
+            return NotFound();
+        }
+
+        var renamed = await _organizationService.RenameOrganizationAsync(id, request.Name, ct);
+        if (!renamed)
+        {
+            return NotFound();
+        }
+
+        var org = await _organizationService.GetOrganizationAsync(id, ct);
+        return Ok(new OrganizationResponseDto(org!.Id, org.Name));
+    }
+
+    /// <summary>
+    /// Hard-deletes an organization with its full data graph and per-org
+    /// schedules. Platform admins only. The default organization is refused.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "PlatformAdminOnly")]
+    public async Task<IActionResult> DeleteOrganization(Guid id, CancellationToken ct)
+    {
+        var result = await _organizationService.DeleteOrganizationAsync(id, ct);
+        return result switch
+        {
+            OrganizationDeleteResult.Deleted => NoContent(),
+            OrganizationDeleteResult.RefusedDefaultOrganization =>
+                Conflict("The default organization cannot be deleted."),
+            _ => NotFound(),
+        };
     }
 }

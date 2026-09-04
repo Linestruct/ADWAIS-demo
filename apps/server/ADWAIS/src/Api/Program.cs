@@ -50,6 +50,7 @@ builder.Services.AddScoped<IFinancialKpiService, FinancialKpiService>();
 builder.Services.AddScoped<IFinancialSeriesService, FinancialSeriesService>();
 builder.Services.AddScoped<IFinancialDistributionService, FinancialDistributionService>();
 builder.Services.AddScoped<IFinancialSeriesReader, FinancialSeriesReader>();
+builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IMonitorOrchestrationService, MonitorOrchestrationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentAccess, CurrentAccessService>();

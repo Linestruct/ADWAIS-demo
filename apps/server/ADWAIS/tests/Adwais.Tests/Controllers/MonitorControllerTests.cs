@@ -20,7 +20,6 @@ using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
-using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Models;
 using Adwais.Application.Services;
@@ -37,7 +36,6 @@ public class MonitorControllerTests
     private readonly Mock<IReportingCalendar> _reportingCalendarMock;
     private readonly Mock<IMonitoringProvider> _monitoringProviderMock;
     private readonly Mock<IOrderSource> _orderSourceMock;
-    private readonly Mock<ICurrentAccess> _currentAccessMock;
     private readonly MonitorController _controller;
 
     public MonitorControllerTests()
@@ -53,9 +51,6 @@ public class MonitorControllerTests
         _monitoringProviderMock.SetupGet(provider => provider.Provider).Returns("uptimerobot");
         _monitoringProviderMock.Setup(provider => provider.IsConfigured(It.IsAny<string?>())).Returns(true);
         _orderSourceMock = new Mock<IOrderSource>();
-        _currentAccessMock = new Mock<ICurrentAccess>();
-        _currentAccessMock.SetupGet(access => access.Scope)
-            .Returns(new AccessScope(OrganizationId: null, TenantId: null, Roles: [UserRole.Admin]));
         _orderSourceMock.SetupGet(source => source.Provider).Returns("litium");
         _orderSourceMock.Setup(source => source.GetPublicSettings(It.IsAny<string?>())).Returns(new Dictionary<string, string?>());
         _reportingCalendarMock
@@ -70,8 +65,7 @@ public class MonitorControllerTests
             _dbContext,
             _monitorServiceMock.Object,
             _reportingCalendarMock.Object,
-            new[] { _orderSourceMock.Object },
-            _currentAccessMock.Object);
+            new[] { _orderSourceMock.Object });
         _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
 
         // Seed org config so the monitoring provider appears configured

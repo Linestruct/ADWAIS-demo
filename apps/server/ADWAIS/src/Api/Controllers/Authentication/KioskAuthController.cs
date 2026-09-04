@@ -77,7 +77,7 @@ public class KioskAuthController(IKioskService kioskService, ICurrentAccess curr
     /// </summary>
     [HttpGet("devices")]
     [Authorize(Policy = "StaffAccess")]
-    public async Task<IActionResult> GetDevices(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<KioskDeviceResponseDto>>> GetDevices(CancellationToken ct)
     {
         var organizationId = currentAccess.Scope?.OrganizationId;
         var devices = await kioskService.GetDevicesAsync(organizationId, ct);

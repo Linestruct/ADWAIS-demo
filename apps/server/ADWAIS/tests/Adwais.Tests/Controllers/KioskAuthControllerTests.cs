@@ -211,7 +211,7 @@ public class KioskAuthControllerTests
 
         var result = await _controller.GetDevices(CancellationToken.None);
 
-        var okResult = Assert.IsType<OkObjectResult>(result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<List<KioskDeviceResponseDto>>(okResult.Value);
         Assert.Single(response);
         Assert.Equal("kiosk-a1", response[0].DeviceId);
@@ -227,7 +227,7 @@ public class KioskAuthControllerTests
 
         var result = await _controller.GetDevices(CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<OkObjectResult>(result.Result);
         _kioskServiceMock.Verify(s => s.GetDevicesAsync(null, It.IsAny<CancellationToken>()), Times.Once);
     }
 

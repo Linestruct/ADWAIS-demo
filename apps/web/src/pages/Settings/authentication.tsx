@@ -17,6 +17,7 @@ import { ErrorAlert } from '../../components/common/ui/ErrorAlert';
 import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { SettingsPanelHeader } from '../../components/common/layout/SettingsPanelHeader';
 import { useDeleteApiDashboardSession } from '../../api/generated/endpoints';
+import { KioskDevicesPanel } from '../../components/settings/kiosk/KioskDevicesPanel';
 
 export function AuthenticationSettings() {
   const [activationCode, setActivationCode] = useState('');
@@ -121,6 +122,10 @@ export function AuthenticationSettings() {
               </SecureButton>
             </form>
           </div>
+
+          <hr className="border-outline-variant" />
+
+          {isStaff && <KioskDevicesPanel />}
 
           <hr className="border-outline-variant" />
 

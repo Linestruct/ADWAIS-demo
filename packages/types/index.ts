@@ -115,6 +115,7 @@ export type GlobalConfigDto = Generated.GlobalConfigResponseDto;
 
 // Added back for compatibility
 export type AccumulatedRevenuePointDto = Required<Generated.AccumulatedRevenuePointResponseDto>;
+export type KioskDeviceDto = Required<Generated.KioskDeviceResponseDto>;
 export type LatencyPoint = Required<Generated.LatencyPointResponseDto>;
 export type MonitorAnalyticsDto = Required<Omit<Generated.MonitorAnalyticsResponseDto, 'latencyPoints' | 'globalAverageLatency'>> & {
   globalAverageLatency: number | null;

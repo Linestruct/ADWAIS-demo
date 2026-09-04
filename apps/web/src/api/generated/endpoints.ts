@@ -67,6 +67,7 @@ import type {
   GetApiSystemEventParams,
   GetApiTenantsParams,
   GlobalConfigResponseDto,
+  KioskDeviceResponseDto,
   KioskTokenResponseDto,
   KpiResponseDto,
   LatencyMetricsDto,
@@ -5875,12 +5876,22 @@ export function useGetApiKioskToken<TData = Awaited<ReturnType<typeof getApiKios
 
 
 
-export type getApiKioskDevicesResponse200 = {
-  data: void
+export type getApiKioskDevicesResponse200TextPlain = {
+  data: KioskDeviceResponseDto[]
   status: 200
 }
 
-export type getApiKioskDevicesResponseSuccess = (getApiKioskDevicesResponse200) & {
+export type getApiKioskDevicesResponse200ApplicationJson = {
+  data: KioskDeviceResponseDto[]
+  status: 200
+}
+
+export type getApiKioskDevicesResponse200TextJson = {
+  data: KioskDeviceResponseDto[]
+  status: 200
+}
+
+export type getApiKioskDevicesResponseSuccess = (getApiKioskDevicesResponse200TextPlain | getApiKioskDevicesResponse200ApplicationJson | getApiKioskDevicesResponse200TextJson) & {
   headers: Headers;
 };
 ;

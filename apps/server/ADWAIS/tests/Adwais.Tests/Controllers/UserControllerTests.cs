@@ -16,11 +16,13 @@ using Adwais.Api.Controllers;
 using Adwais.Api.Controllers.Authentication;
 using Adwais.Api.DTOs.Users;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
+using FluentResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Tests.Controllers;
@@ -41,6 +43,7 @@ public class UserControllerTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
         _controller = new UserController(_userServiceMock.Object, _accessMock.Object, _dbContext);
+        _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
     }
 
     [Theory]
@@ -125,7 +128,7 @@ public class UserControllerTests
         var createdUser = new User { Id = Guid.NewGuid(), Name = "new@example.com", Email = "new@example.com" };
 
         _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createdUser);
+            .ReturnsAsync(Result.Ok(createdUser));
 
         // Act
         var result = await _controller.CreateUser(request, CancellationToken.None);
@@ -137,6 +140,22 @@ public class UserControllerTests
         Assert.Equal("new@example.com", returnedUser.Email);
         Assert.Null(returnedUser.Role);
         _userServiceMock.Verify(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("validation", StatusCodes.Status400BadRequest)]
+    [InlineData("scope", StatusCodes.Status403Forbidden)]
+    [InlineData("not-found", StatusCodes.Status404NotFound)]
+    [InlineData("conflict", StatusCodes.Status409Conflict)]
+    public async Task CreateUser_ShouldMapExpectedFailures(string kind, int expectedStatus)
+    {
+        var request = new CreateUserRequestDto("new@example.com", UserRole.Employee, Guid.NewGuid());
+        _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<User>(CreateError(kind)));
+
+        var result = await _controller.CreateUser(request, CancellationToken.None);
+
+        AssertProblem(result.Result, expectedStatus);
     }
 
     [Fact]
@@ -160,7 +179,7 @@ public class UserControllerTests
         await _dbContext.SaveChangesAsync();
 
         _userServiceMock.Setup(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(updatedUser);
+            .ReturnsAsync(Result.Ok(updatedUser));
 
         // Act
         var result = await _controller.UpdateUser(userId, request, CancellationToken.None);
@@ -180,13 +199,13 @@ public class UserControllerTests
         var userId = Guid.NewGuid();
         var request = new UpdateUserRequestDto("Updated User", UserRole.Admin);
         _userServiceMock.Setup(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .ReturnsAsync(Result.Fail<User>(new NotFoundError("User", userId)));
 
         // Act
         var result = await _controller.UpdateUser(userId, request, CancellationToken.None);
 
         // Assert
-        Assert.IsType<NotFoundResult>(result.Result);
+        AssertProblem(result.Result, StatusCodes.Status404NotFound);
         _userServiceMock.Verify(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -196,7 +215,7 @@ public class UserControllerTests
         // Arrange
         var userId = Guid.NewGuid();
         _userServiceMock.Setup(s => s.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(Result.Ok());
 
         // Act
         var result = await _controller.DeleteUser(userId, CancellationToken.None);
@@ -212,13 +231,13 @@ public class UserControllerTests
         // Arrange
         var userId = Guid.NewGuid();
         _userServiceMock.Setup(s => s.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .ReturnsAsync(Result.Fail(new NotFoundError("User", userId)));
 
         // Act
         var result = await _controller.DeleteUser(userId, CancellationToken.None);
 
         // Assert
-        Assert.IsType<NotFoundResult>(result);
+        AssertProblem(result, StatusCodes.Status404NotFound);
         _userServiceMock.Verify(s => s.DeleteUserAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -490,7 +509,7 @@ public class UserControllerTests
             .ReturnsAsync(user);
         var membership = new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = orgId, Role = UserRole.Admin };
         _userServiceMock.Setup(s => s.AddUserMembershipAsync(userId, orgId, UserRole.Admin, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(membership);
+            .ReturnsAsync(Result.Ok(membership));
 
         // Act
         var result = await _controller.AddUserMembership(
@@ -535,7 +554,7 @@ public class UserControllerTests
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, callerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(Result.Ok());
         GivenPrincipal([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, callerId.ToString())]);
 
         // Act
@@ -555,14 +574,14 @@ public class UserControllerTests
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .ReturnsAsync(Result.Fail(new NotFoundError("Membership", membershipId)));
         GivenPrincipal([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())]);
 
         // Act
         var result = await _controller.DeleteUserMembership(userId, membershipId, CancellationToken.None);
 
         // Assert
-        Assert.IsType<NotFoundResult>(result);
+        AssertProblem(result, StatusCodes.Status404NotFound);
     }
 
     [Fact]
@@ -581,4 +600,19 @@ public class UserControllerTests
         // Assert
         Assert.IsType<UnauthorizedObjectResult>(result.Result);
     }
+
+    private static void AssertProblem(IActionResult? action, int expectedStatus)
+    {
+        var result = Assert.IsAssignableFrom<ObjectResult>(action);
+        Assert.Equal(expectedStatus, result.StatusCode);
+    }
+
+    private static ApplicationError CreateError(string kind) => kind switch
+    {
+        "validation" => new ValidationError(new Dictionary<string, string[]> { ["email"] = ["Email is invalid."] }),
+        "scope" => new ScopeDeniedError("create users", "organization"),
+        "not-found" => new NotFoundError("Organization", Guid.NewGuid()),
+        "conflict" => new ConflictError("The user already exists."),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 }

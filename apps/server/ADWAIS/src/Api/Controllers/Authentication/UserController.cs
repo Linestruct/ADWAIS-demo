@@ -4,6 +4,7 @@
 
 using System.Security.Claims;
 using Adwais.Api.DTOs.Users;
+using Adwais.Api.Extensions;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
@@ -140,9 +141,11 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserRequestDto request, CancellationToken ct)
     {
         var user = await _userService.CreateUserAsync(request.Email, request.Role, request.OrganizationId, ct);
-        var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Id, ct);
-        return CreatedAtAction(nameof(GetUser), new { id = user.Id },
-            new UserResponseDto(user.Id, user.Name, user.Email, role, IsPlatformAdmin: isPlatformAdmin));
+        if (user.IsFailed) return user.ToProblem(HttpContext);
+
+        var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Value.Id, ct);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Value.Id },
+            new UserResponseDto(user.Value.Id, user.Value.Name, user.Value.Email, role, IsPlatformAdmin: isPlatformAdmin));
     }
 
     [HttpPatch("{id:guid}")]
@@ -150,13 +153,10 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     public async Task<ActionResult<UserResponseDto>> UpdateUser(Guid id, [FromBody] UpdateUserRequestDto request, CancellationToken ct)
     {
         var user = await _userService.UpdateUserAsync(id, request.Name, request.Role, ct);
-        if (user == null)
-        {
-            return NotFound();
-        }
+        if (user.IsFailed) return user.ToProblem(HttpContext);
 
-        var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Id, ct);
-        return Ok(new UserResponseDto(user.Id, user.Name, user.Email, role, IsPlatformAdmin: isPlatformAdmin));
+        var (role, isPlatformAdmin) = await ResolveMembershipSummaryAsync(user.Value.Id, ct);
+        return Ok(new UserResponseDto(user.Value.Id, user.Value.Name, user.Value.Email, role, IsPlatformAdmin: isPlatformAdmin));
     }
 
     [HttpDelete("{id:guid}")]
@@ -164,10 +164,7 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     public async Task<IActionResult> DeleteUser(Guid id, CancellationToken ct)
     {
         var success = await _userService.DeleteUserAsync(id, ct);
-        if (!success)
-        {
-            return NotFound();
-        }
+        if (success.IsFailed) return success.ToProblem(HttpContext);
 
         return NoContent();
     }
@@ -208,7 +205,9 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
         }
 
         var membership = await _userService.AddUserMembershipAsync(id, request.OrganizationId, request.Role, ct);
-        return CreatedAtAction(nameof(GetUserMemberships), new { id }, MapMembership(membership));
+        if (membership.IsFailed) return membership.ToProblem(HttpContext);
+
+        return CreatedAtAction(nameof(GetUserMemberships), new { id }, MapMembership(membership.Value));
     }
 
     /// <summary>
@@ -229,10 +228,7 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             ? caller
             : Guid.Empty;
         var removed = await _userService.RemoveUserMembershipAsync(id, membershipId, callerUserId, ct);
-        if (!removed)
-        {
-            return NotFound();
-        }
+        if (removed.IsFailed) return removed.ToProblem(HttpContext);
 
         return NoContent();
     }

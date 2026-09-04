@@ -9,11 +9,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -76,35 +78,35 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
     }
 
     /// <inheritdoc />
-    public async Task<User> CreateUserAsync(string email, UserRole role, Guid? organizationId = null, CancellationToken ct = default)
+    public async Task<Result<User>> CreateUserAsync(string email, UserRole role, Guid? organizationId = null, CancellationToken ct = default)
     {
         var filter = Filter;
         if (filter.Denied)
         {
-            throw new UnauthorizedAccessException("The current scope cannot create users.");
+            return Result.Fail<User>(ScopeDenied("create users"));
         }
 
         if (role == UserRole.TenantViewer)
         {
-            throw new ArgumentException("Tenant viewers are added through memberships, not user creation.");
+            return Result.Fail<User>(Validation("role", "Tenant viewers are added through memberships, not user creation."));
         }
 
         Guid? targetOrg;
         if (role == UserRole.PlatformAdmin)
         {
             if (filter.OrganizationId is not null)
-                throw new UnauthorizedAccessException("Only platform admins can create platform admins.");
+                return Result.Fail<User>(ScopeDenied("create platform administrators"));
             if (organizationId.HasValue)
-                throw new ArgumentException("Platform admins do not belong to an organization.");
+                return Result.Fail<User>(Validation("organizationId", "Platform admins do not belong to an organization."));
             targetOrg = null;
         }
         else if (organizationId.HasValue)
         {
             if (filter.OrganizationId is not null && filter.OrganizationId.Value != organizationId.Value)
-                throw new UnauthorizedAccessException("The organization is outside the current scope.");
+                return Result.Fail<User>(ScopeDenied("create users in the requested organization"));
             var orgExists = await _dbContext.Organizations.AnyAsync(o => o.Id == organizationId.Value, ct);
             if (!orgExists)
-                throw new KeyNotFoundException($"Organization {organizationId.Value} not found.");
+                return Result.Fail<User>(new NotFoundError("Organization", organizationId.Value));
             targetOrg = organizationId.Value;
         }
         else if (filter.OrganizationId is { } callerOrgId)
@@ -113,7 +115,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
         }
         else
         {
-            throw new InvalidOperationException("An organization is required to create this user.");
+            return Result.Fail<User>(Validation("organizationId", "An organization is required to create this user."));
         }
 
         var user = new User
@@ -133,27 +135,27 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
             CreatedAt = DateTimeOffset.UtcNow
         });
         await _dbContext.SaveChangesAsync(ct);
-        return user;
+        return Result.Ok(user);
     }
 
     /// <inheritdoc />
-    public async Task<User?> UpdateUserAsync(Guid id, string? name, UserRole? role, CancellationToken ct)
+    public async Task<Result<User>> UpdateUserAsync(Guid id, string? name, UserRole? role, CancellationToken ct)
     {
         var filter = Filter;
         if (filter.Denied)
         {
-            return null;
+            return Result.Fail<User>(ScopeDenied("update users"));
         }
 
         var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == id, ct);
         if (user == null)
         {
-            return null;
+            return Result.Fail<User>(new NotFoundError("User", id));
         }
 
         if (filter.OrganizationId is { } orgId && !await IsMemberOfOrganizationAsync(user.Id, orgId, ct))
         {
-            return null;
+            return Result.Fail<User>(ScopeDenied("update this user"));
         }
 
         if (name != null)
@@ -174,22 +176,22 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
         }
 
         await _dbContext.SaveChangesAsync(ct);
-        return user;
+        return Result.Ok(user);
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteUserAsync(Guid id, CancellationToken ct)
+    public async Task<Result> DeleteUserAsync(Guid id, CancellationToken ct)
     {
         var filter = Filter;
         if (filter.Denied)
         {
-            return false;
+            return Result.Fail(ScopeDenied("delete users"));
         }
 
         var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == id, ct);
         if (user == null)
         {
-            return false;
+            return Result.Fail(new NotFoundError("User", id));
         }
 
         if (filter.OrganizationId is { } orgId)
@@ -202,7 +204,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
             {
                 // Deleting cascades across every organization. Refuse when the
                 // user reaches beyond this organization or is invisible here.
-                return false;
+                return Result.Fail(ScopeDenied("delete this user"));
             }
         }
 
@@ -212,7 +214,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
         _dbContext.UserAccesses.RemoveRange(memberships);
         _dbContext.Users.Remove(user);
         await _dbContext.SaveChangesAsync(ct);
-        return true;
+        return Result.Ok();
     }
 
     private async Task<bool> IsMemberOfOrganizationAsync(Guid userId, Guid organizationId, CancellationToken ct)
@@ -241,53 +243,53 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
     }
 
     /// <inheritdoc />
-    public async Task<UserAccess> AddUserMembershipAsync(Guid userId, Guid? organizationId, UserRole role, CancellationToken ct)
+    public async Task<Result<UserAccess>> AddUserMembershipAsync(Guid userId, Guid? organizationId, UserRole role, CancellationToken ct)
     {
         var filter = Filter;
         if (filter.Denied)
         {
-            throw new UnauthorizedAccessException("The current scope cannot manage memberships.");
+            return Result.Fail<UserAccess>(ScopeDenied("manage memberships"));
         }
         if (role == UserRole.TenantViewer)
         {
-            throw new ArgumentException("Tenant viewer memberships require a tenant and are not supported yet.");
+            return Result.Fail<UserAccess>(Validation("role", "Tenant viewer memberships require a tenant and are not supported yet."));
         }
 
         // The platform role only exists on null-org rows, and null-org rows
         // only ever hold the platform role. Org rows never carry it.
         if (organizationId is null && role != UserRole.PlatformAdmin)
         {
-            throw new ArgumentException("Memberships without an organization must use the PlatformAdmin role.");
+            return Result.Fail<UserAccess>(Validation("organizationId", "Memberships without an organization must use the PlatformAdmin role."));
         }
         if (organizationId is not null && role == UserRole.PlatformAdmin)
         {
-            throw new ArgumentException("The PlatformAdmin role requires a membership without an organization.");
+            return Result.Fail<UserAccess>(Validation("organizationId", "The PlatformAdmin role requires a membership without an organization."));
         }
 
         var userExists = await _dbContext.Users.AnyAsync(user => user.Id == userId, ct);
         if (!userExists)
         {
-            throw new KeyNotFoundException($"User {userId} not found.");
+            return Result.Fail<UserAccess>(new NotFoundError("User", userId));
         }
 
         if (organizationId is null)
         {
             if (filter.OrganizationId is not null)
             {
-                throw new UnauthorizedAccessException("Only platform admins can create platform admin memberships.");
+                return Result.Fail<UserAccess>(ScopeDenied("create platform administrator memberships"));
             }
         }
         else
         {
             if (filter.OrganizationId is { } orgId && orgId != organizationId.Value)
             {
-                throw new UnauthorizedAccessException($"Cannot manage memberships outside organization {orgId}.");
+                return Result.Fail<UserAccess>(ScopeDenied("manage memberships in the requested organization"));
             }
             var organizationExists = await _dbContext.Organizations
                 .AnyAsync(org => org.Id == organizationId.Value, ct);
             if (!organizationExists)
             {
-                throw new KeyNotFoundException($"Organization {organizationId.Value} not found.");
+                return Result.Fail<UserAccess>(new NotFoundError("Organization", organizationId.Value));
             }
         }
 
@@ -295,7 +297,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
             .AnyAsync(access => access.UserId == userId && access.OrganizationId == organizationId, ct);
         if (duplicate)
         {
-            throw new ArgumentException("The user already belongs to that organization.");
+            return Result.Fail<UserAccess>(new ConflictError("The user already belongs to that organization."));
         }
 
         var membership = new UserAccess
@@ -308,37 +310,43 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
         };
         _dbContext.UserAccesses.Add(membership);
         await _dbContext.SaveChangesAsync(ct);
-        return membership;
+        return Result.Ok(membership);
     }
 
     /// <inheritdoc />
-    public async Task<bool> RemoveUserMembershipAsync(Guid targetUserId, Guid membershipId, Guid callerUserId, CancellationToken ct)
+    public async Task<Result> RemoveUserMembershipAsync(Guid targetUserId, Guid membershipId, Guid callerUserId, CancellationToken ct)
     {
         var filter = Filter;
         if (filter.Denied)
         {
-            return false;
+            return Result.Fail(ScopeDenied("manage memberships"));
         }
 
         var membership = await _dbContext.UserAccesses
             .SingleOrDefaultAsync(access => access.Id == membershipId, ct);
         if (membership == null)
         {
-            return false;
+            return Result.Fail(new NotFoundError("Membership", membershipId));
         }
 
         if (filter.OrganizationId is { } orgId && membership.OrganizationId != orgId)
         {
-            return false;
+            return Result.Fail(ScopeDenied("remove this membership"));
         }
 
         if (membership.OrganizationId is null && targetUserId == callerUserId)
         {
-            throw new UnauthorizedAccessException("You cannot remove your own platform admin membership.");
+            return Result.Fail(ScopeDenied("remove your own platform administrator membership"));
         }
 
         _dbContext.UserAccesses.Remove(membership);
         await _dbContext.SaveChangesAsync(ct);
-        return true;
+        return Result.Ok();
     }
+
+    private ScopeDeniedError ScopeDenied(string required)
+        => new(required, Filter.OrganizationId?.ToString() ?? "platform");
+
+    private static ValidationError Validation(string field, string message)
+        => new(new Dictionary<string, string[]> { [field] = [message] });
 }

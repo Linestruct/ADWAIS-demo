@@ -11,11 +11,13 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Services;
+using FluentResults;
 
 namespace Adwais.Tests.Services;
 
@@ -208,14 +210,15 @@ public class UserServiceTests
         var user = await _userService.CreateUserAsync("newuser@example.com", UserRole.Admin, ct: CancellationToken.None);
 
         // Assert
-        Assert.NotEqual(Guid.Empty, user.Id);
-        Assert.Equal("newuser@example.com", user.Email);
-        Assert.Equal("newuser@example.com", user.Name);
+        Assert.True(user.IsSuccess);
+        Assert.NotEqual(Guid.Empty, user.Value.Id);
+        Assert.Equal("newuser@example.com", user.Value.Email);
+        Assert.Equal("newuser@example.com", user.Value.Name);
 
         await using var db = new AnalyticsDbContext(_dbOptions);
-        var dbUser = await db.Users.SingleOrDefaultAsync(u => u.Id == user.Id);
+        var dbUser = await db.Users.SingleOrDefaultAsync(u => u.Id == user.Value.Id);
         Assert.NotNull(dbUser);
-        Assert.Equal(UserRole.Admin, (await db.UserAccesses.SingleAsync(a => a.UserId == user.Id)).Role);
+        Assert.Equal(UserRole.Admin, (await db.UserAccesses.SingleAsync(a => a.UserId == user.Value.Id)).Role);
     }
 
     [Fact]
@@ -230,18 +233,19 @@ public class UserServiceTests
 
         // Assert
         await using var db = new AnalyticsDbContext(_dbOptions);
-        var membership = await db.UserAccesses.SingleOrDefaultAsync(access => access.UserId == user.Id);
+        Assert.True(user.IsSuccess);
+        var membership = await db.UserAccesses.SingleOrDefaultAsync(access => access.UserId == user.Value.Id);
         Assert.NotNull(membership);
         Assert.Equal(orgId, membership.OrganizationId);
         Assert.Equal(UserRole.Viewer, membership.Role);
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldThrow_WhenPlatformScopeHasNoOrganization()
+    public async Task CreateUserAsync_ShouldFailValidation_WhenPlatformScopeHasNoOrganization()
     {
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _userService.CreateUserAsync("platform-created@example.com", UserRole.Employee, ct: CancellationToken.None));
+        var result = await _userService.CreateUserAsync("platform-created@example.com", UserRole.Employee, ct: CancellationToken.None);
+
+        AssertFailure<ValidationError>(result);
     }
 
     [Fact]
@@ -260,27 +264,28 @@ public class UserServiceTests
 
         // Assert
         await using var dbCtx = new AnalyticsDbContext(_dbOptions);
-        var membership = await dbCtx.UserAccesses.SingleAsync(access => access.UserId == user.Id);
+        Assert.True(user.IsSuccess);
+        var membership = await dbCtx.UserAccesses.SingleAsync(access => access.UserId == user.Value.Id);
         Assert.Equal(orgId, membership.OrganizationId);
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldThrow_WhenExplicitOrganizationIsOutsideScope()
+    public async Task CreateUserAsync_ShouldFailScope_WhenExplicitOrganizationIsOutsideScope()
     {
         // Arrange
         GivenOrgScope(Guid.NewGuid());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _userService.CreateUserAsync("foreign@example.com", UserRole.Viewer, Guid.NewGuid(), CancellationToken.None));
+        var result = await _userService.CreateUserAsync("foreign@example.com", UserRole.Viewer, Guid.NewGuid(), CancellationToken.None);
+
+        AssertFailure<ScopeDeniedError>(result);
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldThrow_WhenExplicitOrganizationIsMissing()
+    public async Task CreateUserAsync_ShouldFailNotFound_WhenExplicitOrganizationIsMissing()
     {
-        // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => _userService.CreateUserAsync("missing@example.com", UserRole.Viewer, Guid.NewGuid(), CancellationToken.None));
+        var result = await _userService.CreateUserAsync("missing@example.com", UserRole.Viewer, Guid.NewGuid(), CancellationToken.None);
+
+        AssertFailure<NotFoundError>(result);
     }
 
     [Fact]
@@ -291,24 +296,25 @@ public class UserServiceTests
 
         // Assert
         await using var db = new AnalyticsDbContext(_dbOptions);
-        var membership = await db.UserAccesses.SingleAsync(access => access.UserId == user.Id);
+        Assert.True(user.IsSuccess);
+        var membership = await db.UserAccesses.SingleAsync(access => access.UserId == user.Value.Id);
         Assert.Null(membership.OrganizationId);
         Assert.Equal(UserRole.PlatformAdmin, membership.Role);
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldThrow_WhenOrgScopeCreatesPlatformAdmin()
+    public async Task CreateUserAsync_ShouldFailScope_WhenOrgScopeCreatesPlatformAdmin()
     {
         // Arrange
         GivenOrgScope(Guid.NewGuid());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _userService.CreateUserAsync("escalation@example.com", UserRole.PlatformAdmin, ct: CancellationToken.None));
+        var result = await _userService.CreateUserAsync("escalation@example.com", UserRole.PlatformAdmin, ct: CancellationToken.None);
+
+        AssertFailure<ScopeDeniedError>(result);
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldThrow_WhenPlatformAdminTargetsOrganization()
+    public async Task CreateUserAsync_ShouldFailValidation_WhenPlatformAdminTargetsOrganization()
     {
         // Arrange
         var orgId = Guid.NewGuid();
@@ -318,31 +324,31 @@ public class UserServiceTests
             await db.SaveChangesAsync();
         }
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => _userService.CreateUserAsync("confused@example.com", UserRole.PlatformAdmin, orgId, CancellationToken.None));
+        var result = await _userService.CreateUserAsync("confused@example.com", UserRole.PlatformAdmin, orgId, CancellationToken.None);
+
+        AssertFailure<ValidationError>(result);
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldThrow_ForTenantViewerRole()
+    public async Task CreateUserAsync_ShouldFailValidation_ForTenantViewerRole()
     {
         // Arrange
         GivenOrgScope(Guid.NewGuid());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => _userService.CreateUserAsync("viewer@example.com", UserRole.TenantViewer, ct: CancellationToken.None));
+        var result = await _userService.CreateUserAsync("viewer@example.com", UserRole.TenantViewer, ct: CancellationToken.None);
+
+        AssertFailure<ValidationError>(result);
     }
 
     [Fact]
-    public async Task CreateUserAsync_ShouldThrow_WhenScopeIsDenied()
+    public async Task CreateUserAsync_ShouldFailScope_WhenScopeIsDenied()
     {
         // Arrange
         GivenDeniedScope();
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _userService.CreateUserAsync("denied@example.com", UserRole.Admin, ct: CancellationToken.None));
+        var result = await _userService.CreateUserAsync("denied@example.com", UserRole.Admin, ct: CancellationToken.None);
+
+        AssertFailure<ScopeDeniedError>(result);
     }
 
     [Fact]
@@ -355,8 +361,8 @@ public class UserServiceTests
         var result = await _userService.UpdateUserAsync(user.Id, "Updated Name", UserRole.Admin, CancellationToken.None);
 
 // Assert
-        Assert.NotNull(result);
-        Assert.Equal("Updated Name", result.Name);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Updated Name", result.Value.Name);
     }
 
     [Fact]
@@ -373,7 +379,7 @@ public class UserServiceTests
         var result = await _userService.UpdateUserAsync(user.Id, null, UserRole.Viewer, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(result);
+        Assert.True(result.IsSuccess);
 
         await using var db = new AnalyticsDbContext(_dbOptions);
         var membership = await db.UserAccesses.SingleAsync(access => access.UserId == user.Id && access.OrganizationId == orgId);
@@ -381,7 +387,7 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task UpdateUserAsync_ShouldReturnNull_WhenOutsideOrgScope()
+    public async Task UpdateUserAsync_ShouldFailScope_WhenOutsideOrgScope()
     {
         // Arrange
         var user = await SeedUserAsync("Outsider");
@@ -393,7 +399,7 @@ public class UserServiceTests
         var result = await _userService.UpdateUserAsync(user.Id, "New Name", null, CancellationToken.None);
 
         // Assert
-        Assert.Null(result);
+        AssertFailure<ScopeDeniedError>(result);
 
         await using var verifyDb = new AnalyticsDbContext(_dbOptions);
         var unchanged = await verifyDb.Users.SingleAsync(u => u.Id == user.Id);
@@ -401,13 +407,13 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task UpdateUserAsync_ShouldReturnNull_WhenNotExists()
+    public async Task UpdateUserAsync_ShouldFailNotFound_WhenNotExists()
     {
         // Act
         var result = await _userService.UpdateUserAsync(Guid.NewGuid(), "Name", UserRole.Employee, CancellationToken.None);
 
         // Assert
-        Assert.Null(result);
+        AssertFailure<NotFoundError>(result);
     }
 
     [Fact]
@@ -420,7 +426,7 @@ public class UserServiceTests
         var result = await _userService.DeleteUserAsync(user.Id, CancellationToken.None);
 
         // Assert
-        Assert.True(result);
+        Assert.True(result.IsSuccess);
 
         await using var verifyDb = new AnalyticsDbContext(_dbOptions);
         Assert.False(await verifyDb.Users.AnyAsync(u => u.Id == user.Id));
@@ -440,7 +446,7 @@ public class UserServiceTests
         var result = await _userService.DeleteUserAsync(user.Id, CancellationToken.None);
 
         // Assert
-        Assert.True(result);
+        Assert.True(result.IsSuccess);
 
         await using var verifyDb = new AnalyticsDbContext(_dbOptions);
         Assert.False(await verifyDb.UserAccesses.AnyAsync(access => access.UserId == user.Id));
@@ -462,7 +468,7 @@ public class UserServiceTests
         var result = await _userService.DeleteUserAsync(user.Id, CancellationToken.None);
 
         // Assert
-        Assert.False(result);
+        AssertFailure<ScopeDeniedError>(result);
 
         await using var verifyDb = new AnalyticsDbContext(_dbOptions);
         Assert.True(await verifyDb.Users.AnyAsync(u => u.Id == user.Id));
@@ -470,13 +476,13 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task DeleteUserAsync_ShouldReturnFalse_WhenNotExists()
+    public async Task DeleteUserAsync_ShouldFailNotFound_WhenNotExists()
     {
         // Act
         var result = await _userService.DeleteUserAsync(Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.False(result);
+        AssertFailure<NotFoundError>(result);
     }
 
     [Fact]
@@ -577,36 +583,37 @@ public class UserServiceTests
         var membership = await _userService.AddUserMembershipAsync(user.Id, orgId, UserRole.Employee, CancellationToken.None);
 
         // Assert
-        Assert.Equal(user.Id, membership.UserId);
-        Assert.Equal(orgId, membership.OrganizationId);
-        Assert.Equal(UserRole.Employee, membership.Role);
+        Assert.True(membership.IsSuccess);
+        Assert.Equal(user.Id, membership.Value.UserId);
+        Assert.Equal(orgId, membership.Value.OrganizationId);
+        Assert.Equal(UserRole.Employee, membership.Value.Role);
 
         await using var verifyDb = new AnalyticsDbContext(_dbOptions);
         Assert.True(await verifyDb.UserAccesses.AnyAsync(a => a.UserId == user.Id && a.OrganizationId == orgId));
     }
 
     [Fact]
-    public async Task AddUserMembershipAsync_OrgAdmin_TargetingOtherOrganization_ThrowsUnauthorizedAccess()
+    public async Task AddUserMembershipAsync_OrgAdmin_TargetingOtherOrganization_FailsScope()
     {
         // Arrange
         var user = await SeedUserAsync("New Member");
         GivenOrgScope(Guid.NewGuid());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.Employee, CancellationToken.None));
+        var result = await _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.Employee, CancellationToken.None);
+
+        AssertFailure<ScopeDeniedError>(result);
     }
 
     [Fact]
-    public async Task AddUserMembershipAsync_OrgAdmin_CreatingPlatformRow_ThrowsUnauthorizedAccess()
+    public async Task AddUserMembershipAsync_OrgAdmin_CreatingPlatformRow_FailsScope()
     {
         // Arrange
         var user = await SeedUserAsync("New Member");
         GivenOrgScope(Guid.NewGuid());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _userService.AddUserMembershipAsync(user.Id, null, UserRole.PlatformAdmin, CancellationToken.None));
+        var result = await _userService.AddUserMembershipAsync(user.Id, null, UserRole.PlatformAdmin, CancellationToken.None);
+
+        AssertFailure<ScopeDeniedError>(result);
     }
 
     [Fact]
@@ -622,7 +629,8 @@ public class UserServiceTests
         var membership = await _userService.AddUserMembershipAsync(user.Id, targetOrg, UserRole.Admin, CancellationToken.None);
 
         // Assert
-        Assert.Equal(targetOrg, membership.OrganizationId);
+        Assert.True(membership.IsSuccess);
+        Assert.Equal(targetOrg, membership.Value.OrganizationId);
     }
 
     [Fact]
@@ -635,38 +643,39 @@ public class UserServiceTests
         var membership = await _userService.AddUserMembershipAsync(user.Id, null, UserRole.PlatformAdmin, CancellationToken.None);
 
         // Assert
-        Assert.Null(membership.OrganizationId);
-        Assert.Equal(UserRole.PlatformAdmin, membership.Role);
+        Assert.True(membership.IsSuccess);
+        Assert.Null(membership.Value.OrganizationId);
+        Assert.Equal(UserRole.PlatformAdmin, membership.Value.Role);
     }
 
     [Fact]
-    public async Task AddUserMembershipAsync_PlatformAdmin_UnknownOrganization_ThrowsKeyNotFound()
+    public async Task AddUserMembershipAsync_PlatformAdmin_UnknownOrganization_FailsNotFound()
     {
         // Arrange
         var user = await SeedUserAsync("New Member");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.Employee, CancellationToken.None));
+        var result = await _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.Employee, CancellationToken.None);
+
+        AssertFailure<NotFoundError>(result);
     }
 
     [Fact]
-    public async Task AddUserMembershipAsync_UnknownUser_ThrowsKeyNotFound()
+    public async Task AddUserMembershipAsync_UnknownUser_FailsNotFound()
     {
-        // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            _userService.AddUserMembershipAsync(Guid.NewGuid(), Guid.NewGuid(), UserRole.Employee, CancellationToken.None));
+        var result = await _userService.AddUserMembershipAsync(Guid.NewGuid(), Guid.NewGuid(), UserRole.Employee, CancellationToken.None);
+
+        AssertFailure<NotFoundError>(result);
     }
 
     [Fact]
-    public async Task AddUserMembershipAsync_TenantViewerRole_ThrowsArgumentException()
+    public async Task AddUserMembershipAsync_TenantViewerRole_FailsValidation()
     {
         // Arrange
         var user = await SeedUserAsync("New Viewer");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.TenantViewer, CancellationToken.None));
+        var result = await _userService.AddUserMembershipAsync(user.Id, Guid.NewGuid(), UserRole.TenantViewer, CancellationToken.None);
+
+        AssertFailure<ValidationError>(result);
     }
 
     [Fact]
@@ -692,7 +701,7 @@ public class UserServiceTests
         var removed = await _userService.RemoveUserMembershipAsync(user.Id, membershipId, Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.True(removed);
+        Assert.True(removed.IsSuccess);
         await using var verifyDb = new AnalyticsDbContext(_dbOptions);
         Assert.False(await verifyDb.UserAccesses.AnyAsync(a => a.Id == membershipId));
     }
@@ -722,11 +731,11 @@ public class UserServiceTests
         var removed = await _userService.RemoveUserMembershipAsync(user.Id, membershipId, Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.True(removed);
+        Assert.True(removed.IsSuccess);
     }
 
     [Fact]
-    public async Task RemoveUserMembershipAsync_OrgAdmin_OtherOrganizationRow_ReturnsFalse()
+    public async Task RemoveUserMembershipAsync_OrgAdmin_OtherOrganizationRow_FailsScope()
     {
         // Arrange
         var otherOrg = Guid.NewGuid();
@@ -750,14 +759,14 @@ public class UserServiceTests
         var removed = await _userService.RemoveUserMembershipAsync(user.Id, membershipId, Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.False(removed);
+        AssertFailure<ScopeDeniedError>(removed);
 
         await using var verifyDb = new AnalyticsDbContext(_dbOptions);
         Assert.True(await verifyDb.UserAccesses.AnyAsync(a => a.Id == membershipId));
     }
 
     [Fact]
-    public async Task RemoveUserMembershipAsync_SelfPlatformAdminRow_ThrowsUnauthorizedAccess()
+    public async Task RemoveUserMembershipAsync_SelfPlatformAdminRow_FailsScope()
     {
         // Arrange
         var platformUserId = Guid.NewGuid();
@@ -776,13 +785,13 @@ public class UserServiceTests
             await db.SaveChangesAsync();
         }
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _userService.RemoveUserMembershipAsync(platformUserId, membershipId, platformUserId, CancellationToken.None));
+        var result = await _userService.RemoveUserMembershipAsync(platformUserId, membershipId, platformUserId, CancellationToken.None);
+
+        AssertFailure<ScopeDeniedError>(result);
     }
 
     [Fact]
-    public async Task RemoveUserMembershipAsync_UnknownMembership_ReturnsFalse()
+    public async Task RemoveUserMembershipAsync_UnknownMembership_FailsNotFound()
     {
         // Arrange
         var user = await SeedUserAsync("Member");
@@ -791,11 +800,11 @@ public class UserServiceTests
         var removed = await _userService.RemoveUserMembershipAsync(user.Id, Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.False(removed);
+        AssertFailure<NotFoundError>(removed);
     }
 
     [Fact]
-    public async Task RemoveUserMembershipAsync_DeniedScope_ReturnsFalse()
+    public async Task RemoveUserMembershipAsync_DeniedScope_FailsScope()
     {
         // Arrange
         var user = await SeedUserAsync("Member");
@@ -805,6 +814,24 @@ public class UserServiceTests
         var removed = await _userService.RemoveUserMembershipAsync(user.Id, Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.False(removed);
+        AssertFailure<ScopeDeniedError>(removed);
+    }
+
+    private static void AssertFailure<TError>(Result result) where TError : IError
+    {
+        Assert.True(result.IsFailed);
+        Assert.IsType<TError>(Assert.Single(result.Errors));
+    }
+
+    private static void AssertFailure<TError>(Result<User> result) where TError : IError
+    {
+        Assert.True(result.IsFailed);
+        Assert.IsType<TError>(Assert.Single(result.Errors));
+    }
+
+    private static void AssertFailure<TError>(Result<UserAccess> result) where TError : IError
+    {
+        Assert.True(result.IsFailed);
+        Assert.IsType<TError>(Assert.Single(result.Errors));
     }
 }

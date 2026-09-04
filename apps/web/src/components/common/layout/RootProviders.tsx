@@ -36,7 +36,7 @@ export function RootProviders({children}: { children: ReactNode }) {
         toastOptions={{
           unstyled: true,
           classNames: {
-            toast: 'relative flex w-[356px] max-w-[calc(100vw-2rem)] items-start gap-3 rounded-xl p-4 pr-9 text-sm m3-elevation-2',
+            toast: 'flex w-[356px] max-w-[calc(100vw-2rem)] items-start gap-3 rounded-xl p-4 pr-9 text-sm m3-elevation-2',
             title: 'font-bold',
             description: 'mt-0.5 font-medium leading-relaxed break-words',
             icon: 'mt-0.5 shrink-0',

@@ -8,6 +8,8 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
+using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Intranet;
 using Adwais.Domain.Enums;
@@ -100,4 +102,47 @@ END:VCALENDAR";
         Assert.Equal("event-12345@example.com", syncedEvent.ExternalUid);
         Assert.Equal(orgId, syncedEvent.OrganizationId);
     }
+
+    [Fact]
+    public async Task CreateSubscriptionAsync_WithoutOrganizationScope_ReturnsScopeDenied()
+    {
+        var options = CreateNewContextOptions();
+        using var dbContext = new AnalyticsDbContext(options);
+        var access = new Mock<ICurrentAccess>();
+        access.Setup(candidate => candidate.Scope).Returns(new AccessScope(null, null, [UserRole.Admin]));
+
+        var result = await CreateService(dbContext, access.Object).CreateSubscriptionAsync(
+            new CreateCalendarSubscriptionDto("Calendar", "https://example.com/calendar.ics", true));
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
+    }
+
+    [Fact]
+    public async Task DeleteSubscriptionAsync_OutsideOrganizationScope_ReturnsScopeDenied()
+    {
+        var options = CreateNewContextOptions();
+        using var dbContext = new AnalyticsDbContext(options);
+        var subscription = new CalendarSubscription
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = Guid.NewGuid(),
+            Name = "Other calendar",
+            Url = "https://example.com/calendar.ics",
+            IsActive = true
+        };
+        dbContext.CalendarSubscriptions.Add(subscription);
+        await dbContext.SaveChangesAsync();
+
+        var access = new Mock<ICurrentAccess>();
+        access.Setup(candidate => candidate.Scope).Returns(new AccessScope(Guid.NewGuid(), null, [UserRole.Admin]));
+        var result = await CreateService(dbContext, access.Object).DeleteSubscriptionAsync(subscription.Id);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
+    }
+
+    private static CalendarSubscriptionService CreateService(AnalyticsDbContext dbContext, ICurrentAccess access)
+        => new(dbContext, new HttpClient(), new Mock<ILogger<CalendarSubscriptionService>>().Object,
+            new Mock<ISystemEventService>().Object, access);
 }

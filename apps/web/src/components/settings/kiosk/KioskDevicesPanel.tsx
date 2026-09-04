@@ -4,6 +4,8 @@
 
 import { MonitorSmartphone, Trash2 } from 'lucide-react';
 import { useDeleteKioskDeviceMutation, useKioskDevicesQuery } from '../../../hooks/useKioskAuth';
+import { useCurrentUser } from '../../../hooks/useCurrentUser';
+import { isStaffRole } from '../../../utils/roles';
 import { Button } from '../../common/ui/Button';
 import { EmptyState } from '../../common/ui/EmptyState';
 import { TableSkeletonRows } from '../../common/ui/TableSkeletonRows';
@@ -14,6 +16,7 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 export function KioskDevicesPanel() {
+  const { role, isLoading: isUserLoading } = useCurrentUser();
   const { data: devices, isLoading, isError } = useKioskDevicesQuery();
   const deleteDevice = useDeleteKioskDeviceMutation();
 
@@ -23,6 +26,12 @@ export function KioskDevicesPanel() {
       deleteDevice.mutate({ deviceId });
     }
   };
+
+  if (!isUserLoading && !isStaffRole(role)) {
+    return null;
+  }
+
+  const showSkeleton = isUserLoading || isLoading;
 
   return (
     <div className="space-y-4">
@@ -43,9 +52,9 @@ export function KioskDevicesPanel() {
               <th className="w-20 px-4 py-4 sm:px-5"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant" aria-busy={isLoading} aria-label={isLoading ? 'Loading kiosk displays' : undefined}>
-            {isLoading && <TableSkeletonRows columnCount={4} />}
-            {!isLoading && !isError && (devices || []).map((d) => (
+          <tbody className="divide-y divide-outline-variant" aria-busy={showSkeleton} aria-label={showSkeleton ? 'Loading kiosk displays' : undefined}>
+            {showSkeleton && <TableSkeletonRows columnCount={4} />}
+            {!showSkeleton && !isError && (devices || []).map((d) => (
               <tr key={d.deviceId}>
                 <td className="px-4 py-3 font-mono text-sm sm:px-5">{d.deviceId}</td>
                 <td className="px-4 py-3 sm:px-5">{formatDateTime(d.lastSeenAt)}</td>
@@ -64,7 +73,7 @@ export function KioskDevicesPanel() {
                 </td>
               </tr>
             ))}
-            {!isLoading && isError && (
+            {!showSkeleton && isError && (
               <tr>
                 <td colSpan={4} className="p-0">
                   <div role="alert" className="p-8 text-center text-on-surface-variant">
@@ -73,7 +82,7 @@ export function KioskDevicesPanel() {
                 </td>
               </tr>
             )}
-            {!isLoading && !isError && devices?.length === 0 && (
+            {!showSkeleton && !isError && devices?.length === 0 && (
               <EmptyState message="No kiosk displays authorized." isTableRow colSpan={4} />
             )}
           </tbody>

@@ -9,6 +9,7 @@ import { OrganizationsSection } from './OrganizationsSection';
 
 const testState = vi.hoisted(() => ({
   isPlatformAdmin: true,
+  isUserLoading: false,
   organizations: undefined as OrganizationSummaryDto[] | undefined,
   isLoading: false,
   isError: false,
@@ -21,6 +22,7 @@ vi.mock('../../../hooks/useCurrentUser', () => ({
   useCurrentUser: () => ({
     role: testState.isPlatformAdmin ? 'PlatformAdmin' : 'Admin',
     user: testState.isPlatformAdmin ? { isPlatformAdmin: true } : { isPlatformAdmin: false },
+    isLoading: testState.isUserLoading,
   }),
 }));
 
@@ -52,6 +54,7 @@ const twoOrgs: OrganizationSummaryDto[] = [
 describe('organizations section', () => {
   beforeEach(() => {
     testState.isPlatformAdmin = true;
+    testState.isUserLoading = false;
     testState.organizations = undefined;
     testState.isLoading = false;
     testState.isError = false;
@@ -64,6 +67,12 @@ describe('organizations section', () => {
     testState.isPlatformAdmin = false;
     const { container } = render(<OrganizationsSection />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it('shows a skeleton while the user loads', () => {
+    testState.isUserLoading = true;
+    render(<OrganizationsSection />);
+    expect(screen.getByLabelText('Loading organizations')).toBeInTheDocument();
   });
 
   it('lists organizations with member and monitor counts', () => {    testState.organizations = twoOrgs;

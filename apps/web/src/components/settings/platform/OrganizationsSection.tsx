@@ -17,7 +17,7 @@ import { FormField } from '../../common/ui/FormField';
 import { TableSkeletonRows } from '../../common/ui/TableSkeletonRows';
 
 export function OrganizationsSection() {
-  const { user } = useCurrentUser();
+  const { user, isLoading: isUserLoading } = useCurrentUser();
   const { data: organizations, isLoading, isError } = useOrganizationSummariesQuery();
 
   const [isCreating, setIsCreating] = useState(false);
@@ -29,7 +29,7 @@ export function OrganizationsSection() {
   const renameOrganization = useRenameOrganizationMutation();
   const deleteOrganization = useDeleteOrganizationMutation();
 
-  if (user?.isPlatformAdmin !== true) {
+  if (!isUserLoading && user?.isPlatformAdmin !== true) {
     return null;
   }
 
@@ -118,11 +118,12 @@ export function OrganizationsSection() {
           </thead>
           <tbody
             className="divide-y divide-outline-variant"
-            aria-busy={isLoading}
-            aria-label={isLoading ? 'Loading organizations' : undefined}
+            aria-busy={isUserLoading || isLoading}
+            aria-label={isUserLoading || isLoading ? 'Loading organizations' : undefined}
           >
-            {isLoading && <TableSkeletonRows columnCount={4} />}
-            {!isLoading &&
+            {(isUserLoading || isLoading) && <TableSkeletonRows columnCount={4} />}
+            {!isUserLoading &&
+              !isLoading &&
               !isError &&
               (organizations || []).map((org) => (
                 <tr key={org.id}>
@@ -186,7 +187,7 @@ export function OrganizationsSection() {
                   </td>
                 </tr>
               ))}
-            {!isLoading && isError && (
+            {!isUserLoading && !isLoading && isError && (
               <tr>
                 <td colSpan={4} className="p-0">
                   <div role="alert" className="p-8 text-center text-on-surface-variant">
@@ -195,7 +196,7 @@ export function OrganizationsSection() {
                 </td>
               </tr>
             )}
-            {!isLoading && !isError && organizations?.length === 0 && (
+            {!isUserLoading && !isLoading && !isError && organizations?.length === 0 && (
               <EmptyState message="No organizations yet." isTableRow colSpan={4} />
             )}
           </tbody>

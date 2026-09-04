@@ -8,10 +8,20 @@ import type { KioskDeviceDto } from '@types';
 import { KioskDevicesPanel } from './KioskDevicesPanel';
 
 const testState = vi.hoisted(() => ({
+  role: 'Admin',
+  isUserLoading: false,
   devices: undefined as KioskDeviceDto[] | undefined,
   isLoading: false,
   isError: false,
   deleteDevice: vi.fn(),
+}));
+
+vi.mock('../../../hooks/useCurrentUser', () => ({
+  useCurrentUser: () => ({
+    role: testState.role,
+    user: null,
+    isLoading: testState.isUserLoading,
+  }),
 }));
 
 vi.mock('../../../hooks/useKioskAuth', () => ({
@@ -47,10 +57,24 @@ const twoDevices: KioskDeviceDto[] = [
 
 describe('kiosk devices panel', () => {
   beforeEach(() => {
+    testState.role = 'Admin';
+    testState.isUserLoading = false;
     testState.devices = undefined;
     testState.isLoading = false;
     testState.isError = false;
     testState.deleteDevice.mockReset();
+  });
+
+  it('shows a skeleton while the user loads', () => {
+    testState.isUserLoading = true;
+    render(<KioskDevicesPanel />);
+    expect(screen.getByLabelText('Loading kiosk displays')).toBeInTheDocument();
+  });
+
+  it('renders nothing for non-staff roles', () => {
+    testState.role = 'Viewer';
+    const { container } = render(<KioskDevicesPanel />);
+    expect(container.firstChild).toBeNull();
   });
 
   it('shows a loading state', () => {

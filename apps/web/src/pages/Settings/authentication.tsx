@@ -152,11 +152,9 @@ export function AuthenticationSettings() {
           </div>
         </div>
 
-        {isStaff && (
-          <div className="mt-6 rounded-xl border border-outline-variant p-6">
-            <KioskDevicesPanel />
-          </div>
-        )}
+        <div className="mt-6 rounded-xl border border-outline-variant p-6">
+          <KioskDevicesPanel />
+        </div>
       </div>
     </SettingsPanel>
     </div>

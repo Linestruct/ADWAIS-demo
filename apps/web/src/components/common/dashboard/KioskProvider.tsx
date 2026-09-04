@@ -98,8 +98,8 @@ export function KioskProvider({ children }: { children: ReactNode }) {
   }, [isKioskEnabled, mode]);
 
   useEffect(() => {
-    if (getKioskToken() === null) return;
     const interval = setInterval(() => {
+      if (getKioskToken() === null) return;
       void tryRefreshKioskToken();
     }, KIOSK_TOKEN_REFRESH_MS);
     return () => clearInterval(interval);

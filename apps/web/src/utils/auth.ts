@@ -46,6 +46,8 @@ const KIOSK_REFRESH_LOOP_GUARD_MS = 5 * 60 * 1000;
  * Fetches a fresh token for the stored device id without touching the
  * session. Returns true when a new token was stored. At most one attempt
  * per guard window, so a display that keeps failing cannot reload-loop.
+ * Uses plain fetch, not apiFetch: this runs inside session invalidation,
+ * where apiFetch's global 401 handling would recurse into itself.
  */
 export async function tryRefreshKioskToken(): Promise<boolean> {
   const deviceId = getStoredDeviceId();

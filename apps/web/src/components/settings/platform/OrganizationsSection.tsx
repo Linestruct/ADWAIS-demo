@@ -29,14 +29,17 @@ export function OrganizationsSection() {
   const renameOrganization = useRenameOrganizationMutation();
   const deleteOrganization = useDeleteOrganizationMutation();
 
-  if (user !== null && user.isPlatformAdmin !== true) {
-    return null;
-  }
+  const canWrite = user?.isPlatformAdmin === true;
 
   const handleCreate = () => {
     const name = newName.trim();
     if (!name) return;
     createOrganization.mutate({ data: { name } });
+    setNewName('');
+  };
+
+  const abortCreate = () => {
+    setIsCreating(false);
     setNewName('');
   };
 
@@ -74,14 +77,15 @@ export function OrganizationsSection() {
       </p>
 
       <div className="mt-4">
-        <Button
-          onClick={() => setIsCreating((open) => !open)}
-          variant="tonal"
-          color="secondary"
-          icon={<Plus size={16} />}
-        >
-          Add organization
-        </Button>
+          <Button
+            onClick={() => setIsCreating((open) => !open)}
+            disabled={!canWrite}
+            variant="tonal"
+            color="secondary"
+            icon={<Plus size={16} />}
+          >
+            Add organization
+          </Button>
       </div>
 
       {isCreating && (
@@ -97,11 +101,14 @@ export function OrganizationsSection() {
           />
           <Button
             onClick={handleCreate}
-            disabled={!newName.trim() || createOrganization.isPending}
+            disabled={!newName.trim() || !canWrite || createOrganization.isPending}
             variant="tonal"
             color="secondary"
           >
             Create
+          </Button>
+          <Button onClick={abortCreate} variant="text" color="surface">
+            Cancel
           </Button>
         </div>
       )}
@@ -149,7 +156,7 @@ export function OrganizationsSection() {
                         <>
                           <Button
                             onClick={() => handleRename(org.id)}
-                            disabled={!draftName.trim() || renameOrganization.isPending}
+                            disabled={!draftName.trim() || !canWrite || renameOrganization.isPending}
                             variant="text"
                             color="secondary"
                           >
@@ -165,6 +172,7 @@ export function OrganizationsSection() {
                             setEditingId(org.id);
                             setDraftName(org.name ?? '');
                           }}
+                          disabled={!canWrite}
                           variant="text"
                           color="surface"
                           icon={<Pencil size={16} />}
@@ -175,7 +183,7 @@ export function OrganizationsSection() {
                       )}
                       <Button
                         onClick={() => handleDelete(org.id, org.name)}
-                        disabled={deleteOrganization.isPending}
+                        disabled={!canWrite || deleteOrganization.isPending}
                         variant="text"
                         color="error"
                         icon={<Trash2 size={16} />}

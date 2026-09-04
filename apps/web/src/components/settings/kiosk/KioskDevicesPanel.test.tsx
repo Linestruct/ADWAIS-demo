@@ -73,10 +73,21 @@ describe('kiosk devices panel', () => {
     expect(screen.getByLabelText('Loading kiosk displays')).toBeInTheDocument();
   });
 
-  it('renders nothing for non-staff roles', () => {
+  it('disables removal for non-staff roles', () => {
     testState.role = 'Viewer';
-    const { container } = render(<KioskDevicesPanel />);
-    expect(container.firstChild).toBeNull();
+    testState.devices = [
+      {
+        deviceId: 'kiosk-1',
+        organizationId: 'org-1',
+        isAuthorized: true,
+        authorizedAt: '2026-09-01T10:00:00Z',
+        lastSeenAt: null,
+        createdDate: '2026-09-01T09:00:00Z',
+      },
+    ];
+    render(<KioskDevicesPanel />);
+    expect(screen.getByText('kiosk-1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove kiosk-1' })).toBeDisabled();
   });
 
   it('keeps the table shell when the user fails to load', () => {

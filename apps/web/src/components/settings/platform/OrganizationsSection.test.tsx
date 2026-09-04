@@ -69,10 +69,14 @@ describe('organizations section', () => {
     testState.deleteOrganization.mockReset();
   });
 
-  it('renders nothing for non-platform users', () => {
+  it('disables write actions for non-platform users', () => {
     testState.isPlatformAdmin = false;
-    const { container } = render(<OrganizationsSection />);
-    expect(container.firstChild).toBeNull();
+    testState.organizations = twoOrgs;
+    render(<OrganizationsSection />);
+    expect(screen.getByText('Acme')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add organization' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Rename Acme' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete Acme' })).toBeDisabled();
   });
 
   it('keeps the table shell when the user fails to load', () => {
@@ -89,7 +93,8 @@ describe('organizations section', () => {
     expect(screen.getByLabelText('Loading organizations')).toBeInTheDocument();
   });
 
-  it('lists organizations with member and monitor counts', () => {    testState.organizations = twoOrgs;
+  it('lists organizations with member and monitor counts', () => {
+    testState.organizations = twoOrgs;
     render(<OrganizationsSection />);
     expect(screen.getByText('Acme')).toBeInTheDocument();
     expect(screen.getByText('Other')).toBeInTheDocument();
@@ -114,6 +119,16 @@ describe('organizations section', () => {
       { id: 'org-1', data: { name: 'Renamed' } },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
+  });
+
+  it('aborts adding an organization', () => {
+    testState.organizations = twoOrgs;
+    render(<OrganizationsSection />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add organization' }));
+    fireEvent.change(screen.getByLabelText('New organization name'), { target: { value: 'NewCo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(testState.createOrganization).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('New organization name')).toBeNull();
   });
 
   it('aborts a rename without saving', () => {

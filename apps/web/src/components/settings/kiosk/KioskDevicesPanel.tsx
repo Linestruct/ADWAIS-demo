@@ -27,11 +27,8 @@ export function KioskDevicesPanel() {
     }
   };
 
-  if (role !== null && !isStaffRole(role)) {
-    return null;
-  }
-
   const showSkeleton = isUserLoading || isLoading;
+  const canWrite = isStaffRole(role);
 
   return (
     <div className="rounded-xl border border-outline-variant p-6 space-y-4">
@@ -62,7 +59,7 @@ export function KioskDevicesPanel() {
                 <td className="px-4 py-3 sm:px-5">
                   <Button
                     onClick={() => handleDelete(d.deviceId)}
-                    disabled={deleteDevice.isPending}
+                    disabled={!canWrite || deleteDevice.isPending}
                     variant="text"
                     color="error"
                     icon={<Trash2 size={16} />}

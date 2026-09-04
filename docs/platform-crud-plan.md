@@ -9,13 +9,13 @@ What platform administrators can still not do through the API and UI, and what i
 | Organizations | `GET /api/organizations` (list), config GET/PATCH per org and per me | Create, rename, deactivate, get by id |
 | Users | List, create, update, delete | Choosing the target organization at creation |
 | Memberships | List, add, remove per user | None |
-| Kiosk devices | Register, activate, token, dev token | List devices, deauthorize, transfer between orgs |
+| Kiosk devices | Register, activate, 1-hour token | Read-only device list per org, persistent kiosk sessions |
 | Tenants | Full CRUD, org-scoped by header | Cross-org platform view |
 | Monitors | Full CRUD, assign, unassign, org-scoped by header | Cross-org platform view |
 | Global config | Retention only | None (by design) |
 | Calendar, bulletins, feeds, events | Full CRUD, org-scoped | None |
 
-Platform admins reach any single org through the header picker. What is missing is managing the organizations themselves, administering devices, and platform-wide views.
+Platform admins reach any single org through the header picker. What is missing is managing the organizations themselves, keeping kiosk displays logged in plus seeing them per org, and platform-wide views.
 
 ## P1 Organizations CRUD
 
@@ -36,20 +36,28 @@ Frontend, new Settings > Organizations page visible to platform admins:
 
 Tests: controller reach rules per caller type, create and rename flows, delete cascade or deactivate behavior, web component tests with mocked hooks.
 
-## P2 Kiosk device administration
+## P2 Kiosk sessions and device visibility
+
+Kiosk auth is an alternative to OAuth for displays, not a managed device fleet. There is no device administration: no deactivate, no transfer, no per-device settings. The actual requirements:
+
+1. Easy first auth. This works today: the display registers itself, shows an activation code (valid 10 minutes), staff activates it from Settings > Authentication, the device row binds to the staff member's org, and the display fetches a 1-hour token. No changes planned. `CreatedDate` is set once at insert; `AuthorizedAt` is set on activation and cleared on every re-register, which also deauthorizes the row.
+2. Stay logged in while active. The display refreshes its token every 45 minutes while running and attempts one silent refresh before giving up a session, so an authorized display stays logged in indefinitely with no staff action. An unauthorized or unknown device still lands on the activation screen, which already picks up the token automatically once staff activates.
+3. See active devices per org, and revoke the odd one. Nice to have plus one safety valve. Staff see their own org's authorized devices; platform admins see all. `LastSeenAt` is stamped on every token mint, so the list tells live displays apart from dead ones. `DELETE /api/kiosk/devices/{deviceId}` removes the row (staff own org, platform any org); the display drops to the activation screen at its next refresh, at most an hour later. No transfer, no per-device settings.
+4. Dead fingerprints clean themselves up. A new local id orphans the old row, so register purges rows that never authorized and whose code expired over a week ago. Authorized rows are never purged: they are what lets a returning display skip staff.
 
 Backend:
 
-- `GET /api/kiosk/devices`. Platform admins see all devices. Staff see their own org's devices.
-- `DELETE /api/kiosk/devices/{deviceId}`. Deauthorizes and removes a device row. Platform admins any org. Staff their own org.
-- Optional `PATCH /api/kiosk/devices/{deviceId}` to transfer a device between organizations. Platform admins only.
+- `GET /api/kiosk/devices`. Returns device id, org id, authorized and last-seen dates, created date. Platform admins see all rows. Staff see their own org's rows. Org-less rows are platform-only.
+- `DELETE /api/kiosk/devices/{deviceId}` with the same reach rules. Returns 204, or 404 for missing and foreign rows.
 
 Frontend:
 
-- Extend Settings > Authentication with a device list: name, status, binding org, activated date, deactivate action.
-- The kiosk landing already recovers from a revoked token by re-registering, so deactivation takes effect on the display within its token lifetime.
+- Refresh the kiosk token on a 45-minute timer while a kiosk session exists, plus one silent retry before session invalidation. An authorized display then stays logged in indefinitely with no staff action.
+- Show the device list where staff already manage people: a read-only section on the users page (or the Authentication page if it fits better at implementation time), with a delete action per row.
 
-Tests: device list scoping per caller, deactivate flow, web component tests.
+Known limitation, explicitly out of scope: kiosk tokens are stateless JWTs, so a stolen display stays valid until its hour runs out. If that ever matters, the lever is a validation-time device check, not more UI.
+
+Tests: device list scoping per caller type, delete reach rules, token TTL at one hour, last-seen stamping, purge keeps authorized and fresh pending rows, refresh timing (no staff action across a simulated expiry), unauthorized device still gates on activation, web tests for silent refresh success and fallthrough, web component test for the read-only list.
 
 ## P3 User creation org targeting
 
@@ -77,9 +85,8 @@ Platform overview of tenants, monitors, and unassigned monitors across every org
 |---|---|---|
 | 1 | P1 backend: org create, get, rename, deactivate | half day |
 | 2 | P1 frontend: Organizations page | half day |
-| 3 | P2 backend: device list, deactivate, transfer | half day |
-| 4 | P2 frontend: device admin in Authentication | half day |
-| 5 | P3 backend and web: user creation org targeting | two hours |
-| 6 | Codegen regeneration and smoke test after each backend step | recurring |
+| 3 | P2 backend and web: device list, token refresh, read-only list | half day |
+| 4 | P3 backend and web: user creation org targeting | two hours |
+| 5 | Codegen regeneration and smoke test after each backend step | recurring |
 
-Steps 3 and 5 are independent of step 1. Step 4 depends on step 3.
+Steps 3 and 4 are independent of step 1.

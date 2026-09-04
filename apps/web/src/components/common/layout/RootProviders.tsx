@@ -7,6 +7,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 // import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
 import {Toaster} from 'sonner';
 import { toast } from 'sonner';
+import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { useRouterState } from '@tanstack/react-router';
 import {KioskProvider} from '../dashboard/KioskProvider';
 import {useOrgSelectionWatcher} from '../../../hooks/useOrgSelectionWatcher';
@@ -29,7 +30,28 @@ export function RootProviders({children}: { children: ReactNode }) {
       {children}
       {/*{import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}*/}
       {/*{import.meta.env.DEV && <ReactQueryDevtools buttonPosition="bottom-left" />}*/}
-      <Toaster closeButton richColors theme="light" />
+      <Toaster
+        closeButton
+        theme="light"
+        toastOptions={{
+          unstyled: true,
+          classNames: {
+            toast: 'relative flex w-[356px] max-w-[calc(100vw-2rem)] items-start gap-3 rounded-xl p-4 pr-9 text-sm m3-elevation-2',
+            title: 'font-bold',
+            description: 'mt-0.5 font-medium leading-relaxed break-words',
+            icon: 'mt-0.5 shrink-0',
+            error: 'bg-error-container text-on-error-container',
+            success: 'bg-success-container text-on-success-container',
+            info: 'bg-secondary-container text-on-secondary-container',
+            closeButton: 'absolute right-2 top-2 rounded-md p-1 opacity-60 transition-opacity hover:opacity-100',
+          },
+        }}
+        icons={{
+          error: <AlertCircle size={16} className="text-error" aria-hidden="true" />,
+          success: <CheckCircle2 size={16} className="text-success" aria-hidden="true" />,
+          info: <Info size={16} className="text-secondary" aria-hidden="true" />,
+        }}
+      />
     </KioskProvider>
   );
 }

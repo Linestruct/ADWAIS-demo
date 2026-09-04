@@ -94,12 +94,12 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Pauses an uptime monitor.
     /// </summary>
-    Task PauseMonitorAsync(int id, CancellationToken ct = default);
+    Task<Result> PauseMonitorAsync(int id, CancellationToken ct = default);
 
     /// <summary>
     /// Starts (resumes) a paused uptime monitor.
     /// </summary>
-    Task StartMonitorAsync(int id, CancellationToken ct = default);
+    Task<Result> StartMonitorAsync(int id, CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves aggregated latency (response time) data for a specific monitor within a timeframe.

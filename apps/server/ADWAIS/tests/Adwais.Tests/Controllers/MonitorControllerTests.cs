@@ -293,6 +293,9 @@ public class MonitorControllerTests
     [Fact]
     public async Task PauseMonitor_ShouldReturnOk()
     {
+        _monitorServiceMock.Setup(service => service.PauseMonitorAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
         // Act
         var result = await _controller.PauseMonitor(123, CancellationToken.None);
 

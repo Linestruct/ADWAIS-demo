@@ -866,36 +866,42 @@ public class MonitorOrchestrationService(
         return Result.Ok();
     }
 
-    public async Task PauseMonitorAsync(int id, CancellationToken ct = default)
+    public async Task<Result> PauseMonitorAsync(int id, CancellationToken ct = default)
     {
-        await ValidateMonitorInScopeAsync(id, ct);
-
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException();
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).PauseMonitorAsync(monitor.Tenant!.OrganizationId, monitor.ExternalId);
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail(providerResult.Errors);
+            await providerResult.Value.PauseMonitorAsync(organizationId, monitor.ExternalId);
         }
         
         monitor.UptimeMonitorEnabled = false;
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
-    public async Task StartMonitorAsync(int id, CancellationToken ct = default)
+    public async Task<Result> StartMonitorAsync(int id, CancellationToken ct = default)
     {
-        await ValidateMonitorInScopeAsync(id, ct);
-
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException();
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).StartMonitorAsync(monitor.Tenant!.OrganizationId, monitor.ExternalId);
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail(providerResult.Errors);
+            await providerResult.Value.StartMonitorAsync(organizationId, monitor.ExternalId);
         }
         
         monitor.UptimeMonitorEnabled = true;
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
     public async Task<IEnumerable<ResponseTime>> GetAggregatedLatencyAsync(Guid tenantId, int id, DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)

@@ -268,10 +268,14 @@ public class MonitorController(
     /// </summary>
     [HttpPost("{id:int}/pause")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> PauseMonitor(int id, CancellationToken ct = default)
     {
-        if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-        await _monitorService.PauseMonitorAsync(id, ct);
+        var result = await _monitorService.PauseMonitorAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return Ok();
     }
 
@@ -280,10 +284,14 @@ public class MonitorController(
     /// </summary>
     [HttpPost("{id:int}/start")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> StartMonitor(int id, CancellationToken ct = default)
     {
-        if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-        await _monitorService.StartMonitorAsync(id, ct);
+        var result = await _monitorService.StartMonitorAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return Ok();
     }
 

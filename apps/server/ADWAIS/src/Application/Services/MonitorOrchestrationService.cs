@@ -4,7 +4,7 @@
 
 using Adwais.Domain.Entities;
 using Adwais.Application.Common.Models;
-using Adwais.Application.Common.Exceptions;
+using Adwais.Application.Common.Errors;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Application.DTOs.Monitoring;
 using Adwais.Domain.Enums;
@@ -13,6 +13,7 @@ using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using FluentResults;
 
 namespace Adwais.Application.Services;
 
@@ -65,6 +66,57 @@ public class MonitorOrchestrationService(
             .Select(monitor => monitor.TenantId)
             .SingleOrDefaultAsync(ct);
         ValidateTenantInScope(tenantId, visibleTenantIds);
+    }
+
+    private ScopeDeniedError ScopeDenied()
+        => new("the requested organization or tenant", currentAccess.Scope?.OrganizationId?.ToString() ?? "none");
+
+    private async Task<Result<Tenant>> GetVisibleTenantForMutationAsync(Guid tenantId, CancellationToken ct)
+    {
+        var tenant = await dbContext.Tenants.SingleOrDefaultAsync(candidate => candidate.Id == tenantId, ct);
+        if (tenant is null) return Result.Fail<Tenant>(new NotFoundError("tenant", tenantId));
+
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        return visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId)
+            ? Result.Fail<Tenant>(ScopeDenied())
+            : Result.Ok(tenant);
+    }
+
+    private async Task<Result<UptimeMonitor>> GetVisibleMonitorForMutationAsync(int monitorId, CancellationToken ct)
+    {
+        var monitor = await dbContext.Monitors
+            .SingleOrDefaultAsync(candidate => candidate.Id == monitorId, ct);
+        if (monitor is null) return Result.Fail<UptimeMonitor>(new NotFoundError("monitor", monitorId));
+
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        return visibleTenantIds is not null && !visibleTenantIds.Contains(monitor.TenantId)
+            ? Result.Fail<UptimeMonitor>(ScopeDenied())
+            : Result.Ok(monitor);
+    }
+
+    private Task<Guid> GetMonitorOrganizationIdAsync(UptimeMonitor monitor, CancellationToken ct)
+        => dbContext.Tenants
+            .Where(tenant => tenant.Id == monitor.TenantId)
+            .Select(tenant => tenant.OrganizationId)
+            .SingleAsync(ct);
+
+    private async Task<Result<IMonitoringProvider>> GetConfiguredMonitoringProviderAsync(
+        Guid organizationId,
+        CancellationToken ct,
+        string? providerName = null)
+    {
+        var config = await organizationConfigService.GetConfigAsync(organizationId, ct);
+        if (config is null)
+            return Result.Fail<IMonitoringProvider>(new ConfigurationError("Monitoring is not configured for this organization."));
+
+        var provider = monitoringProviders.ForProvider(providerName ?? config.MonitoringProvider);
+        var settings = await dbContext.OrganizationConfigs
+            .Where(candidate => candidate.OrganizationId == organizationId)
+            .Select(candidate => candidate.MonitoringProviderSettings)
+            .SingleOrDefaultAsync(ct);
+        return provider.IsConfigured(settings)
+            ? Result.Ok(provider)
+            : Result.Fail<IMonitoringProvider>(new ConfigurationError("Monitoring provider settings are not configured."));
     }
 
     public async Task<MonitorAnalyticsDto> GetAnalyticsAsync(
@@ -544,30 +596,33 @@ public class MonitorOrchestrationService(
         return filtered.ToList();
     }
 
-    public async Task<UptimeMonitor> CreateUnassignedMonitorAsync(string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
+    public async Task<Result<UptimeMonitor>> CreateUnassignedMonitorAsync(string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
     {
         var filter = OrganizationFilter.From(currentAccess.Scope);
         if (filter.Denied)
         {
-            throw new UnauthorizedAccessException("The current scope cannot create monitors.");
+            return Result.Fail<UptimeMonitor>(ScopeDenied());
         }
 
         var organizationId = filter.OrganizationId ?? IApplicationDbContext.DefaultOrganizationGuid;
-        var bucketId = await ResolveOrganizationBucketIdAsync(organizationId, ct);
-        return await CreateMonitorAsync(bucketId, name, url, type, uptimeSla, ct, latencyDegradedFloor);
+        var bucketId = await dbContext.Tenants
+            .Where(tenant => tenant.OrganizationId == organizationId && tenant.IsSystem)
+            .Select(tenant => (Guid?)tenant.Id)
+            .SingleOrDefaultAsync(ct);
+        if (bucketId is null)
+            return Result.Fail<UptimeMonitor>(new ConfigurationError("The organization has no unassigned monitor bucket."));
+        return await CreateMonitorAsync(bucketId.Value, name, url, type, uptimeSla, ct, latencyDegradedFloor);
     }
 
-    public async Task<UptimeMonitor> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
+    public async Task<Result<UptimeMonitor>> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
     {
-        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        ValidateTenantInScope(tenantId, visibleTenantIds);
-
+        var tenantResult = await GetVisibleTenantForMutationAsync(tenantId, ct);
+        if (tenantResult.IsFailed) return Result.Fail<UptimeMonitor>(tenantResult.Errors);
+        var tenant = tenantResult.Value;
         var normalizedType = UptimeMonitorTypes.Normalize(type);
-        var tenant = await dbContext.Tenants.SingleOrDefaultAsync(t => t.Id == tenantId, ct)
-            ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
-        var orgConfig = await organizationConfigService.GetConfigAsync(tenant.OrganizationId, ct)
-            ?? throw new ConfigurationException($"Organization configuration not found for tenant {tenantId}.");
-        var monitoringProvider = monitoringProviders.ForProvider(orgConfig.MonitoringProvider);
+        var providerResult = await GetConfiguredMonitoringProviderAsync(tenant.OrganizationId, ct);
+        if (providerResult.IsFailed) return Result.Fail<UptimeMonitor>(providerResult.Errors);
+        var monitoringProvider = providerResult.Value;
         var remoteMonitor = await monitoringProvider.CreateMonitorAsync(tenant.OrganizationId, name, url, normalizedType);
         
         var monitor = new UptimeMonitor
@@ -604,22 +659,19 @@ public class MonitorOrchestrationService(
         await dbContext.SaveChangesAsync(ct);
 
         HydrateLiveStatus(monitor);
-        return monitor;
+        return Result.Ok(monitor);
     }
 
-    public async Task AssignMonitorAsync(int monitorId, Guid tenantId, CancellationToken ct = default)
+    public async Task<Result> AssignMonitorAsync(int monitorId, Guid tenantId, CancellationToken ct = default)
     {
-        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        ValidateTenantInScope(tenantId, visibleTenantIds);
+        var tenantResult = await GetVisibleTenantForMutationAsync(tenantId, ct);
+        if (tenantResult.IsFailed) return Result.Fail(tenantResult.Errors);
+        var monitorResult = await GetVisibleMonitorForMutationAsync(monitorId, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
 
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == monitorId, ct);
-        if (monitor == null) throw new KeyNotFoundException($"Monitor {monitorId} not found.");
-
-        var tenantExists = await dbContext.Tenants.AnyAsync(t => t.Id == tenantId, ct);
-        if (!tenantExists) throw new KeyNotFoundException($"Tenant {tenantId} not found.");
-
-        monitor.TenantId = tenantId;
+        monitorResult.Value.TenantId = tenantId;
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
     public async Task ReassignAllTenantMonitorsToSystemAsync(Guid tenantId, CancellationToken ct = default)
@@ -645,21 +697,26 @@ public class MonitorOrchestrationService(
         await dbContext.SaveChangesAsync(ct);
     }
 
-    public async Task UnassignMonitorAsync(int monitorId, CancellationToken ct = default)
+    public async Task<Result> UnassignMonitorAsync(int monitorId, CancellationToken ct = default)
     {
-        await ValidateMonitorInScopeAsync(monitorId, ct);
-
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == monitorId, ct)
-            ?? throw new KeyNotFoundException($"Monitor {monitorId} not found.");
+        var monitorResult = await GetVisibleMonitorForMutationAsync(monitorId, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         var organizationId = await dbContext.Tenants
             .Where(t => t.Id == monitor.TenantId)
             .Select(t => t.OrganizationId)
             .SingleOrDefaultAsync(ct);
-        var bucketId = await ResolveOrganizationBucketIdAsync(organizationId, ct);
+        var bucketId = await dbContext.Tenants
+            .Where(tenant => tenant.OrganizationId == organizationId && tenant.IsSystem)
+            .Select(tenant => (Guid?)tenant.Id)
+            .SingleOrDefaultAsync(ct);
+        if (bucketId is null)
+            return Result.Fail(new ConfigurationError("The organization has no unassigned monitor bucket."));
 
-        monitor.TenantId = bucketId;
+        monitor.TenantId = bucketId.Value;
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
     public async Task<IEnumerable<UptimeMonitor>> GetUnassignedMonitorsAsync(ResolvedPeriod period, CancellationToken ct = default)
@@ -790,21 +847,23 @@ public class MonitorOrchestrationService(
             : status;
     }
 
-    public async Task DeleteMonitorAsync(Guid tenantId, int id, CancellationToken ct = default)
+    public async Task<Result> DeleteMonitorAsync(int id, CancellationToken ct = default)
     {
-        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        ValidateTenantInScope(tenantId, visibleTenantIds);
-
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.TenantId == tenantId && m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException();
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).DeleteMonitorAsync(monitor.Tenant!.OrganizationId, monitor.ExternalId);
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail(providerResult.Errors);
+            await providerResult.Value.DeleteMonitorAsync(organizationId, monitor.ExternalId);
         }
 
         dbContext.Monitors.Remove(monitor);
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
     public async Task PauseMonitorAsync(int id, CancellationToken ct = default)
@@ -861,12 +920,11 @@ public class MonitorOrchestrationService(
             .ToListAsync(ct);
     }
 
-    public async Task<UptimeMonitor> UpdateMonitorAsync(int id, string? name, string? url, string? type, double? uptimeSla, List<string>? tags, CancellationToken ct = default, int? latencyDegradedFloor = null)
+    public async Task<Result<UptimeMonitor>> UpdateMonitorAsync(int id, string? name, string? url, string? type, double? uptimeSla, List<string>? tags, CancellationToken ct = default, int? latencyDegradedFloor = null)
     {
-        await ValidateMonitorInScopeAsync(id, ct);
-
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException($"Monitor {id} not found.");
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail<UptimeMonitor>(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         List<string>? cleanedTags = null;
         if (tags != null)
@@ -885,8 +943,11 @@ public class MonitorOrchestrationService(
 
         if (id > 0 && (nameChanged || urlChanged || typeChanged || tagsChanged))
         {
-            await monitoringProviders.ForProvider(monitor.Provider).UpdateMonitorAsync(
-                monitor.Tenant!.OrganizationId,
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail<UptimeMonitor>(providerResult.Errors);
+            await providerResult.Value.UpdateMonitorAsync(
+                organizationId,
                 monitor.ExternalId,
                 nameChanged ? name : null,
                 urlChanged ? url : null,
@@ -924,7 +985,7 @@ public class MonitorOrchestrationService(
         await dbContext.SaveChangesAsync(ct);
 
         HydrateLiveStatus(monitor);
-        return monitor;
+        return Result.Ok(monitor);
     }
 
     private static double? CalculateGrowthPercentage(double? current, double? previous)

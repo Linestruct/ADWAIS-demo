@@ -6,6 +6,7 @@ using Adwais.Domain.Entities.Monitoring;
 using Adwais.Application.DTOs.Monitoring;
 using Adwais.Domain.Entities;
 using Adwais.Application.Common.Models;
+using FluentResults;
 
 namespace Adwais.Application.Interfaces;
 
@@ -57,7 +58,7 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Moves a monitor to its own organization's unassigned bucket.
     /// </summary>
-    Task UnassignMonitorAsync(int monitorId, CancellationToken ct = default);
+    Task<Result> UnassignMonitorAsync(int monitorId, CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves a specific uptime monitor for a tenant, hydrated with uptime for the given timeframe.
@@ -67,18 +68,18 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Creates a new uptime monitor for a tenant.
     /// </summary>
-    Task<UptimeMonitor> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null);
+    Task<Result<UptimeMonitor>> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null);
 
     /// <summary>
     /// Creates a new uptime monitor in the caller's organization unassigned bucket.
     /// Platform admins without an organization scope use the default organization.
     /// </summary>
-    Task<UptimeMonitor> CreateUnassignedMonitorAsync(string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null);
+    Task<Result<UptimeMonitor>> CreateUnassignedMonitorAsync(string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null);
 
     /// <summary>
     /// Assigns an existing monitor to a specific tenant.
     /// </summary>
-    Task AssignMonitorAsync(int monitorId, Guid tenantId, CancellationToken ct = default);
+    Task<Result> AssignMonitorAsync(int monitorId, Guid tenantId, CancellationToken ct = default);
 
     /// <summary>
     /// Reassigns all monitors from a specific tenant to the system tenant.
@@ -88,7 +89,7 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Deletes a monitor for a specific tenant.
     /// </summary>
-    Task DeleteMonitorAsync(Guid tenantId, int id, CancellationToken ct = default);
+    Task<Result> DeleteMonitorAsync(int id, CancellationToken ct = default);
 
     /// <summary>
     /// Pauses an uptime monitor.
@@ -108,5 +109,5 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Updates a specific monitor.
     /// </summary>
-    Task<UptimeMonitor> UpdateMonitorAsync(int id, string? name, string? url, string? type, double? uptimeSla, List<string>? tags, CancellationToken ct = default, int? latencyDegradedFloor = null);
+    Task<Result<UptimeMonitor>> UpdateMonitorAsync(int id, string? name, string? url, string? type, double? uptimeSla, List<string>? tags, CancellationToken ct = default, int? latencyDegradedFloor = null);
 }

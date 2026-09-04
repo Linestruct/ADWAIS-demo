@@ -12,6 +12,7 @@ using Moq;
 using Xunit;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
@@ -44,6 +45,7 @@ public class MonitorOrchestrationServiceTests
 
         _uptimeRobotServiceMock = new Mock<IMonitoringProvider>();
         _uptimeRobotServiceMock.SetupGet(provider => provider.Provider).Returns("uptimerobot");
+        _uptimeRobotServiceMock.Setup(provider => provider.IsConfigured(It.IsAny<string?>())).Returns(true);
         _cacheServiceMock = new Mock<ICacheService>();
         _currentAccessMock = new Mock<ICurrentAccess>();
         _currentAccessMock.Setup(access => access.Scope)
@@ -451,15 +453,15 @@ public class MonitorOrchestrationServiceTests
         var result = await _service.CreateMonitorAsync(tenantId, "New Monitor", "https://new.com", "ping", 99.5, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.True(result.Id > 0);
-        Assert.Equal("9876", result.ExternalId);
-        Assert.Equal("uptimerobot", result.Provider);
-        Assert.Equal(tenantId, result.TenantId);
-        Assert.Equal("PING", result.Type);
-        Assert.Equal(99.5, result.UptimeSla);
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.Id > 0);
+        Assert.Equal("9876", result.Value.ExternalId);
+        Assert.Equal("uptimerobot", result.Value.Provider);
+        Assert.Equal(tenantId, result.Value.TenantId);
+        Assert.Equal("PING", result.Value.Type);
+        Assert.Equal(99.5, result.Value.UptimeSla);
 
-        var dbMonitor = await _dbContext.Monitors.FindAsync(result.Id);
+        var dbMonitor = await _dbContext.Monitors.FindAsync(result.Value.Id);
         Assert.NotNull(dbMonitor);
         Assert.Equal("New Monitor", dbMonitor.Name);
     }
@@ -492,10 +494,29 @@ public class MonitorOrchestrationServiceTests
             null,
             CancellationToken.None);
 
-        Assert.Equal("HTTP", result.Type);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("HTTP", result.Value.Type);
         _uptimeRobotServiceMock.Verify(
             service => service.CreateMonitorAsync(_defaultOrgId, "Default Monitor", "https://default.com", "HTTP"),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateMonitorAsync_WithMissingProviderSettings_ReturnsConfigurationError()
+    {
+        var tenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, Name = "Tenant", OrganizationId = _defaultOrgId });
+        await _dbContext.SaveChangesAsync();
+        _uptimeRobotServiceMock.Setup(provider => provider.IsConfigured(It.IsAny<string?>())).Returns(false);
+
+        var result = await _service.CreateMonitorAsync(
+            tenantId, "New Monitor", "https://new.com", "HTTP", null, CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ConfigurationError>(Assert.Single(result.Errors));
+        _uptimeRobotServiceMock.Verify(
+            provider => provider.CreateMonitorAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>()),
+            Times.Never);
     }
 
     [Fact]
@@ -511,9 +532,10 @@ public class MonitorOrchestrationServiceTests
         await _dbContext.SaveChangesAsync();
 
         // Act
-        await _service.AssignMonitorAsync(50, tenantId, CancellationToken.None);
+        var result = await _service.AssignMonitorAsync(50, tenantId, CancellationToken.None);
 
         // Assert
+        Assert.True(result.IsSuccess);
         var updated = await _dbContext.Monitors.FindAsync(50);
         Assert.NotNull(updated);
         Assert.Equal(tenantId, updated.TenantId);
@@ -561,9 +583,10 @@ public class MonitorOrchestrationServiceTests
         await _dbContext.SaveChangesAsync();
 
         // Act
-        await _service.UnassignMonitorAsync(62, CancellationToken.None);
+        var result = await _service.UnassignMonitorAsync(62, CancellationToken.None);
 
         // Assert
+        Assert.True(result.IsSuccess);
         var updated = await _dbContext.Monitors.FindAsync(62);
         Assert.NotNull(updated);
         Assert.Equal(ownBucketId, updated.TenantId);
@@ -640,8 +663,8 @@ public class MonitorOrchestrationServiceTests
         var monitor = await _service.CreateUnassignedMonitorAsync("New", "https://new.example.com", "HTTP(S)", null, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(monitor);
-        Assert.Equal(bucketId, monitor.TenantId);
+        Assert.True(monitor.IsSuccess);
+        Assert.Equal(bucketId, monitor.Value.TenantId);
     }
 
     [Fact]
@@ -668,17 +691,19 @@ public class MonitorOrchestrationServiceTests
         var monitor = await _service.CreateUnassignedMonitorAsync("New", "https://new.example.com", "HTTP(S)", null, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(monitor);
-        Assert.Equal(bucketId, monitor.TenantId);
+        Assert.True(monitor.IsSuccess);
+        Assert.Equal(bucketId, monitor.Value.TenantId);
     }
 
     [Fact]
-    public async Task CreateUnassignedMonitorAsync_DeniedScope_ThrowsUnauthorizedAccess()
+    public async Task CreateUnassignedMonitorAsync_DeniedScope_ReturnsScopeDenied()
     {
         _currentAccessMock.Setup(access => access.Scope).Returns((Adwais.Application.Common.Access.AccessScope?)null);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.CreateUnassignedMonitorAsync("New", "https://new.example.com", "HTTP(S)", null, CancellationToken.None));
+        var result = await _service.CreateUnassignedMonitorAsync("New", "https://new.example.com", "HTTP(S)", null, CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]
@@ -731,12 +756,12 @@ public class MonitorOrchestrationServiceTests
         var result = await _service.UpdateMonitorAsync(80, "New Name", "https://new.com", "ping", 99.9, new List<string> { "tag2" }, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal("New Name", result.Name);
-        Assert.Equal("https://new.com", result.Url);
-        Assert.Equal("PING", result.Type);
-        Assert.Equal(99.9, result.UptimeSla);
-        Assert.Contains("tag2", result.Tags);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("New Name", result.Value.Name);
+        Assert.Equal("https://new.com", result.Value.Url);
+        Assert.Equal("PING", result.Value.Type);
+        Assert.Equal(99.9, result.Value.UptimeSla);
+        Assert.Contains("tag2", result.Value.Tags);
         _uptimeRobotServiceMock.Verify(s => s.UpdateMonitorAsync(_defaultOrgId, "80", "New Name", "https://new.com", "PING", It.IsAny<List<string>>()), Times.Once);
     }
 
@@ -760,10 +785,12 @@ public class MonitorOrchestrationServiceTests
             CancellationToken.None);
         await _service.PauseMonitorAsync(-2, CancellationToken.None);
         await _service.StartMonitorAsync(-2, CancellationToken.None);
-        await _service.DeleteMonitorAsync(tenantId, -3, CancellationToken.None);
+        var deleted = await _service.DeleteMonitorAsync(-3, CancellationToken.None);
 
-        Assert.Equal("Updated store", updated.Name);
-        Assert.Equal("https://new.example", updated.Url);
+        Assert.True(updated.IsSuccess);
+        Assert.True(deleted.IsSuccess);
+        Assert.Equal("Updated store", updated.Value.Name);
+        Assert.Equal("https://new.example", updated.Value.Url);
         Assert.True((await _dbContext.Monitors.FindAsync(-2))!.UptimeMonitorEnabled);
         Assert.Null(await _dbContext.Monitors.FindAsync(-3));
         _uptimeRobotServiceMock.Verify(service => service.UpdateMonitorAsync(
@@ -815,7 +842,7 @@ public class MonitorOrchestrationServiceTests
     }
 
     [Fact]
-    public async Task AssignMonitorAsync_TargetTenantOutsideScope_ThrowsUnauthorizedAccess()
+    public async Task AssignMonitorAsync_TargetTenantOutsideScope_ReturnsScopeDenied()
     {
         var otherOrgId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
@@ -825,8 +852,10 @@ public class MonitorOrchestrationServiceTests
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.AssignMonitorAsync(-1, otherTenantId, CancellationToken.None));
+        var result = await _service.AssignMonitorAsync(-1, otherTenantId, CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]

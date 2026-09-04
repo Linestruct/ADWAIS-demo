@@ -21,8 +21,11 @@ using Adwais.Domain.Entities.Monitoring;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Models;
 using Adwais.Application.Services;
+using FluentResults;
+using Microsoft.AspNetCore.Http;
 
 namespace Adwais.Tests.Controllers;
 
@@ -69,6 +72,7 @@ public class MonitorControllerTests
             _reportingCalendarMock.Object,
             new[] { _orderSourceMock.Object },
             _currentAccessMock.Object);
+        _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
 
         // Seed org config so the monitoring provider appears configured
         using var db = new AnalyticsDbContext(_dbOptions);
@@ -230,7 +234,7 @@ public class MonitorControllerTests
         };
 
         _monitorServiceMock.Setup(s => s.CreateMonitorAsync(tenantId, request.Name, request.Url, request.Type, request.UptimeSla, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createdMonitor);
+            .ReturnsAsync(Result.Ok(createdMonitor));
 
         // Act
         var result = await _controller.CreateMonitor(tenantId, request, CancellationToken.None);
@@ -249,12 +253,41 @@ public class MonitorControllerTests
         // Arrange
         var tenantId = Guid.NewGuid();
 
+        _monitorServiceMock.Setup(service => service.AssignMonitorAsync(123, tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
         // Act
         var result = await _controller.AssignMonitor(123, tenantId, CancellationToken.None);
 
         // Assert
         Assert.IsType<OkResult>(result);
         _monitorServiceMock.Verify(s => s.AssignMonitorAsync(123, tenantId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateMonitor_ShouldReturnConflictForMissingProviderConfiguration()
+    {
+        var tenantId = Guid.NewGuid();
+        var request = new CreateMonitorRequestDto { Name = "New Monitor", Url = "https://test.com" };
+        _monitorServiceMock.Setup(service => service.CreateMonitorAsync(
+                tenantId, request.Name, request.Url, request.Type, request.UptimeSla, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<UptimeMonitor>(new ConfigurationError("Monitoring provider settings are not configured.")));
+
+        var result = await _controller.CreateMonitor(tenantId, request, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteMonitor_ShouldReturnNoContent()
+    {
+        _monitorServiceMock.Setup(service => service.DeleteMonitorAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        var result = await _controller.DeleteMonitor(123, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
     }
 
     [Fact]

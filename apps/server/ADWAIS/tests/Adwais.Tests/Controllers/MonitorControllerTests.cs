@@ -206,6 +206,23 @@ public class MonitorControllerTests
     }
 
     [Fact]
+    public async Task GetLatencyMetrics_ReturnsForbiddenForDeniedTenant()
+    {
+        var tenantId = Guid.NewGuid();
+        _monitorServiceMock
+            .Setup(service => service.GetAggregatedLatencyAsync(
+                tenantId, 1, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<IEnumerable<ResponseTime>>(
+                new ScopeDeniedError("the requested tenant", "the current scope")));
+
+        var result = await _controller.GetLatencyMetrics(
+            1, DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow, tenantId, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateMonitor_ShouldReturnCreated()
     {
         // Arrange

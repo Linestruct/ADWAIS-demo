@@ -125,6 +125,9 @@ public class MonitorController(
     /// <param name="ct">Cancellation token</param>
     [HttpGet]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(IEnumerable<UptimeMonitorDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<UptimeMonitorDto>>> GetMonitors([FromQuery] MonitorRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
@@ -137,8 +140,9 @@ public class MonitorController(
             var tid = await db.Monitors.Where(m => m.Id == request.MonitorId.Value).Select(m => (Guid?)m.TenantId).SingleOrDefaultAsync(ct);
             if (tid == null) return Ok(Enumerable.Empty<UptimeMonitorDto>());
 
-            var m = await _monitorService.GetMonitorAsync(tid.Value, request.MonitorId.Value, period, ct);
-            resultDtos = new[] { ToDto(m) };
+            var result = await _monitorService.GetMonitorAsync(tid.Value, request.MonitorId.Value, period, ct);
+            if (result.IsFailed) return result.ToProblem(HttpContext);
+            resultDtos = new[] { ToDto(result.Value) };
         }
         else if (request.TenantId.HasValue)
         {
@@ -299,6 +303,9 @@ public class MonitorController(
     /// </summary>
     [HttpGet("{id:int}/latency")]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(IEnumerable<LatencyMetricsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<LatencyMetricsDto>>> GetLatencyMetrics(
         int id,
         [FromQuery] DateTimeOffset from,
@@ -314,8 +321,9 @@ public class MonitorController(
 
         if (tenantId == null) return NotFound();
 
-        var metrics = await _monitorService.GetAggregatedLatencyAsync(tenantId.Value, id, from, to, ct);
-        return Ok(metrics);
+        var result = await _monitorService.GetAggregatedLatencyAsync(tenantId.Value, id, from, to, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value);
     }
 
     /// <summary>

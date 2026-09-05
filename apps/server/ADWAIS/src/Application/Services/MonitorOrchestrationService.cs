@@ -797,10 +797,11 @@ public class MonitorOrchestrationService(
         return monitors;
     }
 
-    public async Task<UptimeMonitor> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default)
+    public async Task<Result<UptimeMonitor>> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default)
     {
         var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        ValidateTenantInScope(tenantId, visibleTenantIds);
+        if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
+            return Result.Fail<UptimeMonitor>(new ScopeDeniedError("the requested tenant", "the current scope"));
 
         var start = period.CurrentStart;
         var end = period.CurrentEnd;
@@ -810,7 +811,7 @@ public class MonitorOrchestrationService(
             .Include(m => m.Tenant)
             .SingleOrDefaultAsync(m => m.TenantId == tenantId && m.Id == id, ct);
 
-        if (monitor == null) throw new KeyNotFoundException($"Monitor {id} not found.");
+        if (monitor == null) return Result.Fail<UptimeMonitor>(new NotFoundError("monitor", id));
 
         var uptimes = await GetPeriodUptimesAsync(start, end, new List<int> { id }, ct);
         if (uptimes.TryGetValue(id, out var uptime))
@@ -819,7 +820,7 @@ public class MonitorOrchestrationService(
         }
 
         HydrateLiveStatus(monitor);
-        return monitor;
+        return Result.Ok(monitor);
     }
     
     private void HydrateLiveStatus(UptimeMonitor monitor)
@@ -904,10 +905,11 @@ public class MonitorOrchestrationService(
         return Result.Ok();
     }
 
-    public async Task<IEnumerable<ResponseTime>> GetAggregatedLatencyAsync(Guid tenantId, int id, DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
+    public async Task<Result<IEnumerable<ResponseTime>>> GetAggregatedLatencyAsync(Guid tenantId, int id, DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
     {
         var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        ValidateTenantInScope(tenantId, visibleTenantIds);
+        if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
+            return Result.Fail<IEnumerable<ResponseTime>>(new ScopeDeniedError("the requested tenant", "the current scope"));
 
         var monitorExists = await dbContext.Monitors
             .AsNoTracking()
@@ -915,15 +917,16 @@ public class MonitorOrchestrationService(
 
         if (!monitorExists)
         {
-            throw new KeyNotFoundException($"Monitor {id} not found.");
+            return Result.Fail<IEnumerable<ResponseTime>>(new NotFoundError("monitor", id));
         }
 
-        return await dbContext.ResponseTimes
+        var responseTimes = await dbContext.ResponseTimes
             .AsNoTracking()
             .Where(rt => rt.MonitorId == id)
             .Where(rt => rt.Date >= from && rt.Date <= to)
             .OrderBy(rt => rt.Date)
             .ToListAsync(ct);
+        return Result.Ok<IEnumerable<ResponseTime>>(responseTimes);
     }
 
     public async Task<Result<UptimeMonitor>> UpdateMonitorAsync(int id, string? name, string? url, string? type, double? uptimeSla, List<string>? tags, CancellationToken ct = default, int? latencyDegradedFloor = null)

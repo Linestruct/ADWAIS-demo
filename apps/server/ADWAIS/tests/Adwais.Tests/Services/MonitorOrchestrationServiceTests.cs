@@ -880,6 +880,35 @@ public class MonitorOrchestrationServiceTests
         Assert.Equal(-21, monitors[0].Id);
     }
 
+    [Fact]
+    public async Task GetMonitorAsync_OutsideScope_ReturnsScopeDenied()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = otherTenantId, OrganizationId = Guid.NewGuid(), Name = "Other" });
+        await _dbContext.SaveChangesAsync();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        var result = await _service.GetMonitorAsync(otherTenantId, 1, CreateDefaultPeriod(), CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
+    }
+
+    [Fact]
+    public async Task GetAggregatedLatencyAsync_MissingMonitor_ReturnsNotFound()
+    {
+        var tenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = tenantId, OrganizationId = _defaultOrgId, Name = "Tenant" });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetAggregatedLatencyAsync(
+            tenantId, 1, DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow, CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<NotFoundError>(Assert.Single(result.Errors));
+    }
+
     private static Adwais.Application.Common.Models.ResolvedPeriod CreateDefaultPeriod()
     {
         var start = DateTimeOffset.UtcNow.AddHours(-2);

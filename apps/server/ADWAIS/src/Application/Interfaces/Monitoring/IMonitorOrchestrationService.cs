@@ -63,7 +63,7 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Retrieves a specific uptime monitor for a tenant, hydrated with uptime for the given timeframe.
     /// </summary>
-    Task<UptimeMonitor> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default);
+    Task<Result<UptimeMonitor>> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default);
 
     /// <summary>
     /// Creates a new uptime monitor for a tenant.
@@ -104,7 +104,7 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Retrieves aggregated latency (response time) data for a specific monitor within a timeframe.
     /// </summary>
-    Task<IEnumerable<ResponseTime>> GetAggregatedLatencyAsync(Guid tenantId, int id, DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default);
+    Task<Result<IEnumerable<ResponseTime>>> GetAggregatedLatencyAsync(Guid tenantId, int id, DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a specific monitor.

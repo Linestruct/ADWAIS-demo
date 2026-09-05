@@ -79,9 +79,10 @@ public class FinancialSystemTenantTests : IDisposable
     {
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(100m, result.CurrentRevenue);
-        Assert.Equal(1, result.TransactionVolume);
-        Assert.Equal(1, result.ActiveTenants);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(100m, result.Value.CurrentRevenue);
+        Assert.Equal(1, result.Value.TransactionVolume);
+        Assert.Equal(1, result.Value.ActiveTenants);
     }
 
     [Fact]
@@ -92,7 +93,8 @@ public class FinancialSystemTenantTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(100m, result.CurrentRevenue);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(100m, result.Value.CurrentRevenue);
     }
 
     [Fact]
@@ -137,9 +139,10 @@ public class FinancialSystemTenantTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(dailyPeriod, ct: CancellationToken.None);
 
-        // 1000 from the normal tenant rollup plus the 100 same-day live order.
+        // 1000 from the normal tenant rollup plus two 100 same-day live orders.
         // The bucket rollup and the bucket live order stay out.
-        Assert.Equal(1100m, result.CurrentRevenue);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1200m, result.Value.CurrentRevenue);
     }
 
     private void AddOrder(Guid tenantId, DateTimeOffset createdDate, decimal value, string orderNumber)

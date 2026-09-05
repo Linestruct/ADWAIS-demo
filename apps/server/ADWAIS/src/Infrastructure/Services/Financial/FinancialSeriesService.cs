@@ -10,6 +10,7 @@ using Adwais.Application.Interfaces;
 using Adwais.Application.Services;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Helpers;
+using FluentResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Services;
@@ -28,7 +29,7 @@ public class FinancialSeriesService(
     private readonly IFinancialSeriesReader _seriesReader = seriesReader;
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AccumulatedRevenuePointDto>> GetAccumulatedRevenueAsync(ResolvedPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<AccumulatedRevenuePointDto>>> GetAccumulatedRevenueAsync(ResolvedPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
     {
         var currentStart = period.CurrentStart;
         var currentEnd = period.CurrentEnd;
@@ -38,6 +39,8 @@ public class FinancialSeriesService(
         var includeActualTime = period.IncludeActualTime;
 
         var visibleTenantIds = await FinancialScope.ResolveVisibleTenantIdsAsync(_currentAccess, _dbContext, ct);
+        var validation = await FinancialScope.ValidateExplicitTenantAsync(tenantId, visibleTenantIds, _dbContext, ct);
+        if (validation.IsFailed) return Result.Fail<IReadOnlyList<AccumulatedRevenuePointDto>>(validation.Errors);
 
         var currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
         var previousRows = await _seriesReader.ReadTenantSeriesAsync(previousStart, period.PreviousEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
@@ -95,7 +98,7 @@ public class FinancialSeriesService(
                 runningPrev));
         }
 
-        return points;
+        return Result.Ok<IReadOnlyList<AccumulatedRevenuePointDto>>(points);
     }
     
     /// <inheritdoc />
@@ -162,7 +165,7 @@ public class FinancialSeriesService(
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<NetGrowthAdditionPointDto>> GetNetGrowthAdditionAsync(
+    public async Task<Result<IReadOnlyList<NetGrowthAdditionPointDto>>> GetNetGrowthAdditionAsync(
         ResolvedPeriod period,
         Guid? tenantId = null,
         IReadOnlyCollection<TenantType>? tenantTypes = null,
@@ -178,8 +181,9 @@ public class FinancialSeriesService(
         var lookbackStart = currentStart.AddHours(-binSizeHours);
 
         var visibleTenantIds = await FinancialScope.ResolveVisibleTenantIdsAsync(_currentAccess, _dbContext, ct);
+        var validation = await FinancialScope.ValidateExplicitTenantAsync(tenantId, visibleTenantIds, _dbContext, ct);
+        if (validation.IsFailed) return Result.Fail<IReadOnlyList<NetGrowthAdditionPointDto>>(validation.Errors);
         var scopeFilter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
-        scopeFilter.ThrowIfTenantOutsideScope();
 
         IReadOnlyList<FinancialSeriesRow> currentRows, beforeStartRows;
         if (scopeFilter.HasTenantFilter || scopeFilter.HasTypeFilter || scopeFilter.IsRestricted)
@@ -211,11 +215,11 @@ public class FinancialSeriesService(
             previousValue = cur;
         }
 
-        return points;
+        return Result.Ok<IReadOnlyList<NetGrowthAdditionPointDto>>(points);
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<CumulativeGrowthDeltaPointDto>> GetCumulativeGrowthDeltaAsync(ResolvedPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<CumulativeGrowthDeltaPointDto>>> GetCumulativeGrowthDeltaAsync(ResolvedPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
     {
         var currentStart = period.CurrentStart;
         var currentEnd = period.CurrentEnd;
@@ -225,8 +229,9 @@ public class FinancialSeriesService(
         var includeActualTime = period.IncludeActualTime;
 
         var visibleTenantIds = await FinancialScope.ResolveVisibleTenantIdsAsync(_currentAccess, _dbContext, ct);
+        var validation = await FinancialScope.ValidateExplicitTenantAsync(tenantId, visibleTenantIds, _dbContext, ct);
+        if (validation.IsFailed) return Result.Fail<IReadOnlyList<CumulativeGrowthDeltaPointDto>>(validation.Errors);
         var scopeFilter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
-        scopeFilter.ThrowIfTenantOutsideScope();
 
         IReadOnlyList<FinancialSeriesRow> currentRows, previousRows;
 
@@ -268,6 +273,6 @@ public class FinancialSeriesService(
             points.Add(new CumulativeGrowthDeltaPointDto(timestamp, runningCur, runningPrev, runningSum));
         }
 
-        return points;
+        return Result.Ok<IReadOnlyList<CumulativeGrowthDeltaPointDto>>(points);
     }
 }

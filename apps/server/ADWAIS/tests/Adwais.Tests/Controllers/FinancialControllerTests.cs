@@ -19,6 +19,7 @@ namespace Adwais.Tests.Controllers;
 public class FinancialControllerTests
 {
     private readonly Mock<IFinancialDistributionService> _distributionService = new();
+    private readonly Mock<IFinancialSeriesService> _seriesService = new();
     private readonly Mock<IReportingCalendar> _reportingCalendar = new();
     private readonly FinancialController _controller;
 
@@ -34,7 +35,7 @@ public class FinancialControllerTests
 
         _controller = new FinancialController(
             new Mock<IFinancialKpiService>().Object,
-            new Mock<IFinancialSeriesService>().Object,
+            _seriesService.Object,
             _distributionService.Object,
             _reportingCalendar.Object)
         {
@@ -89,5 +90,21 @@ public class FinancialControllerTests
 
         var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAccumulatedRevenue_ReturnsNotFoundForMissingTenant()
+    {
+        var request = new FinancialRequestDto { TenantId = Guid.NewGuid() };
+        _seriesService
+            .Setup(service => service.GetAccumulatedRevenueAsync(
+                It.IsAny<ResolvedPeriod>(), request.TenantId, request.TenantTypes, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<IReadOnlyList<Adwais.Application.DTOs.Financial.AccumulatedRevenuePointDto>>(
+                new NotFoundError("tenant", request.TenantId)));
+
+        var result = await _controller.GetAccumulatedRevenue(request, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status404NotFound, problem.StatusCode);
     }
 }

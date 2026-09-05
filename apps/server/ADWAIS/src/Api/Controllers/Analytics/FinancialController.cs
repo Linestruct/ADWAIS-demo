@@ -26,22 +26,27 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("kpis")]
+    [ProducesResponseType(typeof(KpiResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<KpiResponseDto>> GetKpis([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
         var result = await kpiService.GetKpisAsync(period, request.TenantId, request.TenantTypes, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var kpis = result.Value;
         return Ok(new KpiResponseDto(
-            result.CurrentRevenue,
-            result.PreviousRevenue,
-            result.RevenueGrowthPercentage,
-            result.TransactionVolume,
-            result.VolumeGrowthPercentage,
-            result.AverageOrderValue,
-            result.AovGrowthPercentage,
-            result.ActiveTenants,
-            result.ActiveTenantsGrowthPercentage,
-            result.AverageRevenuePerTenant,
-            result.ArptGrowthPercentage));
+            kpis.CurrentRevenue,
+            kpis.PreviousRevenue,
+            kpis.RevenueGrowthPercentage,
+            kpis.TransactionVolume,
+            kpis.VolumeGrowthPercentage,
+            kpis.AverageOrderValue,
+            kpis.AovGrowthPercentage,
+            kpis.ActiveTenants,
+            kpis.ActiveTenantsGrowthPercentage,
+            kpis.AverageRevenuePerTenant,
+            kpis.ArptGrowthPercentage));
     }
 
     /// <summary>
@@ -49,11 +54,15 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("accumulated-revenue")]
+    [ProducesResponseType(typeof(IEnumerable<AccumulatedRevenuePointResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<AccumulatedRevenuePointResponseDto>>> GetAccumulatedRevenue([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
         var result = await seriesService.GetAccumulatedRevenueAsync(period, request.TenantId, request.TenantTypes, ct);
-        return Ok(result.Select(v => new AccumulatedRevenuePointResponseDto(
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(v => new AccumulatedRevenuePointResponseDto(
                 v.Timestamp,
                 v.CurrentRevenue,
                 v.CurrentRevenueB2C,
@@ -154,11 +163,15 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("daily-revenue-delta")]
+    [ProducesResponseType(typeof(IEnumerable<NetGrowthAdditionPointResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<NetGrowthAdditionPointResponseDto>>> GetNetGrowthAddition([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
         var result = await seriesService.GetNetGrowthAdditionAsync(period, request.TenantId, request.TenantTypes, ct);
-        return Ok(result.Select(n => new NetGrowthAdditionPointResponseDto(
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(n => new NetGrowthAdditionPointResponseDto(
                 n.Timestamp,
                 n.NetGrowthAddition)).ToList());
     }
@@ -218,11 +231,15 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("cumulative-growth-delta")]
+    [ProducesResponseType(typeof(IEnumerable<CumulativeGrowthDeltaPointResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<CumulativeGrowthDeltaPointResponseDto>>> GetCumulativeGrowthDelta([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
         var result = await seriesService.GetCumulativeGrowthDeltaAsync(period, request.TenantId, request.TenantTypes, ct);
-        return Ok(result.Select(p => new CumulativeGrowthDeltaPointResponseDto(
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(p => new CumulativeGrowthDeltaPointResponseDto(
                 p.Timestamp,
                 p.CurrentCumulative,
                 p.PreviousCumulative,

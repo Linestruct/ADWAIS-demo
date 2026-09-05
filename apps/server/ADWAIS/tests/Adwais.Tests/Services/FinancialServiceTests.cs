@@ -77,12 +77,13 @@ public class FinancialServiceTests : IDisposable
             tenantTypes: [TenantType.B2B],
             ct: CancellationToken.None);
 
-        Assert.Equal(100m, result.CurrentRevenue);
-        Assert.Equal(50m, result.PreviousRevenue);
-        Assert.Equal(100m, result.RevenueGrowthPercentage);
-        Assert.Equal(1, result.TransactionVolume);
-        Assert.Equal(1, result.ActiveTenants);
-        Assert.Equal(100m, result.AverageOrderValue);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(100m, result.Value.CurrentRevenue);
+        Assert.Equal(50m, result.Value.PreviousRevenue);
+        Assert.Equal(100m, result.Value.RevenueGrowthPercentage);
+        Assert.Equal(1, result.Value.TransactionVolume);
+        Assert.Equal(1, result.Value.ActiveTenants);
+        Assert.Equal(100m, result.Value.AverageOrderValue);
     }
 
     [Fact]
@@ -106,7 +107,8 @@ public class FinancialServiceTests : IDisposable
             [TenantType.B2B],
             CancellationToken.None);
 
-        Assert.Equal(300m, accumulated[^1].CurrentAccumulated);
+        Assert.True(accumulated.IsSuccess);
+        Assert.Equal(300m, accumulated.Value[^1].CurrentAccumulated);
         Assert.Single(efficiency.Tenants);
         Assert.Equal(_b2bTenantId, efficiency.Tenants[0].TenantId);
         Assert.Equal(100m, efficiency.GlobalAverageOrderValue);
@@ -138,12 +140,14 @@ public class FinancialServiceTests : IDisposable
             _period,
             tenantTypes: [TenantType.B2B]);
 
+        Assert.True(result.IsSuccess);
+        Assert.True(b2bResult.IsSuccess);
         Assert.Collection(
-            result,
+            result.Value,
             point => Assert.Equal(350m, point.NetGrowthAddition),
             point => Assert.Equal(-240m, point.NetGrowthAddition));
         Assert.Collection(
-            b2bResult,
+            b2bResult.Value,
             point => Assert.Equal(60m, point.NetGrowthAddition),
             point => Assert.Equal(60m, point.NetGrowthAddition));
     }
@@ -168,10 +172,11 @@ public class FinancialServiceTests : IDisposable
 
         var result = await _seriesService.GetNetGrowthAdditionAsync(period, _b2bTenantId);
 
-        Assert.Equal(42, result.Count);
-        Assert.Equal(75m, result[0].NetGrowthAddition);
-        Assert.Equal(40m, result[1].NetGrowthAddition);
-        Assert.Equal(start.AddHours(4), result[1].Timestamp);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(42, result.Value.Count);
+        Assert.Equal(75m, result.Value[0].NetGrowthAddition);
+        Assert.Equal(40m, result.Value[1].NetGrowthAddition);
+        Assert.Equal(start.AddHours(4), result.Value[1].Timestamp);
     }
 
     [Fact]
@@ -188,8 +193,9 @@ public class FinancialServiceTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(400m, result.CurrentRevenue);
-        Assert.Equal(2, result.TransactionVolume);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(400m, result.Value.CurrentRevenue);
+        Assert.Equal(2, result.Value.TransactionVolume);
     }
 
     [Fact]
@@ -200,12 +206,13 @@ public class FinancialServiceTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(100m, result.CurrentRevenue);
-        Assert.Equal(1, result.TransactionVolume);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(100m, result.Value.CurrentRevenue);
+        Assert.Equal(1, result.Value.TransactionVolume);
     }
 
     [Fact]
-    public async Task GetKpisAsync_RequestedTenantOutsideScope_ThrowsUnauthorizedAccess()
+    public async Task GetKpisAsync_RequestedTenantOutsideScope_ReturnsScopeDenied()
     {
         var otherOrgId = Guid.NewGuid();
         var otherTenantId = Guid.NewGuid();
@@ -215,8 +222,27 @@ public class FinancialServiceTests : IDisposable
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _kpiService.GetKpisAsync(_period, tenantId: otherTenantId, ct: CancellationToken.None));
+        var result = await _kpiService.GetKpisAsync(
+            _period, tenantId: otherTenantId, ct: CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
+    }
+
+    [Fact]
+    public async Task FinancialSeries_RequestedTenantOutsideScope_ReturnsScopeDenied()
+    {
+        var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        var accumulated = await _seriesService.GetAccumulatedRevenueAsync(_period, otherTenantId);
+        var netGrowth = await _seriesService.GetNetGrowthAdditionAsync(_period, otherTenantId);
+        var cumulative = await _seriesService.GetCumulativeGrowthDeltaAsync(_period, otherTenantId);
+
+        Assert.IsType<ScopeDeniedError>(Assert.Single(accumulated.Errors));
+        Assert.IsType<ScopeDeniedError>(Assert.Single(netGrowth.Errors));
+        Assert.IsType<ScopeDeniedError>(Assert.Single(cumulative.Errors));
     }
 
     [Fact]
@@ -244,9 +270,10 @@ public class FinancialServiceTests : IDisposable
         var points = await _seriesService.GetNetGrowthAdditionAsync(dailyPeriod, ct: CancellationToken.None);
 
         // Assert
-        Assert.Equal(2, points.Count);
-        Assert.Equal(150m, points[0].NetGrowthAddition);
-        Assert.Equal(-120m, points[1].NetGrowthAddition);
+        Assert.True(points.IsSuccess);
+        Assert.Equal(2, points.Value.Count);
+        Assert.Equal(150m, points.Value[0].NetGrowthAddition);
+        Assert.Equal(-120m, points.Value[1].NetGrowthAddition);
     }
 
     [Fact]
@@ -257,8 +284,9 @@ public class FinancialServiceTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(0m, result.CurrentRevenue);
-        Assert.Equal(0, result.TransactionVolume);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0m, result.Value.CurrentRevenue);
+        Assert.Equal(0, result.Value.TransactionVolume);
     }
 
     [Fact]
@@ -311,8 +339,9 @@ public class FinancialServiceTests : IDisposable
         var points = await _seriesService.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
 
         // Assert
-        Assert.NotEmpty(points);
-        Assert.Equal(400m, points.Sum(point => point.CurrentRevenue));
+        Assert.True(points.IsSuccess);
+        Assert.NotEmpty(points.Value);
+        Assert.Equal(400m, points.Value.Sum(point => point.CurrentRevenue));
     }
 
     [Fact]
@@ -374,8 +403,9 @@ public class FinancialServiceTests : IDisposable
         var points = await _seriesService.GetCumulativeGrowthDeltaAsync(_period, ct: CancellationToken.None);
 
         // Assert
-        Assert.NotEmpty(points);
-        Assert.Equal(400m, points[^1].CurrentCumulative);
+        Assert.True(points.IsSuccess);
+        Assert.NotEmpty(points.Value);
+        Assert.Equal(400m, points.Value[^1].CurrentCumulative);
     }
 
     [Fact]

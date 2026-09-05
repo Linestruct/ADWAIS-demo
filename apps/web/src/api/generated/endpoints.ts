@@ -3699,12 +3699,44 @@ export type getApiFinancialKpisResponse200TextJson = {
   status: 200
 }
 
+export type getApiFinancialKpisResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialKpisResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialKpisResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialKpisResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialKpisResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialKpisResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type getApiFinancialKpisResponseSuccess = (getApiFinancialKpisResponse200TextPlain | getApiFinancialKpisResponse200ApplicationJson | getApiFinancialKpisResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiFinancialKpisResponseError = (getApiFinancialKpisResponse403TextPlain | getApiFinancialKpisResponse403ApplicationJson | getApiFinancialKpisResponse403TextJson | getApiFinancialKpisResponse404TextPlain | getApiFinancialKpisResponse404ApplicationJson | getApiFinancialKpisResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type getApiFinancialKpisResponse = (getApiFinancialKpisResponseSuccess)
+export type getApiFinancialKpisResponse = (getApiFinancialKpisResponseSuccess | getApiFinancialKpisResponseError)
 
 export const getGetApiFinancialKpisUrl = (params?: GetApiFinancialKpisParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3755,7 +3787,7 @@ export const getGetApiFinancialKpisQueryKey = (params?: GetApiFinancialKpisParam
     }
 
 
-export const getGetApiFinancialKpisQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = unknown>(params?: GetApiFinancialKpisParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialKpis>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiFinancialKpisQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = ProblemDetails>(params?: GetApiFinancialKpisParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialKpis>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -3774,10 +3806,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiFinancialKpisQueryResult = NonNullable<Awaited<ReturnType<typeof getApiFinancialKpis>>>
-export type GetApiFinancialKpisQueryError = unknown
+export type GetApiFinancialKpisQueryError = ProblemDetails
 
 
-export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = unknown>(
+export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = ProblemDetails>(
  params: undefined |  GetApiFinancialKpisParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialKpis>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialKpis>>,
@@ -3787,7 +3819,7 @@ export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiF
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = unknown>(
+export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = ProblemDetails>(
  params?: GetApiFinancialKpisParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialKpis>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialKpis>>,
@@ -3797,7 +3829,7 @@ export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiF
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = unknown>(
+export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = ProblemDetails>(
  params?: GetApiFinancialKpisParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialKpis>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -3806,7 +3838,7 @@ export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiF
 Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
  */
 
-export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = unknown>(
+export function useGetApiFinancialKpis<TData = Awaited<ReturnType<typeof getApiFinancialKpis>>, TError = ProblemDetails>(
  params?: GetApiFinancialKpisParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialKpis>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -3839,12 +3871,44 @@ export type getApiFinancialAccumulatedRevenueResponse200TextJson = {
   status: 200
 }
 
+export type getApiFinancialAccumulatedRevenueResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialAccumulatedRevenueResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialAccumulatedRevenueResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialAccumulatedRevenueResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialAccumulatedRevenueResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialAccumulatedRevenueResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type getApiFinancialAccumulatedRevenueResponseSuccess = (getApiFinancialAccumulatedRevenueResponse200TextPlain | getApiFinancialAccumulatedRevenueResponse200ApplicationJson | getApiFinancialAccumulatedRevenueResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiFinancialAccumulatedRevenueResponseError = (getApiFinancialAccumulatedRevenueResponse403TextPlain | getApiFinancialAccumulatedRevenueResponse403ApplicationJson | getApiFinancialAccumulatedRevenueResponse403TextJson | getApiFinancialAccumulatedRevenueResponse404TextPlain | getApiFinancialAccumulatedRevenueResponse404ApplicationJson | getApiFinancialAccumulatedRevenueResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type getApiFinancialAccumulatedRevenueResponse = (getApiFinancialAccumulatedRevenueResponseSuccess)
+export type getApiFinancialAccumulatedRevenueResponse = (getApiFinancialAccumulatedRevenueResponseSuccess | getApiFinancialAccumulatedRevenueResponseError)
 
 export const getGetApiFinancialAccumulatedRevenueUrl = (params?: GetApiFinancialAccumulatedRevenueParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3895,7 +3959,7 @@ export const getGetApiFinancialAccumulatedRevenueQueryKey = (params?: GetApiFina
     }
 
 
-export const getGetApiFinancialAccumulatedRevenueQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = unknown>(params?: GetApiFinancialAccumulatedRevenueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiFinancialAccumulatedRevenueQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = ProblemDetails>(params?: GetApiFinancialAccumulatedRevenueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -3914,10 +3978,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiFinancialAccumulatedRevenueQueryResult = NonNullable<Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>>
-export type GetApiFinancialAccumulatedRevenueQueryError = unknown
+export type GetApiFinancialAccumulatedRevenueQueryError = ProblemDetails
 
 
-export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = unknown>(
+export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = ProblemDetails>(
  params: undefined |  GetApiFinancialAccumulatedRevenueParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>,
@@ -3927,7 +3991,7 @@ export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = unknown>(
+export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = ProblemDetails>(
  params?: GetApiFinancialAccumulatedRevenueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>,
@@ -3937,7 +4001,7 @@ export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = unknown>(
+export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = ProblemDetails>(
  params?: GetApiFinancialAccumulatedRevenueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -3946,7 +4010,7 @@ export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<
 Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
  */
 
-export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = unknown>(
+export function useGetApiFinancialAccumulatedRevenue<TData = Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError = ProblemDetails>(
  params?: GetApiFinancialAccumulatedRevenueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialAccumulatedRevenue>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -4399,12 +4463,44 @@ export type getApiFinancialDailyRevenueDeltaResponse200TextJson = {
   status: 200
 }
 
+export type getApiFinancialDailyRevenueDeltaResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialDailyRevenueDeltaResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialDailyRevenueDeltaResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialDailyRevenueDeltaResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialDailyRevenueDeltaResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialDailyRevenueDeltaResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type getApiFinancialDailyRevenueDeltaResponseSuccess = (getApiFinancialDailyRevenueDeltaResponse200TextPlain | getApiFinancialDailyRevenueDeltaResponse200ApplicationJson | getApiFinancialDailyRevenueDeltaResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiFinancialDailyRevenueDeltaResponseError = (getApiFinancialDailyRevenueDeltaResponse403TextPlain | getApiFinancialDailyRevenueDeltaResponse403ApplicationJson | getApiFinancialDailyRevenueDeltaResponse403TextJson | getApiFinancialDailyRevenueDeltaResponse404TextPlain | getApiFinancialDailyRevenueDeltaResponse404ApplicationJson | getApiFinancialDailyRevenueDeltaResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type getApiFinancialDailyRevenueDeltaResponse = (getApiFinancialDailyRevenueDeltaResponseSuccess)
+export type getApiFinancialDailyRevenueDeltaResponse = (getApiFinancialDailyRevenueDeltaResponseSuccess | getApiFinancialDailyRevenueDeltaResponseError)
 
 export const getGetApiFinancialDailyRevenueDeltaUrl = (params?: GetApiFinancialDailyRevenueDeltaParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4455,7 +4551,7 @@ export const getGetApiFinancialDailyRevenueDeltaQueryKey = (params?: GetApiFinan
     }
 
 
-export const getGetApiFinancialDailyRevenueDeltaQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = unknown>(params?: GetApiFinancialDailyRevenueDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiFinancialDailyRevenueDeltaQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = ProblemDetails>(params?: GetApiFinancialDailyRevenueDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -4474,10 +4570,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiFinancialDailyRevenueDeltaQueryResult = NonNullable<Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>>
-export type GetApiFinancialDailyRevenueDeltaQueryError = unknown
+export type GetApiFinancialDailyRevenueDeltaQueryError = ProblemDetails
 
 
-export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = unknown>(
+export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = ProblemDetails>(
  params: undefined |  GetApiFinancialDailyRevenueDeltaParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>,
@@ -4487,7 +4583,7 @@ export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<t
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = unknown>(
+export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = ProblemDetails>(
  params?: GetApiFinancialDailyRevenueDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>,
@@ -4497,7 +4593,7 @@ export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<t
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = unknown>(
+export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = ProblemDetails>(
  params?: GetApiFinancialDailyRevenueDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -4506,7 +4602,7 @@ export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<t
 Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
  */
 
-export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = unknown>(
+export function useGetApiFinancialDailyRevenueDelta<TData = Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError = ProblemDetails>(
  params?: GetApiFinancialDailyRevenueDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialDailyRevenueDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -4843,12 +4939,44 @@ export type getApiFinancialCumulativeGrowthDeltaResponse200TextJson = {
   status: 200
 }
 
+export type getApiFinancialCumulativeGrowthDeltaResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialCumulativeGrowthDeltaResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialCumulativeGrowthDeltaResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialCumulativeGrowthDeltaResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialCumulativeGrowthDeltaResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type getApiFinancialCumulativeGrowthDeltaResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type getApiFinancialCumulativeGrowthDeltaResponseSuccess = (getApiFinancialCumulativeGrowthDeltaResponse200TextPlain | getApiFinancialCumulativeGrowthDeltaResponse200ApplicationJson | getApiFinancialCumulativeGrowthDeltaResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiFinancialCumulativeGrowthDeltaResponseError = (getApiFinancialCumulativeGrowthDeltaResponse403TextPlain | getApiFinancialCumulativeGrowthDeltaResponse403ApplicationJson | getApiFinancialCumulativeGrowthDeltaResponse403TextJson | getApiFinancialCumulativeGrowthDeltaResponse404TextPlain | getApiFinancialCumulativeGrowthDeltaResponse404ApplicationJson | getApiFinancialCumulativeGrowthDeltaResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type getApiFinancialCumulativeGrowthDeltaResponse = (getApiFinancialCumulativeGrowthDeltaResponseSuccess)
+export type getApiFinancialCumulativeGrowthDeltaResponse = (getApiFinancialCumulativeGrowthDeltaResponseSuccess | getApiFinancialCumulativeGrowthDeltaResponseError)
 
 export const getGetApiFinancialCumulativeGrowthDeltaUrl = (params?: GetApiFinancialCumulativeGrowthDeltaParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4899,7 +5027,7 @@ export const getGetApiFinancialCumulativeGrowthDeltaQueryKey = (params?: GetApiF
     }
 
 
-export const getGetApiFinancialCumulativeGrowthDeltaQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = unknown>(params?: GetApiFinancialCumulativeGrowthDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiFinancialCumulativeGrowthDeltaQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = ProblemDetails>(params?: GetApiFinancialCumulativeGrowthDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -4918,10 +5046,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiFinancialCumulativeGrowthDeltaQueryResult = NonNullable<Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>>
-export type GetApiFinancialCumulativeGrowthDeltaQueryError = unknown
+export type GetApiFinancialCumulativeGrowthDeltaQueryError = ProblemDetails
 
 
-export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = unknown>(
+export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = ProblemDetails>(
  params: undefined |  GetApiFinancialCumulativeGrowthDeltaParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>,
@@ -4931,7 +5059,7 @@ export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnTy
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = unknown>(
+export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = ProblemDetails>(
  params?: GetApiFinancialCumulativeGrowthDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>,
@@ -4941,7 +5069,7 @@ export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnTy
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = unknown>(
+export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = ProblemDetails>(
  params?: GetApiFinancialCumulativeGrowthDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -4950,7 +5078,7 @@ export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnTy
 Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
  */
 
-export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = unknown>(
+export function useGetApiFinancialCumulativeGrowthDelta<TData = Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError = ProblemDetails>(
  params?: GetApiFinancialCumulativeGrowthDeltaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialCumulativeGrowthDelta>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

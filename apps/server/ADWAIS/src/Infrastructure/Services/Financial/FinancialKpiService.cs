@@ -12,6 +12,7 @@ using Adwais.Domain.Entities.OrderData;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Helpers;
 using Microsoft.EntityFrameworkCore;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -28,7 +29,7 @@ public class FinancialKpiService(
     private readonly IFinancialSeriesReader _seriesReader = seriesReader;
 
     /// <inheritdoc />
-    public async Task<KpiDto> GetKpisAsync(ResolvedPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
+    public async Task<Result<KpiDto>> GetKpisAsync(ResolvedPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
     {
         var currentStart = period.CurrentStart;
         var currentEnd = period.CurrentEnd;
@@ -36,6 +37,8 @@ public class FinancialKpiService(
         var isHourly = period.IsHourly;
 
         var visibleTenantIds = await FinancialScope.ResolveVisibleTenantIdsAsync(_currentAccess, _dbContext, ct);
+        var validation = await FinancialScope.ValidateExplicitTenantAsync(tenantId, visibleTenantIds, _dbContext, ct);
+        if (validation.IsFailed) return Result.Fail<KpiDto>(validation.Errors);
 
         var currentRows = await _seriesReader.ReadTenantSeriesAsync(currentStart, currentEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
         var previousRows = await _seriesReader.ReadTenantSeriesAsync(previousStart, period.PreviousEnd, isHourly, TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds), ct);
@@ -60,7 +63,7 @@ public class FinancialKpiService(
         var prevArpt = prevActiveTenants > 0 ? Math.Round(previousRevenue / prevActiveTenants, 2) : 0m;
         var arptGrowthPct = FinancialMath.CalculateGrowthPercentage(arpt, prevArpt);
 
-        return new KpiDto(currentRevenue, previousRevenue, growthPct, volume, volumeGrowthPct, aov, aovGrowthPct, activeTenants, activeTenantsGrowthPct, arpt, arptGrowthPct);
+        return Result.Ok(new KpiDto(currentRevenue, previousRevenue, growthPct, volume, volumeGrowthPct, aov, aovGrowthPct, activeTenants, activeTenantsGrowthPct, arpt, arptGrowthPct));
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetOrdersAsync(DateTimeOffset dateSince, DateTimeOffset dateUntil, int ceilingCount, CancellationToken ct)

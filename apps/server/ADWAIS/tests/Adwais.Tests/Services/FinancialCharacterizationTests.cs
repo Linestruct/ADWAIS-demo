@@ -99,12 +99,13 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(1600m, result.CurrentRevenue);
-        Assert.Equal(650m, result.PreviousRevenue);
-        Assert.Equal(146.15m, result.RevenueGrowthPercentage);
-        Assert.Equal(4, result.TransactionVolume);
-        Assert.Equal(400m, result.AverageOrderValue);
-        Assert.Equal(4, result.ActiveTenants);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1600m, result.Value.CurrentRevenue);
+        Assert.Equal(650m, result.Value.PreviousRevenue);
+        Assert.Equal(146.15m, result.Value.RevenueGrowthPercentage);
+        Assert.Equal(4, result.Value.TransactionVolume);
+        Assert.Equal(400m, result.Value.AverageOrderValue);
+        Assert.Equal(4, result.Value.ActiveTenants);
     }
 
     [Fact]
@@ -114,12 +115,13 @@ public class FinancialHourlyCharacterizationTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(600m, result.CurrentRevenue);
-        Assert.Equal(150m, result.PreviousRevenue);
-        Assert.Equal(300m, result.RevenueGrowthPercentage);
-        Assert.Equal(3, result.TransactionVolume);
-        Assert.Equal(200m, result.AverageOrderValue);
-        Assert.Equal(3, result.ActiveTenants);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(600m, result.Value.CurrentRevenue);
+        Assert.Equal(150m, result.Value.PreviousRevenue);
+        Assert.Equal(300m, result.Value.RevenueGrowthPercentage);
+        Assert.Equal(3, result.Value.TransactionVolume);
+        Assert.Equal(200m, result.Value.AverageOrderValue);
+        Assert.Equal(3, result.Value.ActiveTenants);
     }
 
     [Fact]
@@ -129,8 +131,9 @@ public class FinancialHourlyCharacterizationTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(0m, result.CurrentRevenue);
-        Assert.Equal(0, result.TransactionVolume);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0m, result.Value.CurrentRevenue);
+        Assert.Equal(0, result.Value.TransactionVolume);
     }
 
     [Fact]
@@ -163,17 +166,18 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         var result = await _seriesService.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1400m, result[0].CurrentRevenue);
-        Assert.Equal(650m, result[0].PreviousRevenue);
-        Assert.Equal(1400m, result[0].CurrentAccumulated);
-        Assert.Equal(1100m, result[0].CurrentRevenueB2B);
-        Assert.Equal(300m, result[0].CurrentRevenueB2C);
-        Assert.Equal(0m, result[0].CurrentRevenueMixed);
-        Assert.Equal(200m, result[1].CurrentRevenue);
-        Assert.Equal(200m, result[1].CurrentRevenueMixed);
-        Assert.Equal(1600m, result[1].CurrentAccumulated);
-        Assert.Equal(650m, result[1].PreviousAccumulated);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.Equal(1400m, result.Value[0].CurrentRevenue);
+        Assert.Equal(650m, result.Value[0].PreviousRevenue);
+        Assert.Equal(1400m, result.Value[0].CurrentAccumulated);
+        Assert.Equal(1100m, result.Value[0].CurrentRevenueB2B);
+        Assert.Equal(300m, result.Value[0].CurrentRevenueB2C);
+        Assert.Equal(0m, result.Value[0].CurrentRevenueMixed);
+        Assert.Equal(200m, result.Value[1].CurrentRevenue);
+        Assert.Equal(200m, result.Value[1].CurrentRevenueMixed);
+        Assert.Equal(1600m, result.Value[1].CurrentAccumulated);
+        Assert.Equal(650m, result.Value[1].PreviousAccumulated);
     }
 
     [Fact]
@@ -181,9 +185,10 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         var result = await _seriesService.GetNetGrowthAdditionAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1400m, result[0].NetGrowthAddition);
-        Assert.Equal(-1200m, result[1].NetGrowthAddition);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.Equal(1400m, result.Value[0].NetGrowthAddition);
+        Assert.Equal(-1200m, result.Value[1].NetGrowthAddition);
     }
 
     [Fact]
@@ -194,9 +199,10 @@ public class FinancialHourlyCharacterizationTests : IDisposable
         var result = await _seriesService.GetNetGrowthAdditionAsync(
             _period, tenantTypes: [TenantType.B2B], ct: CancellationToken.None);
 
-        Assert.Equal(2, result.Count);
-        Assert.Equal(100m, result[0].NetGrowthAddition);
-        Assert.Equal(-100m, result[1].NetGrowthAddition);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.Equal(100m, result.Value[0].NetGrowthAddition);
+        Assert.Equal(-100m, result.Value[1].NetGrowthAddition);
     }
 
     [Fact]
@@ -204,10 +210,11 @@ public class FinancialHourlyCharacterizationTests : IDisposable
     {
         var result = await _seriesService.GetCumulativeGrowthDeltaAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1600m, result[1].CurrentCumulative);
-        Assert.Equal(650m, result[1].PreviousCumulative);
-        Assert.Equal(950m, result[1].CumulativeGrowthDelta);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.Equal(1600m, result.Value[1].CurrentCumulative);
+        Assert.Equal(650m, result.Value[1].PreviousCumulative);
+        Assert.Equal(950m, result.Value[1].CumulativeGrowthDelta);
     }
 
     [Fact]
@@ -408,10 +415,11 @@ public class FinancialDailyCharacterizationTests : IDisposable
     {
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(13600m, result.CurrentRevenue);
-        Assert.Equal(1000m, result.PreviousRevenue);
-        Assert.Equal(1260m, result.RevenueGrowthPercentage);
-        Assert.Equal(128, result.TransactionVolume);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(13600m, result.Value.CurrentRevenue);
+        Assert.Equal(1000m, result.Value.PreviousRevenue);
+        Assert.Equal(1260m, result.Value.RevenueGrowthPercentage);
+        Assert.Equal(128, result.Value.TransactionVolume);
     }
 
     [Fact]
@@ -422,9 +430,10 @@ public class FinancialDailyCharacterizationTests : IDisposable
 
         var result = await _kpiService.GetKpisAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(3900m, result.CurrentRevenue);
-        Assert.Equal(1000m, result.PreviousRevenue);
-        Assert.Equal(290m, result.RevenueGrowthPercentage);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(3900m, result.Value.CurrentRevenue);
+        Assert.Equal(1000m, result.Value.PreviousRevenue);
+        Assert.Equal(290m, result.Value.RevenueGrowthPercentage);
     }
 
     [Fact]
@@ -432,15 +441,16 @@ public class FinancialDailyCharacterizationTests : IDisposable
     {
         var result = await _seriesService.GetAccumulatedRevenueAsync(_period, ct: CancellationToken.None);
 
-        Assert.Equal(4, result.Count);
-        Assert.Equal(12000m, result[0].CurrentRevenue);
-        Assert.Equal(0m, result[0].PreviousRevenue);
-        Assert.Equal(500m, result[1].CurrentRevenue);
-        Assert.Equal(1000m, result[1].PreviousRevenue);
-        Assert.Equal(12500m, result[1].CurrentAccumulated);
-        Assert.Equal(1100m, result[2].CurrentRevenue);
-        Assert.Equal(13600m, result[2].CurrentAccumulated);
-        Assert.Equal(13600m, result[3].CurrentAccumulated);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(4, result.Value.Count);
+        Assert.Equal(12000m, result.Value[0].CurrentRevenue);
+        Assert.Equal(0m, result.Value[0].PreviousRevenue);
+        Assert.Equal(500m, result.Value[1].CurrentRevenue);
+        Assert.Equal(1000m, result.Value[1].PreviousRevenue);
+        Assert.Equal(12500m, result.Value[1].CurrentAccumulated);
+        Assert.Equal(1100m, result.Value[2].CurrentRevenue);
+        Assert.Equal(13600m, result.Value[2].CurrentAccumulated);
+        Assert.Equal(13600m, result.Value[3].CurrentAccumulated);
     }
 
     private void AddOrder(Guid tenantId, DateTimeOffset createdDate, decimal value, string orderNumber)

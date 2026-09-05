@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Errors;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Intranet;
@@ -71,18 +72,18 @@ public class BulletinPostService(IApplicationDbContext dbContext, ICurrentAccess
                 .AnyAsync(org => org.Id == organizationId.Value, ct);
             if (!organizationExists)
             {
-                throw new KeyNotFoundException($"Organization {organizationId.Value} does not exist.");
+                throw new HttpContractException(404, "Not Found", $"Organization {organizationId.Value} does not exist.");
             }
             if (!filter.Denied && filter.OrganizationId is { } filterOrg && filterOrg != organizationId.Value)
             {
-                throw new UnauthorizedAccessException("Cannot create bulletin post for another organization.");
+                throw new HttpContractException(403, "Forbidden", "Cannot create bulletin post for another organization.");
             }
             targetOrgId = organizationId.Value;
         }
         else
         {
-            if (filter.Denied) throw new UnauthorizedAccessException("The current scope cannot create bulletin posts.");
-            if (filter.OrganizationId is null) throw new InvalidOperationException("Bulletin posts require an organization scope.");
+            if (filter.Denied) throw new HttpContractException(403, "Forbidden", "The current scope cannot create bulletin posts.");
+            if (filter.OrganizationId is null) throw new HttpContractException(400, "Bad Request", "Bulletin posts require an organization scope.");
             targetOrgId = filter.OrganizationId.Value;
         }
 

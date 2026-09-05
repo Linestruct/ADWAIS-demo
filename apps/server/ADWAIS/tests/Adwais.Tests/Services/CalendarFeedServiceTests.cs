@@ -6,6 +6,7 @@ using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Intranet;
 using Adwais.Domain.Enums;
@@ -69,14 +70,14 @@ public class CalendarFeedServiceTests
     }
 
     [Fact]
-    public async Task GenerateIcsFeedAsync_InvalidToken_ThrowsUnauthorizedAccess()
+    public async Task GenerateIcsFeedAsync_InvalidToken_ThrowsForbiddenContractException()
     {
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<HttpContractException>(
             () => _service.GenerateIcsFeedAsync("no-such-token", CancellationToken.None));
     }
 
     [Fact]
-    public async Task GenerateIcsFeedAsync_UserWithoutOrganizationScope_ThrowsUnauthorizedAccess()
+    public async Task GenerateIcsFeedAsync_UserWithoutOrganizationScope_ThrowsForbiddenContractException()
     {
         // Arrange
         var user = new User
@@ -93,7 +94,7 @@ public class CalendarFeedServiceTests
         }
 
         // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        await Assert.ThrowsAsync<HttpContractException>(
             () => _service.GenerateIcsFeedAsync("token-without-scope", CancellationToken.None));
     }
 

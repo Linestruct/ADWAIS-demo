@@ -57,30 +57,10 @@ public class GlobalExceptionHandler(
     {
         return exception switch
         {
-            ConfigurationException => (
-                StatusCodes.Status409Conflict,
-                "Conflict",
-                "https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.8"
-            ),
-            ArgumentException or InvalidOperationException => (
-                StatusCodes.Status400BadRequest,
-                "Bad Request",
-                "https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.1"
-            ),
-            KeyNotFoundException => (
-                StatusCodes.Status404NotFound,
-                "Not Found",
-                "https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.4"
-            ),
-            UnauthorizedAccessException => (
-                StatusCodes.Status403Forbidden,
-                "Forbidden",
-                "https://datatracker.ietf.org/doc/html/rfc7235#section-3.1"
-            ),
-            HttpRequestException httpEx when httpEx.StatusCode == System.Net.HttpStatusCode.NotFound => (
-                StatusCodes.Status404NotFound,
-                "Downstream Resource Not Found",
-                "https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.4"
+            HttpContractException contract => (
+                contract.StatusCode,
+                contract.Title,
+                "about:blank"
             ),
             _ => (
                 StatusCodes.Status500InternalServerError,

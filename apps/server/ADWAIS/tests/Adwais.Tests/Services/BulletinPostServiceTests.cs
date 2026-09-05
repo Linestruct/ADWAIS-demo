@@ -12,6 +12,7 @@ using Adwais.Domain.Entities.Intranet;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -204,7 +205,7 @@ public class BulletinPostServiceTests
 
         var service = new BulletinPostService(dbContext, mockAccess.Object);
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.CreatePostAsync(
+        await Assert.ThrowsAsync<HttpContractException>(() => service.CreatePostAsync(
             AnalyticsDbContext.SystemUserGuid,
             "Webhook Title",
             "Webhook Body",

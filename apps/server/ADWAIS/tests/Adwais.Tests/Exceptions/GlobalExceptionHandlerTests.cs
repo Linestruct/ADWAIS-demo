@@ -39,16 +39,18 @@ public class GlobalExceptionHandlerTests
     }
 
     [Fact]
-    public async Task TryHandleAsync_MapsKnownExceptionsToContractStatusCodes()
+    public async Task TryHandleAsync_MapsOnlyDeliberateHttpContractExceptionsToClientErrors()
     {
         var cases = new (Exception Exception, int ExpectedStatus)[]
         {
-            (new ConfigurationException("misconfigured"), StatusCodes.Status409Conflict),
-            (new ArgumentException("bad argument"), StatusCodes.Status400BadRequest),
-            (new InvalidOperationException("bad operation"), StatusCodes.Status400BadRequest),
-            (new KeyNotFoundException("missing entity"), StatusCodes.Status404NotFound),
-            (new UnauthorizedAccessException("denied"), StatusCodes.Status403Forbidden),
-            (new HttpRequestException("downstream missing", null, HttpStatusCode.NotFound), StatusCodes.Status404NotFound),
+            (new HttpContractException(403, "Forbidden", "denied"), StatusCodes.Status403Forbidden),
+            (new HttpContractException(404, "Not Found", "missing entity"), StatusCodes.Status404NotFound),
+            (new ConfigurationException("misconfigured"), StatusCodes.Status500InternalServerError),
+            (new ArgumentException("bad argument"), StatusCodes.Status500InternalServerError),
+            (new InvalidOperationException("bad operation"), StatusCodes.Status500InternalServerError),
+            (new KeyNotFoundException("missing entity"), StatusCodes.Status500InternalServerError),
+            (new UnauthorizedAccessException("denied"), StatusCodes.Status500InternalServerError),
+            (new HttpRequestException("downstream missing", null, HttpStatusCode.NotFound), StatusCodes.Status500InternalServerError),
             (new Exception("unexpected"), StatusCodes.Status500InternalServerError)
         };
 
@@ -79,7 +81,7 @@ public class GlobalExceptionHandlerTests
         var handled = await _handler.TryHandleAsync(httpContext, new InvalidOperationException("bad"), CancellationToken.None);
 
         Assert.True(handled);
-        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        Assert.Equal(StatusCodes.Status500InternalServerError, httpContext.Response.StatusCode);
         Assert.StartsWith("application/json", httpContext.Response.ContentType);
     }
 }

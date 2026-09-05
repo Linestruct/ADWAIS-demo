@@ -502,3 +502,18 @@
   opacity: 0;
 }
 
+/* Custom toasts (toast.custom) render their own card. Sonner always leaves
+   their wrapper unstyled, so reset the global toast classes here to restore
+   the bare-wrapper behavior. Higher specificity beats the Tailwind
+   utilities deterministically. */
+[data-sonner-toast].order-toast-reset {
+  display: block;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  line-height: inherit;
+  box-shadow: none;
+}
+

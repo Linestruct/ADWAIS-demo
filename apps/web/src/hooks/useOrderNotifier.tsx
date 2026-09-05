@@ -63,6 +63,10 @@ export function useOrderNotifier() {
                       {
                         duration: 10000,
                         position: 'bottom-left',
+                        classNames: {
+                          toast: 'order-toast-reset',
+                          closeButton: 'hidden',
+                        },
                       }
                     );
                   }

@@ -1,6 +1,7 @@
-// Part of the ADWAIS project, under the Business Source License 1.1.
+// Part of the ADWAIS project, licensed under the MIT License.
+// Copyright (c) 2026 Marmenlind.
 // See /LICENSE for license information.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 
 import { X, Settings, Link, RefreshCw, ShieldAlert } from 'lucide-react';
 import { FormField } from '../common/ui/FormField';

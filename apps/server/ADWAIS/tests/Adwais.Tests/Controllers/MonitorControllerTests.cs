@@ -174,6 +174,22 @@ public class MonitorControllerTests
     }
 
     [Fact]
+    public async Task GetAnalytics_ReturnsForbiddenForDeniedMonitor()
+    {
+        var request = new MonitorRequestDto { MonitorId = 1 };
+        _monitorServiceMock
+            .Setup(service => service.GetAnalyticsAsync(
+                It.IsAny<ResolvedPeriod>(), null, 1, null, null, It.IsAny<CancellationToken>(), null, null))
+            .ReturnsAsync(Result.Fail<MonitorAnalyticsDto>(
+                new ScopeDeniedError("the requested organization or tenant", "none")));
+
+        var result = await _controller.GetAnalytics(request, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);
+    }
+
+    [Fact]
     public async Task GetMonitors_WithoutScope_ShouldUseBatchedServiceRead()
     {
         var request = new MonitorRequestDto { Timeframe = Timeframe.T30 };

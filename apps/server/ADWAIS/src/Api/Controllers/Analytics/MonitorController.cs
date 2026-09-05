@@ -35,6 +35,8 @@ public class MonitorController(
     /// </summary>
     [HttpGet("analytics")]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(MonitorAnalyticsResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MonitorAnalyticsResponseDto>> GetAnalytics([FromQuery] MonitorRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
@@ -47,11 +49,13 @@ public class MonitorController(
             ct,
             excludedTags: request.ExcludedTags,
             excludedStatuses: request.ExcludedStatuses);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var analytics = result.Value;
 
         return Ok(new MonitorAnalyticsResponseDto
         {
-            GlobalAverageLatency = result.GlobalAverageLatency,
-            LatencyPoints = result.LatencyPoints.Select(p => new LatencyPointResponseDto
+            GlobalAverageLatency = analytics.GlobalAverageLatency,
+            LatencyPoints = analytics.LatencyPoints.Select(p => new LatencyPointResponseDto
             {
                 Timestamp = p.Timestamp,
                 Average = p.Average,
@@ -62,18 +66,18 @@ public class MonitorController(
                 PreviousState = p.PreviousState
             }).ToList(),
             Kpis = new MonitorKpiResponseDto(
-                result.Kpis.AverageUptime,
-                result.Kpis.PreviousAverageUptime,
-                result.Kpis.UptimeGrowthPercentage,
-                result.Kpis.AverageLatency,
-                result.Kpis.PreviousAverageLatency,
-                result.Kpis.LatencyGrowthPercentage,
-                result.Kpis.HighestLatency,
-                result.Kpis.PreviousHighestLatency,
-                result.Kpis.HighestLatencyGrowthPercentage,
-                result.Kpis.LowestLatency,
-                result.Kpis.PreviousLowestLatency,
-                result.Kpis.LowestLatencyGrowthPercentage)
+                analytics.Kpis.AverageUptime,
+                analytics.Kpis.PreviousAverageUptime,
+                analytics.Kpis.UptimeGrowthPercentage,
+                analytics.Kpis.AverageLatency,
+                analytics.Kpis.PreviousAverageLatency,
+                analytics.Kpis.LatencyGrowthPercentage,
+                analytics.Kpis.HighestLatency,
+                analytics.Kpis.PreviousHighestLatency,
+                analytics.Kpis.HighestLatencyGrowthPercentage,
+                analytics.Kpis.LowestLatency,
+                analytics.Kpis.PreviousLowestLatency,
+                analytics.Kpis.LowestLatencyGrowthPercentage)
         });
     }
 
@@ -82,6 +86,8 @@ public class MonitorController(
     /// </summary>
     [HttpGet("availability")]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(MonitorAvailabilitySeriesResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MonitorAvailabilitySeriesResponseDto>> GetAvailability(
         [FromQuery] MonitorRequestDto request,
         CancellationToken ct = default)
@@ -98,14 +104,16 @@ public class MonitorController(
             ct,
             excludedTags: request.ExcludedTags,
             excludedStatuses: request.ExcludedStatuses);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var availability = result.Value;
 
         return Ok(new MonitorAvailabilitySeriesResponseDto
         {
-            PeriodStart = result.PeriodStart,
-            PeriodEnd = result.PeriodEnd,
-            AverageUptimePercentage = result.AverageUptimePercentage,
-            LowestUptimePercentage = result.LowestUptimePercentage,
-            Points = result.Points.Select(point => new MonitorAvailabilityPointResponseDto
+            PeriodStart = availability.PeriodStart,
+            PeriodEnd = availability.PeriodEnd,
+            AverageUptimePercentage = availability.AverageUptimePercentage,
+            LowestUptimePercentage = availability.LowestUptimePercentage,
+            Points = availability.Points.Select(point => new MonitorAvailabilityPointResponseDto
             {
                 Date = point.Date,
                 EndDate = point.EndDate,

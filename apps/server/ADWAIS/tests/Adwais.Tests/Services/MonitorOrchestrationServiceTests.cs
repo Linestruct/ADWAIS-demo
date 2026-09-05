@@ -126,9 +126,9 @@ public class MonitorOrchestrationServiceTests
         var result = await _service.GetAnalyticsAsync(period, tenantId, null, null, null, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result.LatencyPoints);
-        var point = result.LatencyPoints.First();
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.LatencyPoints);
+        var point = result.Value.LatencyPoints.First();
 
         // 10 values: indices 0 to 9.
         // P10 index = Math.Round(0.10 * 9) = 1. Value at index 1 is 20.
@@ -173,8 +173,9 @@ public class MonitorOrchestrationServiceTests
 
         var result = await _service.GetAnalyticsAsync(period, tenantId, ct: CancellationToken.None);
 
+        Assert.True(result.IsSuccess);
         Assert.Collection(
-            result.LatencyPoints,
+            result.Value.LatencyPoints,
             point =>
             {
                 Assert.Equal(100, point.Average);
@@ -224,8 +225,8 @@ public class MonitorOrchestrationServiceTests
         var result = await _service.GetAnalyticsAsync(period, tenantId, null, null, null, CancellationToken.None);
 
         // Assert
-        Assert.NotNull(result);
-        var matchingPoint = result.LatencyPoints.FirstOrDefault(p => p.Timestamp.Date == date.Date);
+        Assert.True(result.IsSuccess);
+        var matchingPoint = result.Value.LatencyPoints.FirstOrDefault(p => p.Timestamp.Date == date.Date);
         Assert.NotNull(matchingPoint);
         Assert.Equal(120, matchingPoint.Lowest);  // Maps to P10
         Assert.Equal(250, matchingPoint.Highest); // Maps to P90
@@ -291,8 +292,8 @@ public class MonitorOrchestrationServiceTests
             null,
             CancellationToken.None);
 
-        Assert.NotNull(result);
-        Assert.Equal(150, result.Kpis.AverageLatency);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(150, result.Value.Kpis.AverageLatency);
 
         var excludingDev = await _service.GetAnalyticsAsync(
             period,
@@ -303,7 +304,25 @@ public class MonitorOrchestrationServiceTests
             CancellationToken.None,
             excludedTags: ["dev"]);
 
-        Assert.Equal(200, excludingDev.Kpis.AverageLatency);
+        Assert.True(excludingDev.IsSuccess);
+        Assert.Equal(200, excludingDev.Value.Kpis.AverageLatency);
+    }
+
+    [Fact]
+    public async Task GetAnalyticsAsync_MonitorOutsideScope_ReturnsScopeDenied()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = otherTenantId, OrganizationId = Guid.NewGuid(), Name = "Other" });
+        _dbContext.Monitors.Add(new UptimeMonitor { Id = 99, TenantId = otherTenantId, Name = "Other", Url = "https://other.example" });
+        await _dbContext.SaveChangesAsync();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        var result = await _service.GetAnalyticsAsync(
+            CreateDefaultPeriod(), monitorId: 99, ct: CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]
@@ -366,17 +385,18 @@ public class MonitorOrchestrationServiceTests
             tenantId,
             ct: CancellationToken.None);
 
-        Assert.Equal(3, result.Points.Count);
-        Assert.Equal(result.Points[0].Date, result.Points[0].EndDate);
-        Assert.Equal(99.5, result.Points[0].UptimePercentage);
-        Assert.Equal(99, result.Points[0].LowestMonitorUptimePercentage);
-        Assert.Equal(2, result.Points[0].MonitorCount);
-        Assert.Null(result.Points[1].UptimePercentage);
-        Assert.Equal(0, result.Points[1].MonitorCount);
-        Assert.Equal(98, result.Points[2].UptimePercentage);
-        Assert.True(result.Points[2].IsPartial);
-        Assert.Equal(99, result.AverageUptimePercentage);
-        Assert.Equal(98, result.LowestUptimePercentage);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(3, result.Value.Points.Count);
+        Assert.Equal(result.Value.Points[0].Date, result.Value.Points[0].EndDate);
+        Assert.Equal(99.5, result.Value.Points[0].UptimePercentage);
+        Assert.Equal(99, result.Value.Points[0].LowestMonitorUptimePercentage);
+        Assert.Equal(2, result.Value.Points[0].MonitorCount);
+        Assert.Null(result.Value.Points[1].UptimePercentage);
+        Assert.Equal(0, result.Value.Points[1].MonitorCount);
+        Assert.Equal(98, result.Value.Points[2].UptimePercentage);
+        Assert.True(result.Value.Points[2].IsPartial);
+        Assert.Equal(99, result.Value.AverageUptimePercentage);
+        Assert.Equal(98, result.Value.LowestUptimePercentage);
     }
 
     [Fact]
@@ -420,13 +440,31 @@ public class MonitorOrchestrationServiceTests
             tenantId,
             ct: CancellationToken.None);
 
-        Assert.Equal(14, result.Points.Count);
-        Assert.All(result.Points, point => Assert.InRange(
+        Assert.True(result.IsSuccess);
+        Assert.Equal(14, result.Value.Points.Count);
+        Assert.All(result.Value.Points, point => Assert.InRange(
             point.EndDate.DayNumber - point.Date.DayNumber + 1,
             1,
             7));
-        Assert.Equal(periodStart.Date.AddDays(6), result.Points[0].EndDate.ToDateTime(TimeOnly.MinValue));
-        Assert.Equal(99, result.AverageUptimePercentage);
+        Assert.Equal(periodStart.Date.AddDays(6), result.Value.Points[0].EndDate.ToDateTime(TimeOnly.MinValue));
+        Assert.Equal(99, result.Value.AverageUptimePercentage);
+    }
+
+    [Fact]
+    public async Task GetAvailabilitySeriesAsync_MonitorOutsideScope_ReturnsScopeDenied()
+    {
+        var otherTenantId = Guid.NewGuid();
+        _dbContext.Tenants.Add(new Tenant { Id = otherTenantId, OrganizationId = Guid.NewGuid(), Name = "Other" });
+        _dbContext.Monitors.Add(new UptimeMonitor { Id = 100, TenantId = otherTenantId, Name = "Other", Url = "https://other.example" });
+        await _dbContext.SaveChangesAsync();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
+
+        var result = await _service.GetAvailabilitySeriesAsync(
+            CreateDefaultPeriod(), TimeZoneInfo.Utc, monitorId: 100, ct: CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]

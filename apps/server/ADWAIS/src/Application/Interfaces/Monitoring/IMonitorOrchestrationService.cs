@@ -15,7 +15,7 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Retrieves aggregated monitoring KPIs and latency time-series.
     /// </summary>
-    Task<MonitorAnalyticsDto> GetAnalyticsAsync(
+    Task<Result<MonitorAnalyticsDto>> GetAnalyticsAsync(
         ResolvedPeriod period,
         Guid? tenantId = null,
         int? monitorId = null,
@@ -33,7 +33,7 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Retrieves daily availability for the selected fleet, tenant, or monitor scope.
     /// </summary>
-    Task<MonitorAvailabilitySeriesDto> GetAvailabilitySeriesAsync(
+    Task<Result<MonitorAvailabilitySeriesDto>> GetAvailabilitySeriesAsync(
         ResolvedPeriod period,
         TimeZoneInfo reportingTimeZone,
         Guid? tenantId = null,

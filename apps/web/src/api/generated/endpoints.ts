@@ -6555,12 +6555,29 @@ export type getApiMonitorsAnalyticsResponse200TextJson = {
   status: 200
 }
 
+export type getApiMonitorsAnalyticsResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiMonitorsAnalyticsResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiMonitorsAnalyticsResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
 export type getApiMonitorsAnalyticsResponseSuccess = (getApiMonitorsAnalyticsResponse200TextPlain | getApiMonitorsAnalyticsResponse200ApplicationJson | getApiMonitorsAnalyticsResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiMonitorsAnalyticsResponseError = (getApiMonitorsAnalyticsResponse403TextPlain | getApiMonitorsAnalyticsResponse403ApplicationJson | getApiMonitorsAnalyticsResponse403TextJson) & {
+  headers: Headers;
+};
 
-export type getApiMonitorsAnalyticsResponse = (getApiMonitorsAnalyticsResponseSuccess)
+export type getApiMonitorsAnalyticsResponse = (getApiMonitorsAnalyticsResponseSuccess | getApiMonitorsAnalyticsResponseError)
 
 export const getGetApiMonitorsAnalyticsUrl = (params?: GetApiMonitorsAnalyticsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -6611,7 +6628,7 @@ export const getGetApiMonitorsAnalyticsQueryKey = (params?: GetApiMonitorsAnalyt
     }
 
 
-export const getGetApiMonitorsAnalyticsQueryOptions = <TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = unknown>(params?: GetApiMonitorsAnalyticsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiMonitorsAnalyticsQueryOptions = <TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = ProblemDetails>(params?: GetApiMonitorsAnalyticsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -6630,10 +6647,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiMonitorsAnalyticsQueryResult = NonNullable<Awaited<ReturnType<typeof getApiMonitorsAnalytics>>>
-export type GetApiMonitorsAnalyticsQueryError = unknown
+export type GetApiMonitorsAnalyticsQueryError = ProblemDetails
 
 
-export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = unknown>(
+export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = ProblemDetails>(
  params: undefined |  GetApiMonitorsAnalyticsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiMonitorsAnalytics>>,
@@ -6643,7 +6660,7 @@ export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof get
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = unknown>(
+export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = ProblemDetails>(
  params?: GetApiMonitorsAnalyticsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiMonitorsAnalytics>>,
@@ -6653,7 +6670,7 @@ export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof get
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = unknown>(
+export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = ProblemDetails>(
  params?: GetApiMonitorsAnalyticsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -6662,7 +6679,7 @@ export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof get
 Provides latency time-series and monitoring KPIs for the specified timeframe (defaults to T30).
  */
 
-export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = unknown>(
+export function useGetApiMonitorsAnalytics<TData = Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError = ProblemDetails>(
  params?: GetApiMonitorsAnalyticsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAnalytics>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -6695,12 +6712,29 @@ export type getApiMonitorsAvailabilityResponse200TextJson = {
   status: 200
 }
 
+export type getApiMonitorsAvailabilityResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiMonitorsAvailabilityResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiMonitorsAvailabilityResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
 export type getApiMonitorsAvailabilityResponseSuccess = (getApiMonitorsAvailabilityResponse200TextPlain | getApiMonitorsAvailabilityResponse200ApplicationJson | getApiMonitorsAvailabilityResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiMonitorsAvailabilityResponseError = (getApiMonitorsAvailabilityResponse403TextPlain | getApiMonitorsAvailabilityResponse403ApplicationJson | getApiMonitorsAvailabilityResponse403TextJson) & {
+  headers: Headers;
+};
 
-export type getApiMonitorsAvailabilityResponse = (getApiMonitorsAvailabilityResponseSuccess)
+export type getApiMonitorsAvailabilityResponse = (getApiMonitorsAvailabilityResponseSuccess | getApiMonitorsAvailabilityResponseError)
 
 export const getGetApiMonitorsAvailabilityUrl = (params?: GetApiMonitorsAvailabilityParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -6750,7 +6784,7 @@ export const getGetApiMonitorsAvailabilityQueryKey = (params?: GetApiMonitorsAva
     }
 
 
-export const getGetApiMonitorsAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = unknown>(params?: GetApiMonitorsAvailabilityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiMonitorsAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = ProblemDetails>(params?: GetApiMonitorsAvailabilityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -6769,10 +6803,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiMonitorsAvailabilityQueryResult = NonNullable<Awaited<ReturnType<typeof getApiMonitorsAvailability>>>
-export type GetApiMonitorsAvailabilityQueryError = unknown
+export type GetApiMonitorsAvailabilityQueryError = ProblemDetails
 
 
-export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = unknown>(
+export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = ProblemDetails>(
  params: undefined |  GetApiMonitorsAvailabilityParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiMonitorsAvailability>>,
@@ -6782,7 +6816,7 @@ export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof 
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = unknown>(
+export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = ProblemDetails>(
  params?: GetApiMonitorsAvailabilityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiMonitorsAvailability>>,
@@ -6792,7 +6826,7 @@ export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof 
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = unknown>(
+export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = ProblemDetails>(
  params?: GetApiMonitorsAvailabilityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -6800,7 +6834,7 @@ export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof 
  * @summary Returns daily availability for the selected fleet, tenant, or monitor scope.
  */
 
-export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = unknown>(
+export function useGetApiMonitorsAvailability<TData = Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError = ProblemDetails>(
  params?: GetApiMonitorsAvailabilityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorsAvailability>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

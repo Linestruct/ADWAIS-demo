@@ -71,6 +71,30 @@ public class MonitorOrchestrationService(
     private ScopeDeniedError ScopeDenied()
         => new("the requested organization or tenant", currentAccess.Scope?.OrganizationId?.ToString() ?? "none");
 
+    private async Task<ScopeDeniedError?> GetReadScopeFailureAsync(
+        Guid? tenantId,
+        int? monitorId,
+        Guid[]? visibleTenantIds,
+        CancellationToken ct)
+    {
+        if (visibleTenantIds is null)
+            return null;
+
+        if (tenantId.HasValue && !visibleTenantIds.Contains(tenantId.Value))
+            return ScopeDenied();
+
+        if (!monitorId.HasValue)
+            return null;
+
+        var monitorTenantId = await dbContext.Monitors
+            .Where(monitor => monitor.Id == monitorId.Value)
+            .Select(monitor => (Guid?)monitor.TenantId)
+            .SingleOrDefaultAsync(ct);
+        return monitorTenantId.HasValue && !visibleTenantIds.Contains(monitorTenantId.Value)
+            ? ScopeDenied()
+            : null;
+    }
+
     private async Task<Result<Tenant>> GetVisibleTenantForMutationAsync(Guid tenantId, CancellationToken ct)
     {
         var tenant = await dbContext.Tenants.SingleOrDefaultAsync(candidate => candidate.Id == tenantId, ct);
@@ -119,7 +143,7 @@ public class MonitorOrchestrationService(
             : Result.Fail<IMonitoringProvider>(new ConfigurationError("Monitoring provider settings are not configured."));
     }
 
-    public async Task<MonitorAnalyticsDto> GetAnalyticsAsync(
+    public async Task<Result<MonitorAnalyticsDto>> GetAnalyticsAsync(
         ResolvedPeriod period,
         Guid? tenantId = null,
         int? monitorId = null,
@@ -137,7 +161,8 @@ public class MonitorOrchestrationService(
         var includeActualTime = period.IncludeActualTime;
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        if (tenantId.HasValue) ValidateTenantInScope(tenantId.Value, visibleTenantIds);
+        var scopeFailure = await GetReadScopeFailureAsync(tenantId, monitorId, visibleTenantIds, ct);
+        if (scopeFailure is not null) return Result.Fail<MonitorAnalyticsDto>(scopeFailure);
 
         IQueryable<UptimeMonitor> monitorQuery = dbContext.Monitors.AsNoTracking().Include(m => m.Tenant);
         if (monitorId.HasValue)
@@ -250,7 +275,7 @@ public class MonitorOrchestrationService(
             globalAvgLatency = monitors.Where(m => m.CurrentLatency.HasValue).Average(m => m.CurrentLatency!.Value);
         }
 
-        return new MonitorAnalyticsDto(globalAvgLatency, latencyPoints, kpis);
+        return Result.Ok(new MonitorAnalyticsDto(globalAvgLatency, latencyPoints, kpis));
     }
 
     private async Task<Dictionary<int, double?>> GetPeriodUptimesAsync(DateTimeOffset start, DateTimeOffset end, List<int>? allowedMonitorIds, CancellationToken ct = default)
@@ -337,7 +362,7 @@ public class MonitorOrchestrationService(
         return results;
     }
 
-    public async Task<MonitorAvailabilitySeriesDto> GetAvailabilitySeriesAsync(
+    public async Task<Result<MonitorAvailabilitySeriesDto>> GetAvailabilitySeriesAsync(
         ResolvedPeriod period,
         TimeZoneInfo reportingTimeZone,
         Guid? tenantId = null,
@@ -349,7 +374,8 @@ public class MonitorOrchestrationService(
         string[]? excludedStatuses = null)
     {
         var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        if (tenantId.HasValue) ValidateTenantInScope(tenantId.Value, visibleTenantIds);
+        var scopeFailure = await GetReadScopeFailureAsync(tenantId, monitorId, visibleTenantIds, ct);
+        if (scopeFailure is not null) return Result.Fail<MonitorAvailabilitySeriesDto>(scopeFailure);
 
         IQueryable<UptimeMonitor> monitorQuery = dbContext.Monitors.AsNoTracking();
         if (monitorId.HasValue)
@@ -436,12 +462,12 @@ public class MonitorOrchestrationService(
             bucketStart = bucketEnd.AddDays(1);
         }
 
-        return new MonitorAvailabilitySeriesDto(
+        return Result.Ok(new MonitorAvailabilitySeriesDto(
             period.CurrentStart,
             period.CurrentEnd,
             monitorDayValues.Count > 0 ? monitorDayValues.Average(value => value.Uptime) : null,
             monitorDayValues.Count > 0 ? monitorDayValues.Min(value => value.Uptime) : null,
-            points);
+            points));
     }
 
     private async Task<List<LatencyRow>> GetMergedLatencyDataAsync(

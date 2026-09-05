@@ -83,7 +83,7 @@ export function useFleetAvailability(timeframe: string, tenantId?: string | null
         queryKey: fleetKeys.availability(selectedOrgId, timeframe, tenantId, monitorId, comparison, filters),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
-        select: response => response.data,
+        select: response => response.data as MonitorAvailabilitySeriesResponseDto,
       },
     },
   );

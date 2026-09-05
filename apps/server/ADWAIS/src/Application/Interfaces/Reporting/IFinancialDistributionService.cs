@@ -5,6 +5,7 @@
 using Adwais.Application.Common.Models;
 using Adwais.Application.DTOs.Financial;
 using Adwais.Domain.Enums;
+using FluentResults;
 
 namespace Adwais.Application.Interfaces;
 
@@ -23,10 +24,10 @@ public interface IFinancialDistributionService
     /// <summary>
     /// Generates a distribution histogram of order values for a specific tenant.
     /// </summary>
-    Task<IReadOnlyList<OrderBinDto>> GetOrderDistributionAsync(ResolvedPeriod period, Guid tenantId, int? binCount = null, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<OrderBinDto>>> GetOrderDistributionAsync(ResolvedPeriod period, Guid tenantId, int? binCount = null, CancellationToken ct = default);
 
     /// <summary>
     /// Analyzes transaction density by day of week and hour of day.
     /// </summary>
-    Task<TransactionDensityDto> GetTransactionDensityAsync(TransactionDensityPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default);
+    Task<Result<TransactionDensityDto>> GetTransactionDensityAsync(TransactionDensityPeriod period, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default);
 }

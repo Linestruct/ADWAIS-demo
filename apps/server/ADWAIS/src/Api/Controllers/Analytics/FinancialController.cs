@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Api.DTOs.Financial;
+using Adwais.Api.Extensions;
 using Adwais.Application.DTOs.Financial;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Adwais.Api.Controllers.Analytics;
@@ -165,11 +167,14 @@ public class FinancialController(
     /// Histogram of order values with adaptive binning. Drilldown view only.
     /// </summary>
     [HttpGet("order-distribution")]
+    [ProducesResponseType(typeof(IEnumerable<OrderBinResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IEnumerable<OrderBinResponseDto>>> GetOrderDistribution([FromQuery] OrderDistributionRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
         var result = await distributionService.GetOrderDistributionAsync(period, request.TenantId, request.BinCount, ct);
-        return Ok(result.Select(b => new OrderBinResponseDto(
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(b => new OrderBinResponseDto(
             b.BinLabel,
             b.MinValue,
             b.MaxValue,
@@ -183,21 +188,25 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("transaction-density")]
+    [ProducesResponseType(typeof(TransactionDensityResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<TransactionDensityResponseDto>> GetTransactionDensity([FromQuery] TransactionDensityRequestDto request, CancellationToken ct = default)
     {
         var result = await distributionService.GetTransactionDensityAsync(request.Period, request.TenantId, request.TenantTypes, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var density = result.Value;
         return Ok(new TransactionDensityResponseDto(
-            result.TotalCount,
-            result.MinCount,
-            result.MaxCount,
-            result.AverageCountPerBucket,
-            result.SampleQuality,
-            result.RequestedPeriod,
-            result.EffectivePeriod,
-            result.TimeZoneId,
-            result.PeriodStart,
-            result.PeriodEnd,
-            result.Points.Select(p => new TransactionDensityPointResponseDto(
+            density.TotalCount,
+            density.MinCount,
+            density.MaxCount,
+            density.AverageCountPerBucket,
+            density.SampleQuality,
+            density.RequestedPeriod,
+            density.EffectivePeriod,
+            density.TimeZoneId,
+            density.PeriodStart,
+            density.PeriodEnd,
+            density.Points.Select(p => new TransactionDensityPointResponseDto(
                 p.DayOfWeek,
                 p.Hour,
                 p.Count,

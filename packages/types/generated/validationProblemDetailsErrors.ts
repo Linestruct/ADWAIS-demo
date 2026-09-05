@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0
  */
 
-export type DeleteApiMonitorsIdParams = {
-tenantId?: string;
-};
+/**
+ * @nullable
+ */
+export type ValidationProblemDetailsErrors = {[key: string]: string[]} | null;

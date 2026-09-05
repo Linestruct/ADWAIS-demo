@@ -181,7 +181,7 @@ export function useTransactionDensity(period: TransactionDensityPeriod, tenantId
         queryKey: financialKeys.transactionDensity(selectedOrgId, period, tenantId, tenantTypes),
         refetchInterval: REFETCH_INTERVAL,
         placeholderData: keepPreviousData,
-        select: (res) => res.data
+        select: (res) => res.data as TransactionDensityResponseDto
       }
     }
   );

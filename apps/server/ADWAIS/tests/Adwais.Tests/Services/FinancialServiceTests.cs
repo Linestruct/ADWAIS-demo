@@ -4,6 +4,7 @@
 
 using Adwais.Application.Common.Models;
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Interfaces;
 using Adwais.Application.Services;
 using Adwais.Domain.Entities;
@@ -378,29 +379,31 @@ public class FinancialServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetOrderDistributionAsync_CrossOrgTenant_ThrowsUnauthorizedAccess()
+    public async Task GetOrderDistributionAsync_CrossOrgTenant_ReturnsScopeDenied()
     {
         // Arrange
         var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _distributionService.GetOrderDistributionAsync(_period, otherTenantId, ct: CancellationToken.None));
+        var result = await _distributionService.GetOrderDistributionAsync(_period, otherTenantId, ct: CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]
-    public async Task GetTransactionDensityAsync_CrossOrgTenant_ThrowsUnauthorizedAccess()
+    public async Task GetTransactionDensityAsync_CrossOrgTenant_ReturnsScopeDenied()
     {
         // Arrange
         var otherTenantId = await SeedOtherOrgTenantWithOrderAsync(500m);
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _distributionService.GetTransactionDensityAsync(TransactionDensityPeriod.Auto, tenantId: otherTenantId, ct: CancellationToken.None));
+        var result = await _distributionService.GetTransactionDensityAsync(TransactionDensityPeriod.Auto, tenantId: otherTenantId, ct: CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     private void AddOrder(Guid tenantId, DateTimeOffset createdDate, decimal value, string litiumOrderId)

@@ -34,13 +34,16 @@ public sealed record TenantSeriesFilter(
 
     public bool IsRestricted => VisibleTenantIds is not null;
 
+    public bool IsExplicitTenantOutsideScope =>
+        TenantId is { } tenantId && VisibleTenantIds is not null && !VisibleTenantIds.Contains(tenantId);
+
     /// <summary>
     /// Rejects an explicit tenant outside the current scope.
     /// </summary>
     public void ThrowIfTenantOutsideScope()
     {
-        if (TenantId.HasValue && VisibleTenantIds is not null && !VisibleTenantIds.Contains(TenantId.Value))
-            throw new UnauthorizedAccessException($"Tenant {TenantId.Value} is outside the current scope.");
+        if (TenantId is { } tenantId && VisibleTenantIds is not null && !VisibleTenantIds.Contains(tenantId))
+            throw new UnauthorizedAccessException($"Tenant {tenantId} is outside the current scope.");
     }
 
     public IQueryable<Order> ApplyToOrders(IQueryable<Order> query) =>

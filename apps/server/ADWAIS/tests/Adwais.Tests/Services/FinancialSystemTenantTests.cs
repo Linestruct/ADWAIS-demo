@@ -111,7 +111,8 @@ public class FinancialSystemTenantTests : IDisposable
         var result = await _distributionService.GetTransactionDensityAsync(
             TransactionDensityPeriod.Auto, ct: CancellationToken.None);
 
-        Assert.Equal(1, result.TotalCount);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.TotalCount);
     }
 
     [Fact]
@@ -131,6 +132,7 @@ public class FinancialSystemTenantTests : IDisposable
         _dbContext.DailyTenantRollups.AddRange(
             new DailyFinancialTenantRollup { CreatedDate = twoDaysAgo, OrganizationId = _orgA, TenantId = _normalTenantId, Volume = 10, Revenue = 1000m },
             new DailyFinancialTenantRollup { CreatedDate = twoDaysAgo, OrganizationId = _orgA, TenantId = _bucketTenantId, Volume = 90, Revenue = 9000m });
+        AddOrder(_normalTenantId, DateTimeOffset.UtcNow, 100m, "sys-normal-daily");
         _dbContext.SaveChanges();
 
         var result = await _kpiService.GetKpisAsync(dailyPeriod, ct: CancellationToken.None);

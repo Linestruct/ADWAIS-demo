@@ -116,7 +116,7 @@ export function TodayOverview() {
 
   // Fetch current weather
   const { data: weatherData, isLoading: isWeatherLoading, isError: isWeatherError } = useGetApiWeather();
-  const weather = weatherData?.data;
+  const weather = weatherData?.data as WeatherDto | undefined;
 
   const dateString = formatDateTime(time, { weekday: 'long', month: 'long', day: 'numeric' }, 'en-SE');
   const timeString = formatDateTime(time, { hour: '2-digit', minute: '2-digit', hour12: false }, 'en-SE');

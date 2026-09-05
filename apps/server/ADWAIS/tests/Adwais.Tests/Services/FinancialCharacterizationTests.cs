@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Models;
 using Adwais.Application.Interfaces;
 using Adwais.Application.Services;
@@ -260,17 +261,20 @@ public class FinancialHourlyCharacterizationTests : IDisposable
         var result = await _distributionService.GetOrderDistributionAsync(
             _period, _b2bTenantId, binCount: 5, ct: CancellationToken.None);
 
-        Assert.Equal(5, result.Count);
-        Assert.Equal(5, result.Sum(b => b.OrderCount));
+        Assert.True(result.IsSuccess);
+        Assert.Equal(5, result.Value.Count);
+        Assert.Equal(5, result.Value.Sum(b => b.OrderCount));
     }
 
     [Fact]
-    public async Task GetOrderDistributionAsync_OrgCaller_RejectsForeignTenant()
+    public async Task GetOrderDistributionAsync_OrgCaller_ReturnsScopeDeniedForForeignTenant()
     {
         UseOrgACaller();
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _distributionService.GetOrderDistributionAsync(_period, _otherTenantId, ct: CancellationToken.None));
+        var result = await _distributionService.GetOrderDistributionAsync(_period, _otherTenantId, ct: CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]
@@ -279,10 +283,11 @@ public class FinancialHourlyCharacterizationTests : IDisposable
         var result = await _distributionService.GetTransactionDensityAsync(
             TransactionDensityPeriod.Auto, ct: CancellationToken.None);
 
-        Assert.Equal(7, result.TotalCount);
-        Assert.Equal(168, result.Points.Count);
-        Assert.Equal(TransactionDensitySampleQuality.Sparse, result.SampleQuality);
-        Assert.Equal(TransactionDensityPeriod.T365, result.EffectivePeriod);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(7, result.Value.TotalCount);
+        Assert.Equal(168, result.Value.Points.Count);
+        Assert.Equal(TransactionDensitySampleQuality.Sparse, result.Value.SampleQuality);
+        Assert.Equal(TransactionDensityPeriod.T365, result.Value.EffectivePeriod);
     }
 
     private void AddOrder(Guid tenantId, DateTimeOffset createdDate, decimal value, string orderNumber)

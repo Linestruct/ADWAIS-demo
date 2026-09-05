@@ -42,7 +42,6 @@ import type {
   CreateUserRequestDto,
   CrossSegmentDistributionResponseDto,
   CumulativeGrowthDeltaPointResponseDto,
-  DeleteApiMonitorsIdParams,
   DeleteApiSystemEventClearParams,
   FeedItem,
   FetchIntervalsDto,
@@ -106,6 +105,7 @@ import type {
   UptimeMonitorDto,
   UserMembershipResponseDto,
   UserResponseDto,
+  ValidationProblemDetails,
   WeatherDto
 } from '../../../../../packages/types/generated';
 
@@ -1052,12 +1052,59 @@ export type patchApiIntranetBulletinPostsIdResponse200TextJson = {
   status: 200
 }
 
+export type patchApiIntranetBulletinPostsIdResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetBulletinPostsIdResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetBulletinPostsIdResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetBulletinPostsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetBulletinPostsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetBulletinPostsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetBulletinPostsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiIntranetBulletinPostsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiIntranetBulletinPostsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type patchApiIntranetBulletinPostsIdResponseSuccess = (patchApiIntranetBulletinPostsIdResponse200TextPlain | patchApiIntranetBulletinPostsIdResponse200ApplicationJson | patchApiIntranetBulletinPostsIdResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type patchApiIntranetBulletinPostsIdResponseError = (patchApiIntranetBulletinPostsIdResponse400TextPlain | patchApiIntranetBulletinPostsIdResponse400ApplicationJson | patchApiIntranetBulletinPostsIdResponse400TextJson | patchApiIntranetBulletinPostsIdResponse403TextPlain | patchApiIntranetBulletinPostsIdResponse403ApplicationJson | patchApiIntranetBulletinPostsIdResponse403TextJson | patchApiIntranetBulletinPostsIdResponse404TextPlain | patchApiIntranetBulletinPostsIdResponse404ApplicationJson | patchApiIntranetBulletinPostsIdResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type patchApiIntranetBulletinPostsIdResponse = (patchApiIntranetBulletinPostsIdResponseSuccess)
+export type patchApiIntranetBulletinPostsIdResponse = (patchApiIntranetBulletinPostsIdResponseSuccess | patchApiIntranetBulletinPostsIdResponseError)
 
 export const getPatchApiIntranetBulletinPostsIdUrl = (id: string,) => {
 
@@ -1082,7 +1129,7 @@ export const patchApiIntranetBulletinPostsId = async (id: string,
 
 
 
-export const getPatchApiIntranetBulletinPostsIdMutationOptions = <TError = unknown,
+export const getPatchApiIntranetBulletinPostsIdMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetBulletinPostsId>>, TError,{id: string;data?: UpdateBulletinPostDto}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetBulletinPostsId>>, TError,{id: string;data?: UpdateBulletinPostDto}, TContext> => {
 
@@ -1111,9 +1158,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PatchApiIntranetBulletinPostsIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiIntranetBulletinPostsId>>>
     export type PatchApiIntranetBulletinPostsIdMutationBody = UpdateBulletinPostDto | undefined
-    export type PatchApiIntranetBulletinPostsIdMutationError = unknown
+    export type PatchApiIntranetBulletinPostsIdMutationError = ValidationProblemDetails | ProblemDetails
 
-    export const usePatchApiIntranetBulletinPostsId = <TError = unknown,
+    export const usePatchApiIntranetBulletinPostsId = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetBulletinPostsId>>, TError,{id: string;data?: UpdateBulletinPostDto}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchApiIntranetBulletinPostsId>>,
@@ -1124,17 +1171,49 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getPatchApiIntranetBulletinPostsIdMutationOptions(options), queryClient);
     }
 
-export type deleteApiIntranetBulletinPostsIdResponse200 = {
+export type deleteApiIntranetBulletinPostsIdResponse204 = {
   data: void
-  status: 200
+  status: 204
 }
 
-export type deleteApiIntranetBulletinPostsIdResponseSuccess = (deleteApiIntranetBulletinPostsIdResponse200) & {
+export type deleteApiIntranetBulletinPostsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetBulletinPostsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetBulletinPostsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetBulletinPostsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetBulletinPostsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetBulletinPostsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetBulletinPostsIdResponseSuccess = (deleteApiIntranetBulletinPostsIdResponse204) & {
   headers: Headers;
 };
-;
+export type deleteApiIntranetBulletinPostsIdResponseError = (deleteApiIntranetBulletinPostsIdResponse403TextPlain | deleteApiIntranetBulletinPostsIdResponse403ApplicationJson | deleteApiIntranetBulletinPostsIdResponse403TextJson | deleteApiIntranetBulletinPostsIdResponse404TextPlain | deleteApiIntranetBulletinPostsIdResponse404ApplicationJson | deleteApiIntranetBulletinPostsIdResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type deleteApiIntranetBulletinPostsIdResponse = (deleteApiIntranetBulletinPostsIdResponseSuccess)
+export type deleteApiIntranetBulletinPostsIdResponse = (deleteApiIntranetBulletinPostsIdResponseSuccess | deleteApiIntranetBulletinPostsIdResponseError)
 
 export const getDeleteApiIntranetBulletinPostsIdUrl = (id: string,) => {
 
@@ -1158,7 +1237,7 @@ export const deleteApiIntranetBulletinPostsId = async (id: string, options?: Req
 
 
 
-export const getDeleteApiIntranetBulletinPostsIdMutationOptions = <TError = unknown,
+export const getDeleteApiIntranetBulletinPostsIdMutationOptions = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetBulletinPostsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetBulletinPostsId>>, TError,{id: string}, TContext> => {
 
@@ -1187,9 +1266,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteApiIntranetBulletinPostsIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiIntranetBulletinPostsId>>>
 
-    export type DeleteApiIntranetBulletinPostsIdMutationError = unknown
+    export type DeleteApiIntranetBulletinPostsIdMutationError = ProblemDetails
 
-    export const useDeleteApiIntranetBulletinPostsId = <TError = unknown,
+    export const useDeleteApiIntranetBulletinPostsId = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetBulletinPostsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteApiIntranetBulletinPostsId>>,
@@ -1317,27 +1396,59 @@ export function useGetApiIntranetBulletinPosts<TData = Awaited<ReturnType<typeof
 
 
 
-export type postApiIntranetBulletinPostsResponse200TextPlain = {
+export type postApiIntranetBulletinPostsResponse201TextPlain = {
   data: BulletinPostResponseDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetBulletinPostsResponse200ApplicationJson = {
+export type postApiIntranetBulletinPostsResponse201ApplicationJson = {
   data: BulletinPostResponseDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetBulletinPostsResponse200TextJson = {
+export type postApiIntranetBulletinPostsResponse201TextJson = {
   data: BulletinPostResponseDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetBulletinPostsResponseSuccess = (postApiIntranetBulletinPostsResponse200TextPlain | postApiIntranetBulletinPostsResponse200ApplicationJson | postApiIntranetBulletinPostsResponse200TextJson) & {
+export type postApiIntranetBulletinPostsResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetBulletinPostsResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetBulletinPostsResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetBulletinPostsResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetBulletinPostsResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetBulletinPostsResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetBulletinPostsResponseSuccess = (postApiIntranetBulletinPostsResponse201TextPlain | postApiIntranetBulletinPostsResponse201ApplicationJson | postApiIntranetBulletinPostsResponse201TextJson) & {
   headers: Headers;
 };
-;
+export type postApiIntranetBulletinPostsResponseError = (postApiIntranetBulletinPostsResponse400TextPlain | postApiIntranetBulletinPostsResponse400ApplicationJson | postApiIntranetBulletinPostsResponse400TextJson | postApiIntranetBulletinPostsResponse403TextPlain | postApiIntranetBulletinPostsResponse403ApplicationJson | postApiIntranetBulletinPostsResponse403TextJson) & {
+  headers: Headers;
+};
 
-export type postApiIntranetBulletinPostsResponse = (postApiIntranetBulletinPostsResponseSuccess)
+export type postApiIntranetBulletinPostsResponse = (postApiIntranetBulletinPostsResponseSuccess | postApiIntranetBulletinPostsResponseError)
 
 export const getPostApiIntranetBulletinPostsUrl = () => {
 
@@ -1361,7 +1472,7 @@ export const postApiIntranetBulletinPosts = async (createBulletinPostDto?: Creat
 
 
 
-export const getPostApiIntranetBulletinPostsMutationOptions = <TError = unknown,
+export const getPostApiIntranetBulletinPostsMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetBulletinPosts>>, TError,{data?: CreateBulletinPostDto}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetBulletinPosts>>, TError,{data?: CreateBulletinPostDto}, TContext> => {
 
@@ -1390,9 +1501,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PostApiIntranetBulletinPostsMutationResult = NonNullable<Awaited<ReturnType<typeof postApiIntranetBulletinPosts>>>
     export type PostApiIntranetBulletinPostsMutationBody = CreateBulletinPostDto | undefined
-    export type PostApiIntranetBulletinPostsMutationError = unknown
+    export type PostApiIntranetBulletinPostsMutationError = ValidationProblemDetails | ProblemDetails
 
-    export const usePostApiIntranetBulletinPosts = <TError = unknown,
+    export const usePostApiIntranetBulletinPosts = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetBulletinPosts>>, TError,{data?: CreateBulletinPostDto}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postApiIntranetBulletinPosts>>,
@@ -1527,27 +1638,59 @@ export function useGetApiIntranetEvents<TData = Awaited<ReturnType<typeof getApi
 
 
 
-export type postApiIntranetEventsResponse200TextPlain = {
+export type postApiIntranetEventsResponse201TextPlain = {
   data: CalendarEventDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetEventsResponse200ApplicationJson = {
+export type postApiIntranetEventsResponse201ApplicationJson = {
   data: CalendarEventDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetEventsResponse200TextJson = {
+export type postApiIntranetEventsResponse201TextJson = {
   data: CalendarEventDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetEventsResponseSuccess = (postApiIntranetEventsResponse200TextPlain | postApiIntranetEventsResponse200ApplicationJson | postApiIntranetEventsResponse200TextJson) & {
+export type postApiIntranetEventsResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetEventsResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetEventsResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetEventsResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetEventsResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetEventsResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetEventsResponseSuccess = (postApiIntranetEventsResponse201TextPlain | postApiIntranetEventsResponse201ApplicationJson | postApiIntranetEventsResponse201TextJson) & {
   headers: Headers;
 };
-;
+export type postApiIntranetEventsResponseError = (postApiIntranetEventsResponse400TextPlain | postApiIntranetEventsResponse400ApplicationJson | postApiIntranetEventsResponse400TextJson | postApiIntranetEventsResponse403TextPlain | postApiIntranetEventsResponse403ApplicationJson | postApiIntranetEventsResponse403TextJson) & {
+  headers: Headers;
+};
 
-export type postApiIntranetEventsResponse = (postApiIntranetEventsResponseSuccess)
+export type postApiIntranetEventsResponse = (postApiIntranetEventsResponseSuccess | postApiIntranetEventsResponseError)
 
 export const getPostApiIntranetEventsUrl = () => {
 
@@ -1571,7 +1714,7 @@ export const postApiIntranetEvents = async (createCalendarEventDto?: CreateCalen
 
 
 
-export const getPostApiIntranetEventsMutationOptions = <TError = unknown,
+export const getPostApiIntranetEventsMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetEvents>>, TError,{data?: CreateCalendarEventDto}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetEvents>>, TError,{data?: CreateCalendarEventDto}, TContext> => {
 
@@ -1600,9 +1743,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PostApiIntranetEventsMutationResult = NonNullable<Awaited<ReturnType<typeof postApiIntranetEvents>>>
     export type PostApiIntranetEventsMutationBody = CreateCalendarEventDto | undefined
-    export type PostApiIntranetEventsMutationError = unknown
+    export type PostApiIntranetEventsMutationError = ValidationProblemDetails | ProblemDetails
 
-    export const usePostApiIntranetEvents = <TError = unknown,
+    export const usePostApiIntranetEvents = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetEvents>>, TError,{data?: CreateCalendarEventDto}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postApiIntranetEvents>>,
@@ -1862,12 +2005,59 @@ export type patchApiIntranetEventsIdResponse200TextJson = {
   status: 200
 }
 
+export type patchApiIntranetEventsIdResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetEventsIdResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetEventsIdResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetEventsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetEventsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetEventsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetEventsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiIntranetEventsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiIntranetEventsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type patchApiIntranetEventsIdResponseSuccess = (patchApiIntranetEventsIdResponse200TextPlain | patchApiIntranetEventsIdResponse200ApplicationJson | patchApiIntranetEventsIdResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type patchApiIntranetEventsIdResponseError = (patchApiIntranetEventsIdResponse400TextPlain | patchApiIntranetEventsIdResponse400ApplicationJson | patchApiIntranetEventsIdResponse400TextJson | patchApiIntranetEventsIdResponse403TextPlain | patchApiIntranetEventsIdResponse403ApplicationJson | patchApiIntranetEventsIdResponse403TextJson | patchApiIntranetEventsIdResponse404TextPlain | patchApiIntranetEventsIdResponse404ApplicationJson | patchApiIntranetEventsIdResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type patchApiIntranetEventsIdResponse = (patchApiIntranetEventsIdResponseSuccess)
+export type patchApiIntranetEventsIdResponse = (patchApiIntranetEventsIdResponseSuccess | patchApiIntranetEventsIdResponseError)
 
 export const getPatchApiIntranetEventsIdUrl = (id: string,) => {
 
@@ -1892,7 +2082,7 @@ export const patchApiIntranetEventsId = async (id: string,
 
 
 
-export const getPatchApiIntranetEventsIdMutationOptions = <TError = unknown,
+export const getPatchApiIntranetEventsIdMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetEventsId>>, TError,{id: string;data?: UpdateCalendarEventDto}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetEventsId>>, TError,{id: string;data?: UpdateCalendarEventDto}, TContext> => {
 
@@ -1921,9 +2111,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PatchApiIntranetEventsIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiIntranetEventsId>>>
     export type PatchApiIntranetEventsIdMutationBody = UpdateCalendarEventDto | undefined
-    export type PatchApiIntranetEventsIdMutationError = unknown
+    export type PatchApiIntranetEventsIdMutationError = ValidationProblemDetails | ProblemDetails
 
-    export const usePatchApiIntranetEventsId = <TError = unknown,
+    export const usePatchApiIntranetEventsId = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetEventsId>>, TError,{id: string;data?: UpdateCalendarEventDto}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchApiIntranetEventsId>>,
@@ -1934,17 +2124,49 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getPatchApiIntranetEventsIdMutationOptions(options), queryClient);
     }
 
-export type deleteApiIntranetEventsIdResponse200 = {
+export type deleteApiIntranetEventsIdResponse204 = {
   data: void
-  status: 200
+  status: 204
 }
 
-export type deleteApiIntranetEventsIdResponseSuccess = (deleteApiIntranetEventsIdResponse200) & {
+export type deleteApiIntranetEventsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetEventsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetEventsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetEventsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetEventsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetEventsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetEventsIdResponseSuccess = (deleteApiIntranetEventsIdResponse204) & {
   headers: Headers;
 };
-;
+export type deleteApiIntranetEventsIdResponseError = (deleteApiIntranetEventsIdResponse403TextPlain | deleteApiIntranetEventsIdResponse403ApplicationJson | deleteApiIntranetEventsIdResponse403TextJson | deleteApiIntranetEventsIdResponse404TextPlain | deleteApiIntranetEventsIdResponse404ApplicationJson | deleteApiIntranetEventsIdResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type deleteApiIntranetEventsIdResponse = (deleteApiIntranetEventsIdResponseSuccess)
+export type deleteApiIntranetEventsIdResponse = (deleteApiIntranetEventsIdResponseSuccess | deleteApiIntranetEventsIdResponseError)
 
 export const getDeleteApiIntranetEventsIdUrl = (id: string,) => {
 
@@ -1968,7 +2190,7 @@ export const deleteApiIntranetEventsId = async (id: string, options?: RequestIni
 
 
 
-export const getDeleteApiIntranetEventsIdMutationOptions = <TError = unknown,
+export const getDeleteApiIntranetEventsIdMutationOptions = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetEventsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetEventsId>>, TError,{id: string}, TContext> => {
 
@@ -1997,9 +2219,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteApiIntranetEventsIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiIntranetEventsId>>>
 
-    export type DeleteApiIntranetEventsIdMutationError = unknown
+    export type DeleteApiIntranetEventsIdMutationError = ProblemDetails
 
-    export const useDeleteApiIntranetEventsId = <TError = unknown,
+    export const useDeleteApiIntranetEventsId = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetEventsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteApiIntranetEventsId>>,
@@ -2444,27 +2666,59 @@ export function useGetApiIntranetCalendarSubscriptions<TData = Awaited<ReturnTyp
 
 
 
-export type postApiIntranetCalendarSubscriptionsResponse200TextPlain = {
+export type postApiIntranetCalendarSubscriptionsResponse201TextPlain = {
   data: CalendarSubscriptionDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetCalendarSubscriptionsResponse200ApplicationJson = {
+export type postApiIntranetCalendarSubscriptionsResponse201ApplicationJson = {
   data: CalendarSubscriptionDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetCalendarSubscriptionsResponse200TextJson = {
+export type postApiIntranetCalendarSubscriptionsResponse201TextJson = {
   data: CalendarSubscriptionDto
-  status: 200
+  status: 201
 }
 
-export type postApiIntranetCalendarSubscriptionsResponseSuccess = (postApiIntranetCalendarSubscriptionsResponse200TextPlain | postApiIntranetCalendarSubscriptionsResponse200ApplicationJson | postApiIntranetCalendarSubscriptionsResponse200TextJson) & {
+export type postApiIntranetCalendarSubscriptionsResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetCalendarSubscriptionsResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetCalendarSubscriptionsResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiIntranetCalendarSubscriptionsResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetCalendarSubscriptionsResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetCalendarSubscriptionsResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiIntranetCalendarSubscriptionsResponseSuccess = (postApiIntranetCalendarSubscriptionsResponse201TextPlain | postApiIntranetCalendarSubscriptionsResponse201ApplicationJson | postApiIntranetCalendarSubscriptionsResponse201TextJson) & {
   headers: Headers;
 };
-;
+export type postApiIntranetCalendarSubscriptionsResponseError = (postApiIntranetCalendarSubscriptionsResponse400TextPlain | postApiIntranetCalendarSubscriptionsResponse400ApplicationJson | postApiIntranetCalendarSubscriptionsResponse400TextJson | postApiIntranetCalendarSubscriptionsResponse403TextPlain | postApiIntranetCalendarSubscriptionsResponse403ApplicationJson | postApiIntranetCalendarSubscriptionsResponse403TextJson) & {
+  headers: Headers;
+};
 
-export type postApiIntranetCalendarSubscriptionsResponse = (postApiIntranetCalendarSubscriptionsResponseSuccess)
+export type postApiIntranetCalendarSubscriptionsResponse = (postApiIntranetCalendarSubscriptionsResponseSuccess | postApiIntranetCalendarSubscriptionsResponseError)
 
 export const getPostApiIntranetCalendarSubscriptionsUrl = () => {
 
@@ -2488,7 +2742,7 @@ export const postApiIntranetCalendarSubscriptions = async (createCalendarSubscri
 
 
 
-export const getPostApiIntranetCalendarSubscriptionsMutationOptions = <TError = unknown,
+export const getPostApiIntranetCalendarSubscriptionsMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetCalendarSubscriptions>>, TError,{data?: CreateCalendarSubscriptionDto}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetCalendarSubscriptions>>, TError,{data?: CreateCalendarSubscriptionDto}, TContext> => {
 
@@ -2517,9 +2771,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PostApiIntranetCalendarSubscriptionsMutationResult = NonNullable<Awaited<ReturnType<typeof postApiIntranetCalendarSubscriptions>>>
     export type PostApiIntranetCalendarSubscriptionsMutationBody = CreateCalendarSubscriptionDto | undefined
-    export type PostApiIntranetCalendarSubscriptionsMutationError = unknown
+    export type PostApiIntranetCalendarSubscriptionsMutationError = ValidationProblemDetails | ProblemDetails
 
-    export const usePostApiIntranetCalendarSubscriptions = <TError = unknown,
+    export const usePostApiIntranetCalendarSubscriptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiIntranetCalendarSubscriptions>>, TError,{data?: CreateCalendarSubscriptionDto}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postApiIntranetCalendarSubscriptions>>,
@@ -2662,12 +2916,59 @@ export type patchApiIntranetCalendarSubscriptionsIdResponse200TextJson = {
   status: 200
 }
 
+export type patchApiIntranetCalendarSubscriptionsIdResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiIntranetCalendarSubscriptionsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type patchApiIntranetCalendarSubscriptionsIdResponseSuccess = (patchApiIntranetCalendarSubscriptionsIdResponse200TextPlain | patchApiIntranetCalendarSubscriptionsIdResponse200ApplicationJson | patchApiIntranetCalendarSubscriptionsIdResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type patchApiIntranetCalendarSubscriptionsIdResponseError = (patchApiIntranetCalendarSubscriptionsIdResponse400TextPlain | patchApiIntranetCalendarSubscriptionsIdResponse400ApplicationJson | patchApiIntranetCalendarSubscriptionsIdResponse400TextJson | patchApiIntranetCalendarSubscriptionsIdResponse403TextPlain | patchApiIntranetCalendarSubscriptionsIdResponse403ApplicationJson | patchApiIntranetCalendarSubscriptionsIdResponse403TextJson | patchApiIntranetCalendarSubscriptionsIdResponse404TextPlain | patchApiIntranetCalendarSubscriptionsIdResponse404ApplicationJson | patchApiIntranetCalendarSubscriptionsIdResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type patchApiIntranetCalendarSubscriptionsIdResponse = (patchApiIntranetCalendarSubscriptionsIdResponseSuccess)
+export type patchApiIntranetCalendarSubscriptionsIdResponse = (patchApiIntranetCalendarSubscriptionsIdResponseSuccess | patchApiIntranetCalendarSubscriptionsIdResponseError)
 
 export const getPatchApiIntranetCalendarSubscriptionsIdUrl = (id: string,) => {
 
@@ -2692,7 +2993,7 @@ export const patchApiIntranetCalendarSubscriptionsId = async (id: string,
 
 
 
-export const getPatchApiIntranetCalendarSubscriptionsIdMutationOptions = <TError = unknown,
+export const getPatchApiIntranetCalendarSubscriptionsIdMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetCalendarSubscriptionsId>>, TError,{id: string;data?: UpdateCalendarSubscriptionDto}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetCalendarSubscriptionsId>>, TError,{id: string;data?: UpdateCalendarSubscriptionDto}, TContext> => {
 
@@ -2721,9 +3022,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PatchApiIntranetCalendarSubscriptionsIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiIntranetCalendarSubscriptionsId>>>
     export type PatchApiIntranetCalendarSubscriptionsIdMutationBody = UpdateCalendarSubscriptionDto | undefined
-    export type PatchApiIntranetCalendarSubscriptionsIdMutationError = unknown
+    export type PatchApiIntranetCalendarSubscriptionsIdMutationError = ValidationProblemDetails | ProblemDetails
 
-    export const usePatchApiIntranetCalendarSubscriptionsId = <TError = unknown,
+    export const usePatchApiIntranetCalendarSubscriptionsId = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiIntranetCalendarSubscriptionsId>>, TError,{id: string;data?: UpdateCalendarSubscriptionDto}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchApiIntranetCalendarSubscriptionsId>>,
@@ -2734,17 +3035,49 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getPatchApiIntranetCalendarSubscriptionsIdMutationOptions(options), queryClient);
     }
 
-export type deleteApiIntranetCalendarSubscriptionsIdResponse200 = {
+export type deleteApiIntranetCalendarSubscriptionsIdResponse204 = {
   data: void
-  status: 200
+  status: 204
 }
 
-export type deleteApiIntranetCalendarSubscriptionsIdResponseSuccess = (deleteApiIntranetCalendarSubscriptionsIdResponse200) & {
+export type deleteApiIntranetCalendarSubscriptionsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetCalendarSubscriptionsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetCalendarSubscriptionsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiIntranetCalendarSubscriptionsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetCalendarSubscriptionsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetCalendarSubscriptionsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiIntranetCalendarSubscriptionsIdResponseSuccess = (deleteApiIntranetCalendarSubscriptionsIdResponse204) & {
   headers: Headers;
 };
-;
+export type deleteApiIntranetCalendarSubscriptionsIdResponseError = (deleteApiIntranetCalendarSubscriptionsIdResponse403TextPlain | deleteApiIntranetCalendarSubscriptionsIdResponse403ApplicationJson | deleteApiIntranetCalendarSubscriptionsIdResponse403TextJson | deleteApiIntranetCalendarSubscriptionsIdResponse404TextPlain | deleteApiIntranetCalendarSubscriptionsIdResponse404ApplicationJson | deleteApiIntranetCalendarSubscriptionsIdResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type deleteApiIntranetCalendarSubscriptionsIdResponse = (deleteApiIntranetCalendarSubscriptionsIdResponseSuccess)
+export type deleteApiIntranetCalendarSubscriptionsIdResponse = (deleteApiIntranetCalendarSubscriptionsIdResponseSuccess | deleteApiIntranetCalendarSubscriptionsIdResponseError)
 
 export const getDeleteApiIntranetCalendarSubscriptionsIdUrl = (id: string,) => {
 
@@ -2768,7 +3101,7 @@ export const deleteApiIntranetCalendarSubscriptionsId = async (id: string, optio
 
 
 
-export const getDeleteApiIntranetCalendarSubscriptionsIdMutationOptions = <TError = unknown,
+export const getDeleteApiIntranetCalendarSubscriptionsIdMutationOptions = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetCalendarSubscriptionsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetCalendarSubscriptionsId>>, TError,{id: string}, TContext> => {
 
@@ -2797,9 +3130,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteApiIntranetCalendarSubscriptionsIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiIntranetCalendarSubscriptionsId>>>
 
-    export type DeleteApiIntranetCalendarSubscriptionsIdMutationError = unknown
+    export type DeleteApiIntranetCalendarSubscriptionsIdMutationError = ProblemDetails
 
-    export const useDeleteApiIntranetCalendarSubscriptionsId = <TError = unknown,
+    export const useDeleteApiIntranetCalendarSubscriptionsId = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiIntranetCalendarSubscriptionsId>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteApiIntranetCalendarSubscriptionsId>>,
@@ -4206,12 +4539,29 @@ export type getApiFinancialOrderDistributionResponse200TextJson = {
   status: 200
 }
 
+export type getApiFinancialOrderDistributionResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialOrderDistributionResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialOrderDistributionResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
 export type getApiFinancialOrderDistributionResponseSuccess = (getApiFinancialOrderDistributionResponse200TextPlain | getApiFinancialOrderDistributionResponse200ApplicationJson | getApiFinancialOrderDistributionResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiFinancialOrderDistributionResponseError = (getApiFinancialOrderDistributionResponse403TextPlain | getApiFinancialOrderDistributionResponse403ApplicationJson | getApiFinancialOrderDistributionResponse403TextJson) & {
+  headers: Headers;
+};
 
-export type getApiFinancialOrderDistributionResponse = (getApiFinancialOrderDistributionResponseSuccess)
+export type getApiFinancialOrderDistributionResponse = (getApiFinancialOrderDistributionResponseSuccess | getApiFinancialOrderDistributionResponseError)
 
 export const getGetApiFinancialOrderDistributionUrl = (params: GetApiFinancialOrderDistributionParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4253,7 +4603,7 @@ export const getGetApiFinancialOrderDistributionQueryKey = (params?: GetApiFinan
     }
 
 
-export const getGetApiFinancialOrderDistributionQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = unknown>(params: GetApiFinancialOrderDistributionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiFinancialOrderDistributionQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = ProblemDetails>(params: GetApiFinancialOrderDistributionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -4272,10 +4622,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiFinancialOrderDistributionQueryResult = NonNullable<Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>>
-export type GetApiFinancialOrderDistributionQueryError = unknown
+export type GetApiFinancialOrderDistributionQueryError = ProblemDetails
 
 
-export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = unknown>(
+export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = ProblemDetails>(
  params: GetApiFinancialOrderDistributionParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>,
@@ -4285,7 +4635,7 @@ export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<t
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = unknown>(
+export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = ProblemDetails>(
  params: GetApiFinancialOrderDistributionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>,
@@ -4295,7 +4645,7 @@ export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<t
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = unknown>(
+export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = ProblemDetails>(
  params: GetApiFinancialOrderDistributionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -4303,7 +4653,7 @@ export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<t
  * @summary Histogram of order values with adaptive binning. Drilldown view only.
  */
 
-export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = unknown>(
+export function useGetApiFinancialOrderDistribution<TData = Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError = ProblemDetails>(
  params: GetApiFinancialOrderDistributionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialOrderDistribution>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -4336,12 +4686,29 @@ export type getApiFinancialTransactionDensityResponse200TextJson = {
   status: 200
 }
 
+export type getApiFinancialTransactionDensityResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialTransactionDensityResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiFinancialTransactionDensityResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
 export type getApiFinancialTransactionDensityResponseSuccess = (getApiFinancialTransactionDensityResponse200TextPlain | getApiFinancialTransactionDensityResponse200ApplicationJson | getApiFinancialTransactionDensityResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiFinancialTransactionDensityResponseError = (getApiFinancialTransactionDensityResponse403TextPlain | getApiFinancialTransactionDensityResponse403ApplicationJson | getApiFinancialTransactionDensityResponse403TextJson) & {
+  headers: Headers;
+};
 
-export type getApiFinancialTransactionDensityResponse = (getApiFinancialTransactionDensityResponseSuccess)
+export type getApiFinancialTransactionDensityResponse = (getApiFinancialTransactionDensityResponseSuccess | getApiFinancialTransactionDensityResponseError)
 
 export const getGetApiFinancialTransactionDensityUrl = (params?: GetApiFinancialTransactionDensityParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -4392,7 +4759,7 @@ export const getGetApiFinancialTransactionDensityQueryKey = (params?: GetApiFina
     }
 
 
-export const getGetApiFinancialTransactionDensityQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = unknown>(params?: GetApiFinancialTransactionDensityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiFinancialTransactionDensityQueryOptions = <TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = ProblemDetails>(params?: GetApiFinancialTransactionDensityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -4411,10 +4778,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiFinancialTransactionDensityQueryResult = NonNullable<Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>>
-export type GetApiFinancialTransactionDensityQueryError = unknown
+export type GetApiFinancialTransactionDensityQueryError = ProblemDetails
 
 
-export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = unknown>(
+export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = ProblemDetails>(
  params: undefined |  GetApiFinancialTransactionDensityParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>,
@@ -4424,7 +4791,7 @@ export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = unknown>(
+export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = ProblemDetails>(
  params?: GetApiFinancialTransactionDensityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>,
@@ -4434,7 +4801,7 @@ export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = unknown>(
+export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = ProblemDetails>(
  params?: GetApiFinancialTransactionDensityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -4443,7 +4810,7 @@ export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<
 Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
  */
 
-export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = unknown>(
+export function useGetApiFinancialTransactionDensity<TData = Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError = ProblemDetails>(
  params?: GetApiFinancialTransactionDensityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFinancialTransactionDensity>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -6591,27 +6958,89 @@ export function useGetApiMonitors<TData = Awaited<ReturnType<typeof getApiMonito
 
 
 
-export type postApiMonitorsResponse200TextPlain = {
+export type postApiMonitorsResponse201TextPlain = {
   data: UptimeMonitorDto
-  status: 200
+  status: 201
 }
 
-export type postApiMonitorsResponse200ApplicationJson = {
+export type postApiMonitorsResponse201ApplicationJson = {
   data: UptimeMonitorDto
-  status: 200
+  status: 201
 }
 
-export type postApiMonitorsResponse200TextJson = {
+export type postApiMonitorsResponse201TextJson = {
   data: UptimeMonitorDto
-  status: 200
+  status: 201
 }
 
-export type postApiMonitorsResponseSuccess = (postApiMonitorsResponse200TextPlain | postApiMonitorsResponse200ApplicationJson | postApiMonitorsResponse200TextJson) & {
+export type postApiMonitorsResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiMonitorsResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiMonitorsResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type postApiMonitorsResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsResponse409TextPlain = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type postApiMonitorsResponse409ApplicationJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type postApiMonitorsResponse409TextJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type postApiMonitorsResponseSuccess = (postApiMonitorsResponse201TextPlain | postApiMonitorsResponse201ApplicationJson | postApiMonitorsResponse201TextJson) & {
   headers: Headers;
 };
-;
+export type postApiMonitorsResponseError = (postApiMonitorsResponse400TextPlain | postApiMonitorsResponse400ApplicationJson | postApiMonitorsResponse400TextJson | postApiMonitorsResponse403TextPlain | postApiMonitorsResponse403ApplicationJson | postApiMonitorsResponse403TextJson | postApiMonitorsResponse404TextPlain | postApiMonitorsResponse404ApplicationJson | postApiMonitorsResponse404TextJson | postApiMonitorsResponse409TextPlain | postApiMonitorsResponse409ApplicationJson | postApiMonitorsResponse409TextJson) & {
+  headers: Headers;
+};
 
-export type postApiMonitorsResponse = (postApiMonitorsResponseSuccess)
+export type postApiMonitorsResponse = (postApiMonitorsResponseSuccess | postApiMonitorsResponseError)
 
 export const getPostApiMonitorsUrl = (params?: PostApiMonitorsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -6646,7 +7075,7 @@ export const postApiMonitors = async (createMonitorRequestDto?: CreateMonitorReq
 
 
 
-export const getPostApiMonitorsMutationOptions = <TError = unknown,
+export const getPostApiMonitorsMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiMonitors>>, TError,{data?: CreateMonitorRequestDto;params?: PostApiMonitorsParams}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postApiMonitors>>, TError,{data?: CreateMonitorRequestDto;params?: PostApiMonitorsParams}, TContext> => {
 
@@ -6675,12 +7104,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PostApiMonitorsMutationResult = NonNullable<Awaited<ReturnType<typeof postApiMonitors>>>
     export type PostApiMonitorsMutationBody = CreateMonitorRequestDto | undefined
-    export type PostApiMonitorsMutationError = unknown
+    export type PostApiMonitorsMutationError = ValidationProblemDetails | ProblemDetails
 
     /**
  * @summary Creates a new uptime monitor in UptimeRobot and registers it in the system.
  */
-export const usePostApiMonitors = <TError = unknown,
+export const usePostApiMonitors = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiMonitors>>, TError,{data?: CreateMonitorRequestDto;params?: PostApiMonitorsParams}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postApiMonitors>>,
@@ -6826,12 +7255,44 @@ export type patchApiMonitorsIdAssignTenantIdResponse200 = {
   status: 200
 }
 
+export type patchApiMonitorsIdAssignTenantIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdAssignTenantIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdAssignTenantIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdAssignTenantIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdAssignTenantIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdAssignTenantIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
 export type patchApiMonitorsIdAssignTenantIdResponseSuccess = (patchApiMonitorsIdAssignTenantIdResponse200) & {
   headers: Headers;
 };
-;
+export type patchApiMonitorsIdAssignTenantIdResponseError = (patchApiMonitorsIdAssignTenantIdResponse403TextPlain | patchApiMonitorsIdAssignTenantIdResponse403ApplicationJson | patchApiMonitorsIdAssignTenantIdResponse403TextJson | patchApiMonitorsIdAssignTenantIdResponse404TextPlain | patchApiMonitorsIdAssignTenantIdResponse404ApplicationJson | patchApiMonitorsIdAssignTenantIdResponse404TextJson) & {
+  headers: Headers;
+};
 
-export type patchApiMonitorsIdAssignTenantIdResponse = (patchApiMonitorsIdAssignTenantIdResponseSuccess)
+export type patchApiMonitorsIdAssignTenantIdResponse = (patchApiMonitorsIdAssignTenantIdResponseSuccess | patchApiMonitorsIdAssignTenantIdResponseError)
 
 export const getPatchApiMonitorsIdAssignTenantIdUrl = (id: number,
     tenantId: string,) => {
@@ -6860,7 +7321,7 @@ export const patchApiMonitorsIdAssignTenantId = async (id: number,
 
 
 
-export const getPatchApiMonitorsIdAssignTenantIdMutationOptions = <TError = unknown,
+export const getPatchApiMonitorsIdAssignTenantIdMutationOptions = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsIdAssignTenantId>>, TError,{id: number;tenantId: string}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsIdAssignTenantId>>, TError,{id: number;tenantId: string}, TContext> => {
 
@@ -6889,12 +7350,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PatchApiMonitorsIdAssignTenantIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiMonitorsIdAssignTenantId>>>
 
-    export type PatchApiMonitorsIdAssignTenantIdMutationError = unknown
+    export type PatchApiMonitorsIdAssignTenantIdMutationError = ProblemDetails
 
     /**
  * @summary Reassigns a monitor to a different tenant.
  */
-export const usePatchApiMonitorsIdAssignTenantId = <TError = unknown,
+export const usePatchApiMonitorsIdAssignTenantId = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsIdAssignTenantId>>, TError,{id: number;tenantId: string}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchApiMonitorsIdAssignTenantId>>,
@@ -6910,12 +7371,59 @@ export type patchApiMonitorsIdUnassignResponse200 = {
   status: 200
 }
 
+export type patchApiMonitorsIdUnassignResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdUnassignResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdUnassignResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdUnassignResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdUnassignResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdUnassignResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdUnassignResponse409TextPlain = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type patchApiMonitorsIdUnassignResponse409ApplicationJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type patchApiMonitorsIdUnassignResponse409TextJson = {
+  data: ProblemDetails
+  status: 409
+}
+
 export type patchApiMonitorsIdUnassignResponseSuccess = (patchApiMonitorsIdUnassignResponse200) & {
   headers: Headers;
 };
-;
+export type patchApiMonitorsIdUnassignResponseError = (patchApiMonitorsIdUnassignResponse403TextPlain | patchApiMonitorsIdUnassignResponse403ApplicationJson | patchApiMonitorsIdUnassignResponse403TextJson | patchApiMonitorsIdUnassignResponse404TextPlain | patchApiMonitorsIdUnassignResponse404ApplicationJson | patchApiMonitorsIdUnassignResponse404TextJson | patchApiMonitorsIdUnassignResponse409TextPlain | patchApiMonitorsIdUnassignResponse409ApplicationJson | patchApiMonitorsIdUnassignResponse409TextJson) & {
+  headers: Headers;
+};
 
-export type patchApiMonitorsIdUnassignResponse = (patchApiMonitorsIdUnassignResponseSuccess)
+export type patchApiMonitorsIdUnassignResponse = (patchApiMonitorsIdUnassignResponseSuccess | patchApiMonitorsIdUnassignResponseError)
 
 export const getPatchApiMonitorsIdUnassignUrl = (id: number,) => {
 
@@ -6942,7 +7450,7 @@ export const patchApiMonitorsIdUnassign = async (id: number, options?: RequestIn
 
 
 
-export const getPatchApiMonitorsIdUnassignMutationOptions = <TError = unknown,
+export const getPatchApiMonitorsIdUnassignMutationOptions = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsIdUnassign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsIdUnassign>>, TError,{id: number}, TContext> => {
 
@@ -6971,12 +7479,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PatchApiMonitorsIdUnassignMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiMonitorsIdUnassign>>>
 
-    export type PatchApiMonitorsIdUnassignMutationError = unknown
+    export type PatchApiMonitorsIdUnassignMutationError = ProblemDetails
 
     /**
  * @summary Moves a monitor to the unassigned (system) tenant.
  */
-export const usePatchApiMonitorsIdUnassign = <TError = unknown,
+export const usePatchApiMonitorsIdUnassign = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsIdUnassign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchApiMonitorsIdUnassign>>,
@@ -6992,12 +7500,59 @@ export type postApiMonitorsIdPauseResponse200 = {
   status: 200
 }
 
+export type postApiMonitorsIdPauseResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsIdPauseResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsIdPauseResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsIdPauseResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsIdPauseResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsIdPauseResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsIdPauseResponse409TextPlain = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type postApiMonitorsIdPauseResponse409ApplicationJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type postApiMonitorsIdPauseResponse409TextJson = {
+  data: ProblemDetails
+  status: 409
+}
+
 export type postApiMonitorsIdPauseResponseSuccess = (postApiMonitorsIdPauseResponse200) & {
   headers: Headers;
 };
-;
+export type postApiMonitorsIdPauseResponseError = (postApiMonitorsIdPauseResponse403TextPlain | postApiMonitorsIdPauseResponse403ApplicationJson | postApiMonitorsIdPauseResponse403TextJson | postApiMonitorsIdPauseResponse404TextPlain | postApiMonitorsIdPauseResponse404ApplicationJson | postApiMonitorsIdPauseResponse404TextJson | postApiMonitorsIdPauseResponse409TextPlain | postApiMonitorsIdPauseResponse409ApplicationJson | postApiMonitorsIdPauseResponse409TextJson) & {
+  headers: Headers;
+};
 
-export type postApiMonitorsIdPauseResponse = (postApiMonitorsIdPauseResponseSuccess)
+export type postApiMonitorsIdPauseResponse = (postApiMonitorsIdPauseResponseSuccess | postApiMonitorsIdPauseResponseError)
 
 export const getPostApiMonitorsIdPauseUrl = (id: number,) => {
 
@@ -7024,7 +7579,7 @@ export const postApiMonitorsIdPause = async (id: number, options?: RequestInit):
 
 
 
-export const getPostApiMonitorsIdPauseMutationOptions = <TError = unknown,
+export const getPostApiMonitorsIdPauseMutationOptions = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiMonitorsIdPause>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postApiMonitorsIdPause>>, TError,{id: number}, TContext> => {
 
@@ -7053,12 +7608,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PostApiMonitorsIdPauseMutationResult = NonNullable<Awaited<ReturnType<typeof postApiMonitorsIdPause>>>
 
-    export type PostApiMonitorsIdPauseMutationError = unknown
+    export type PostApiMonitorsIdPauseMutationError = ProblemDetails
 
     /**
  * @summary Pauses monitoring for a specific monitor in UptimeRobot.
  */
-export const usePostApiMonitorsIdPause = <TError = unknown,
+export const usePostApiMonitorsIdPause = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiMonitorsIdPause>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postApiMonitorsIdPause>>,
@@ -7074,12 +7629,59 @@ export type postApiMonitorsIdStartResponse200 = {
   status: 200
 }
 
+export type postApiMonitorsIdStartResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsIdStartResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsIdStartResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type postApiMonitorsIdStartResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsIdStartResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsIdStartResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type postApiMonitorsIdStartResponse409TextPlain = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type postApiMonitorsIdStartResponse409ApplicationJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type postApiMonitorsIdStartResponse409TextJson = {
+  data: ProblemDetails
+  status: 409
+}
+
 export type postApiMonitorsIdStartResponseSuccess = (postApiMonitorsIdStartResponse200) & {
   headers: Headers;
 };
-;
+export type postApiMonitorsIdStartResponseError = (postApiMonitorsIdStartResponse403TextPlain | postApiMonitorsIdStartResponse403ApplicationJson | postApiMonitorsIdStartResponse403TextJson | postApiMonitorsIdStartResponse404TextPlain | postApiMonitorsIdStartResponse404ApplicationJson | postApiMonitorsIdStartResponse404TextJson | postApiMonitorsIdStartResponse409TextPlain | postApiMonitorsIdStartResponse409ApplicationJson | postApiMonitorsIdStartResponse409TextJson) & {
+  headers: Headers;
+};
 
-export type postApiMonitorsIdStartResponse = (postApiMonitorsIdStartResponseSuccess)
+export type postApiMonitorsIdStartResponse = (postApiMonitorsIdStartResponseSuccess | postApiMonitorsIdStartResponseError)
 
 export const getPostApiMonitorsIdStartUrl = (id: number,) => {
 
@@ -7106,7 +7708,7 @@ export const postApiMonitorsIdStart = async (id: number, options?: RequestInit):
 
 
 
-export const getPostApiMonitorsIdStartMutationOptions = <TError = unknown,
+export const getPostApiMonitorsIdStartMutationOptions = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiMonitorsIdStart>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof postApiMonitorsIdStart>>, TError,{id: number}, TContext> => {
 
@@ -7135,12 +7737,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PostApiMonitorsIdStartMutationResult = NonNullable<Awaited<ReturnType<typeof postApiMonitorsIdStart>>>
 
-    export type PostApiMonitorsIdStartMutationError = unknown
+    export type PostApiMonitorsIdStartMutationError = ProblemDetails
 
     /**
  * @summary Resumes monitoring for a specific monitor in UptimeRobot.
  */
-export const usePostApiMonitorsIdStart = <TError = unknown,
+export const usePostApiMonitorsIdStart = <TError = ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiMonitorsIdStart>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postApiMonitorsIdStart>>,
@@ -7151,41 +7753,79 @@ export const usePostApiMonitorsIdStart = <TError = unknown,
       return useMutation(getPostApiMonitorsIdStartMutationOptions(options), queryClient);
     }
 
-export type deleteApiMonitorsIdResponse200 = {
+export type deleteApiMonitorsIdResponse204 = {
   data: void
-  status: 200
+  status: 204
 }
 
-export type deleteApiMonitorsIdResponseSuccess = (deleteApiMonitorsIdResponse200) & {
+export type deleteApiMonitorsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiMonitorsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiMonitorsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type deleteApiMonitorsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiMonitorsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiMonitorsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type deleteApiMonitorsIdResponse409TextPlain = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type deleteApiMonitorsIdResponse409ApplicationJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type deleteApiMonitorsIdResponse409TextJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type deleteApiMonitorsIdResponseSuccess = (deleteApiMonitorsIdResponse204) & {
   headers: Headers;
 };
-;
+export type deleteApiMonitorsIdResponseError = (deleteApiMonitorsIdResponse403TextPlain | deleteApiMonitorsIdResponse403ApplicationJson | deleteApiMonitorsIdResponse403TextJson | deleteApiMonitorsIdResponse404TextPlain | deleteApiMonitorsIdResponse404ApplicationJson | deleteApiMonitorsIdResponse404TextJson | deleteApiMonitorsIdResponse409TextPlain | deleteApiMonitorsIdResponse409ApplicationJson | deleteApiMonitorsIdResponse409TextJson) & {
+  headers: Headers;
+};
 
-export type deleteApiMonitorsIdResponse = (deleteApiMonitorsIdResponseSuccess)
+export type deleteApiMonitorsIdResponse = (deleteApiMonitorsIdResponseSuccess | deleteApiMonitorsIdResponseError)
 
-export const getDeleteApiMonitorsIdUrl = (id: number,
-    params?: DeleteApiMonitorsIdParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getDeleteApiMonitorsIdUrl = (id: number,) => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/monitors/${id}?${stringifiedParams}` : `/api/monitors/${id}`
+  return `/api/monitors/${id}`
 }
 
 /**
  * @summary Deletes a monitor from both the system and UptimeRobot.
  */
-export const deleteApiMonitorsId = async (id: number,
-    params?: DeleteApiMonitorsIdParams, options?: RequestInit): Promise<deleteApiMonitorsIdResponse> => {
+export const deleteApiMonitorsId = async (id: number, options?: RequestInit): Promise<deleteApiMonitorsIdResponse> => {
 
-  return customClient<deleteApiMonitorsIdResponse>(getDeleteApiMonitorsIdUrl(id,params),
+  return customClient<deleteApiMonitorsIdResponse>(getDeleteApiMonitorsIdUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -7197,9 +7837,9 @@ export const deleteApiMonitorsId = async (id: number,
 
 
 
-export const getDeleteApiMonitorsIdMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiMonitorsId>>, TError,{id: number;params?: DeleteApiMonitorsIdParams}, TContext>, request?: SecondParameter<typeof customClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteApiMonitorsId>>, TError,{id: number;params?: DeleteApiMonitorsIdParams}, TContext> => {
+export const getDeleteApiMonitorsIdMutationOptions = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiMonitorsId>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteApiMonitorsId>>, TError,{id: number}, TContext> => {
 
 const mutationKey = ['deleteApiMonitorsId'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -7211,10 +7851,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteApiMonitorsId>>, {id: number;params?: DeleteApiMonitorsIdParams}> = (props) => {
-          const {id,params} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteApiMonitorsId>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
 
-          return  deleteApiMonitorsId(id,params,requestOptions)
+          return  deleteApiMonitorsId(id,requestOptions)
         }
 
 
@@ -7226,17 +7866,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteApiMonitorsIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiMonitorsId>>>
 
-    export type DeleteApiMonitorsIdMutationError = unknown
+    export type DeleteApiMonitorsIdMutationError = ProblemDetails
 
     /**
  * @summary Deletes a monitor from both the system and UptimeRobot.
  */
-export const useDeleteApiMonitorsId = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiMonitorsId>>, TError,{id: number;params?: DeleteApiMonitorsIdParams}, TContext>, request?: SecondParameter<typeof customClient>}
+export const useDeleteApiMonitorsId = <TError = ProblemDetails,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiMonitorsId>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteApiMonitorsId>>,
         TError,
-        {id: number;params?: DeleteApiMonitorsIdParams},
+        {id: number},
         TContext
       > => {
       return useMutation(getDeleteApiMonitorsIdMutationOptions(options), queryClient);
@@ -7257,12 +7897,74 @@ export type patchApiMonitorsIdResponse200TextJson = {
   status: 200
 }
 
+export type patchApiMonitorsIdResponse400TextPlain = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiMonitorsIdResponse400ApplicationJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiMonitorsIdResponse400TextJson = {
+  data: ValidationProblemDetails
+  status: 400
+}
+
+export type patchApiMonitorsIdResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type patchApiMonitorsIdResponse404TextPlain = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdResponse404ApplicationJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdResponse404TextJson = {
+  data: ProblemDetails
+  status: 404
+}
+
+export type patchApiMonitorsIdResponse409TextPlain = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type patchApiMonitorsIdResponse409ApplicationJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type patchApiMonitorsIdResponse409TextJson = {
+  data: ProblemDetails
+  status: 409
+}
+
 export type patchApiMonitorsIdResponseSuccess = (patchApiMonitorsIdResponse200TextPlain | patchApiMonitorsIdResponse200ApplicationJson | patchApiMonitorsIdResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type patchApiMonitorsIdResponseError = (patchApiMonitorsIdResponse400TextPlain | patchApiMonitorsIdResponse400ApplicationJson | patchApiMonitorsIdResponse400TextJson | patchApiMonitorsIdResponse403TextPlain | patchApiMonitorsIdResponse403ApplicationJson | patchApiMonitorsIdResponse403TextJson | patchApiMonitorsIdResponse404TextPlain | patchApiMonitorsIdResponse404ApplicationJson | patchApiMonitorsIdResponse404TextJson | patchApiMonitorsIdResponse409TextPlain | patchApiMonitorsIdResponse409ApplicationJson | patchApiMonitorsIdResponse409TextJson) & {
+  headers: Headers;
+};
 
-export type patchApiMonitorsIdResponse = (patchApiMonitorsIdResponseSuccess)
+export type patchApiMonitorsIdResponse = (patchApiMonitorsIdResponseSuccess | patchApiMonitorsIdResponseError)
 
 export const getPatchApiMonitorsIdUrl = (id: number,) => {
 
@@ -7290,7 +7992,7 @@ export const patchApiMonitorsId = async (id: number,
 
 
 
-export const getPatchApiMonitorsIdMutationOptions = <TError = unknown,
+export const getPatchApiMonitorsIdMutationOptions = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsId>>, TError,{id: number;data?: UpdateMonitorRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsId>>, TError,{id: number;data?: UpdateMonitorRequestDto}, TContext> => {
 
@@ -7319,12 +8021,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type PatchApiMonitorsIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiMonitorsId>>>
     export type PatchApiMonitorsIdMutationBody = UpdateMonitorRequestDto | undefined
-    export type PatchApiMonitorsIdMutationError = unknown
+    export type PatchApiMonitorsIdMutationError = ValidationProblemDetails | ProblemDetails
 
     /**
  * @summary Updates monitor properties, such as SLA.
  */
-export const usePatchApiMonitorsId = <TError = unknown,
+export const usePatchApiMonitorsId = <TError = ValidationProblemDetails | ProblemDetails,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiMonitorsId>>, TError,{id: number;data?: UpdateMonitorRequestDto}, TContext>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof patchApiMonitorsId>>,
@@ -10157,12 +10859,74 @@ export type getApiWeatherResponse200TextJson = {
   status: 200
 }
 
+export type getApiWeatherResponse403TextPlain = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiWeatherResponse403ApplicationJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiWeatherResponse403TextJson = {
+  data: ProblemDetails
+  status: 403
+}
+
+export type getApiWeatherResponse409TextPlain = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type getApiWeatherResponse409ApplicationJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type getApiWeatherResponse409TextJson = {
+  data: ProblemDetails
+  status: 409
+}
+
+export type getApiWeatherResponse502TextPlain = {
+  data: ProblemDetails
+  status: 502
+}
+
+export type getApiWeatherResponse502ApplicationJson = {
+  data: ProblemDetails
+  status: 502
+}
+
+export type getApiWeatherResponse502TextJson = {
+  data: ProblemDetails
+  status: 502
+}
+
+export type getApiWeatherResponse504TextPlain = {
+  data: ProblemDetails
+  status: 504
+}
+
+export type getApiWeatherResponse504ApplicationJson = {
+  data: ProblemDetails
+  status: 504
+}
+
+export type getApiWeatherResponse504TextJson = {
+  data: ProblemDetails
+  status: 504
+}
+
 export type getApiWeatherResponseSuccess = (getApiWeatherResponse200TextPlain | getApiWeatherResponse200ApplicationJson | getApiWeatherResponse200TextJson) & {
   headers: Headers;
 };
-;
+export type getApiWeatherResponseError = (getApiWeatherResponse403TextPlain | getApiWeatherResponse403ApplicationJson | getApiWeatherResponse403TextJson | getApiWeatherResponse409TextPlain | getApiWeatherResponse409ApplicationJson | getApiWeatherResponse409TextJson | getApiWeatherResponse502TextPlain | getApiWeatherResponse502ApplicationJson | getApiWeatherResponse502TextJson | getApiWeatherResponse504TextPlain | getApiWeatherResponse504ApplicationJson | getApiWeatherResponse504TextJson) & {
+  headers: Headers;
+};
 
-export type getApiWeatherResponse = (getApiWeatherResponseSuccess)
+export type getApiWeatherResponse = (getApiWeatherResponseSuccess | getApiWeatherResponseError)
 
 export const getGetApiWeatherUrl = () => {
 
@@ -10197,7 +10961,7 @@ export const getGetApiWeatherQueryKey = () => {
     }
 
 
-export const getGetApiWeatherQueryOptions = <TData = Awaited<ReturnType<typeof getApiWeather>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiWeather>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
+export const getGetApiWeatherQueryOptions = <TData = Awaited<ReturnType<typeof getApiWeather>>, TError = ProblemDetails>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiWeather>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -10216,10 +10980,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetApiWeatherQueryResult = NonNullable<Awaited<ReturnType<typeof getApiWeather>>>
-export type GetApiWeatherQueryError = unknown
+export type GetApiWeatherQueryError = ProblemDetails
 
 
-export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = unknown>(
+export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = ProblemDetails>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiWeather>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiWeather>>,
@@ -10229,7 +10993,7 @@ export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = unknown>(
+export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = ProblemDetails>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiWeather>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getApiWeather>>,
@@ -10239,7 +11003,7 @@ export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather
       >, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = unknown>(
+export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = ProblemDetails>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiWeather>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -10247,7 +11011,7 @@ export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather
  * @summary Returns current weather for the configured location.
  */
 
-export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = unknown>(
+export function useGetApiWeather<TData = Awaited<ReturnType<typeof getApiWeather>>, TError = ProblemDetails>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiWeather>>, TError, TData>>, request?: SecondParameter<typeof customClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

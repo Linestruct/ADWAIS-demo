@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Common.Models;
 using Adwais.Application.DTOs.Financial;
@@ -11,6 +12,7 @@ using Adwais.Application.Services;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Helpers;
 using Microsoft.EntityFrameworkCore;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -191,13 +193,14 @@ public class FinancialDistributionService(
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<OrderBinDto>> GetOrderDistributionAsync(ResolvedPeriod period, Guid tenantId, int? binCount = null, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<OrderBinDto>>> GetOrderDistributionAsync(ResolvedPeriod period, Guid tenantId, int? binCount = null, CancellationToken ct = default)
     {
         var currentStart = period.CurrentStart;
         var currentEnd = period.CurrentEnd;
 
         var visibleTenantIds = await FinancialScope.ResolveVisibleTenantIdsAsync(_currentAccess, _dbContext, ct);
-        TenantSeriesFilter.Create(tenantId, null, visibleTenantIds).ThrowIfTenantOutsideScope();
+        if (TenantSeriesFilter.Create(tenantId, null, visibleTenantIds).IsExplicitTenantOutsideScope)
+            return Result.Fail<IReadOnlyList<OrderBinDto>>(new ScopeDeniedError("the requested tenant", "the current scope"));
 
         var orderValues = await _dbContext.Orders
             .AsNoTracking()
@@ -207,7 +210,7 @@ public class FinancialDistributionService(
             .ToListAsync(ct);
 
         if (orderValues.Count == 0)
-            return Array.Empty<OrderBinDto>();
+            return Result.Ok<IReadOnlyList<OrderBinDto>>(Array.Empty<OrderBinDto>());
 
         orderValues.Sort();
 
@@ -288,18 +291,19 @@ public class FinancialDistributionService(
                 (decimal)Math.Round(kdeValue, 2)));
         }
 
-        return bins;
+        return Result.Ok<IReadOnlyList<OrderBinDto>>(bins);
     }
 
     /// <inheritdoc />
-    public async Task<TransactionDensityDto> GetTransactionDensityAsync(TransactionDensityPeriod requestedPeriod, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
+    public async Task<Result<TransactionDensityDto>> GetTransactionDensityAsync(TransactionDensityPeriod requestedPeriod, Guid? tenantId = null, IReadOnlyCollection<TenantType>? tenantTypes = null, CancellationToken ct = default)
     {
         var currentEnd = DateTimeOffset.UtcNow;
         var timeZone = await _reportingCalendar.GetTimeZoneAsync(ct);
 
         var visibleTenantIds = await FinancialScope.ResolveVisibleTenantIdsAsync(_currentAccess, _dbContext, ct);
         var filter = TenantSeriesFilter.Create(tenantId, tenantTypes, visibleTenantIds);
-        filter.ThrowIfTenantOutsideScope();
+        if (filter.IsExplicitTenantOutsideScope)
+            return Result.Fail<TransactionDensityDto>(new ScopeDeniedError("the requested tenant", "the current scope"));
 
         var query = _dbContext.Orders
             .AsNoTracking()
@@ -419,7 +423,7 @@ public class FinancialDistributionService(
                 ? TransactionDensitySampleQuality.Indicative
                 : TransactionDensitySampleQuality.Stable;
 
-        return new TransactionDensityDto(
+        return Result.Ok(new TransactionDensityDto(
             totalCount,
             result.Count == 0 ? 0 : result.Min(point => point.Count),
             result.Count == 0 ? 0 : result.Max(point => point.Count),
@@ -430,7 +434,7 @@ public class FinancialDistributionService(
             timeZone.Id,
             currentStart,
             currentEnd,
-            result);
+            result));
     }
 
     private static DateTimeOffset GetDensityPeriodStart(DateTimeOffset utcNow, int days, TimeZoneInfo timeZone)

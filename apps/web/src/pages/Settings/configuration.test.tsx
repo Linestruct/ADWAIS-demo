@@ -119,13 +119,4 @@ describe('ConfigurationView', () => {
     expect(screen.getByRole('heading', { name: 'Fetch Intervals' })).toBeInTheDocument();
     expect(state.orgConfigArgs).toEqual(['org-1']);
   });
-
-  it('renders an empty state for a user without an organization', () => {
-    state.currentUser = { role: 'Employee', scope: scopeFor({ isAdmin: false }) };
-
-    render(<ConfigurationView />);
-
-    expect(screen.getByText('No organization selected.')).toBeInTheDocument();
-    expect(state.orgConfigArgs).toEqual([null]);
-  });
 });

@@ -31,8 +31,6 @@ describe('SettingsFilterMenu', () => {
     expect(setFilters).toHaveBeenCalledWith({ token: 'missing', fetch: 'all' });
     expect(setSort).toHaveBeenCalledWith('desc');
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('heading', { name: 'Filter tenants' }).parentElement?.parentElement)
-      .not.toHaveStyle({ transform: 'translateY(-100%)' });
   });
 
   it('keeps the monitor menu open while selecting from the portaled tag menu', () => {

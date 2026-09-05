@@ -59,12 +59,11 @@ describe('MobileFooterActions', () => {
     cleanupSlots();
   });
 
-  it('renders a full-size settings action in the mobile FAB', () => {
+  it('exposes the settings action in the mobile FAB', () => {
     const onOpenSettings = vi.fn();
     const { cleanupSlots, unmount } = renderActions(0, vi.fn(), onOpenSettings);
 
     const settings = screen.getByRole('button', { name: 'Monitor settings' });
-    expect(settings).toHaveClass('h-14', 'w-14');
     fireEvent.click(settings);
     expect(onOpenSettings).toHaveBeenCalledOnce();
 

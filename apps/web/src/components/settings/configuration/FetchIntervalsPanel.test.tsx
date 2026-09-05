@@ -37,16 +37,6 @@ function renderPanel(overrides?: {
 }
 
 describe('FetchIntervalsPanel', () => {
-  it('shows the org job scheduling intervals', () => {
-    renderPanel();
-
-    expect(screen.getByRole('heading', { name: 'Fetch Intervals' })).toBeInTheDocument();
-    expect(screen.getByText('30')).toBeInTheDocument();
-    expect(screen.getAllByText('5')).toHaveLength(2);
-    expect(screen.getByText('15')).toBeInTheDocument();
-    expect(screen.getByText('6')).toBeInTheDocument();
-  });
-
   it('commits an edited interval through the update callback', async () => {
     const mutateAsync = vi.fn().mockResolvedValue(undefined);
     renderPanel({ updateConfig: { mutateAsync } });

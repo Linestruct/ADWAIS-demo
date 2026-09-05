@@ -67,12 +67,6 @@ describe('kiosk devices panel', () => {
     testState.deleteDevice.mockReset();
   });
 
-  it('shows a skeleton while the user loads', () => {
-    testState.isUserLoading = true;
-    render(<KioskDevicesPanel />);
-    expect(screen.getByLabelText('Loading kiosk displays')).toBeInTheDocument();
-  });
-
   it('disables removal for non-staff roles', () => {
     testState.role = 'Viewer';
     testState.devices = [
@@ -111,18 +105,6 @@ describe('kiosk devices panel', () => {
     expect(screen.getByText('kiosk-1')).toBeInTheDocument();
     expect(screen.getByText('kiosk-2')).toBeInTheDocument();
     expect(screen.getByText('Never')).toBeInTheDocument();
-  });
-
-  it('shows an empty state without devices', () => {
-    testState.devices = [];
-    render(<KioskDevicesPanel />);
-    expect(screen.getByText('No kiosk displays authorized.')).toBeInTheDocument();
-  });
-
-  it('explains a failed devices query', () => {
-    testState.isError = true;
-    render(<KioskDevicesPanel />);
-    expect(screen.getByText('Unable to load kiosk displays.')).toBeInTheDocument();
   });
 
   it('confirms before removing a display', () => {

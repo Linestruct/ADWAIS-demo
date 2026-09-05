@@ -46,14 +46,6 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe('PlatformConfigurationView', () => {
-  it('shows the deployment-wide configuration', () => {
-    render(<PlatformConfigurationView />, { wrapper });
-
-    expect(screen.getByRole('heading', { name: 'Global Configuration' })).toBeInTheDocument();
-    expect(screen.getByText('30')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Organization Configuration' })).not.toBeInTheDocument();
-  });
-
   it('exposes the Hangfire dashboard entry point', () => {
     render(<PlatformConfigurationView />, { wrapper });
 

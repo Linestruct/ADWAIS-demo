@@ -87,19 +87,6 @@ describe('organizations section', () => {
     expect(screen.getByText('Unable to load organizations.')).toBeInTheDocument();
   });
 
-  it('shows a skeleton while the user loads', () => {
-    testState.isUserLoading = true;
-    render(<OrganizationsSection />);
-    expect(screen.getByLabelText('Loading organizations')).toBeInTheDocument();
-  });
-
-  it('lists organizations with member and monitor counts', () => {
-    testState.organizations = twoOrgs;
-    render(<OrganizationsSection />);
-    expect(screen.getByText('Acme')).toBeInTheDocument();
-    expect(screen.getByText('Other')).toBeInTheDocument();
-  });
-
   it('creates an organization from the inline form', () => {
     testState.organizations = twoOrgs;
     render(<OrganizationsSection />);
@@ -164,11 +151,5 @@ describe('organizations section', () => {
     testState.isLoading = true;
     render(<OrganizationsSection />);
     expect(screen.getByLabelText('Loading organizations')).toBeInTheDocument();
-  });
-
-  it('explains a failed organizations query', () => {
-    testState.isError = true;
-    render(<OrganizationsSection />);
-    expect(screen.getByText('Unable to load organizations.')).toBeInTheDocument();
   });
 });

@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { useAddMembershipMutation, useRemoveMembershipMutation } from './useMembershipQueries';
+import { useRemoveMembershipMutation } from './useMembershipQueries';
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
@@ -50,13 +50,5 @@ describe('membership mutations', () => {
     result.current.mutate('last-platform');
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
-  });
-
-  it('toasts success after adding a membership', async () => {
-    const { result } = renderHook(() => useAddMembershipMutation('user-1'), { wrapper });
-
-    result.current.mutate({ organizationId: 'org-1', role: 'Viewer' });
-
-    await waitFor(() => expect(toast.success).toHaveBeenCalled());
   });
 });

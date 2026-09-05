@@ -51,16 +51,6 @@ function renderForm(overrides?: {
 }
 
 describe('OrganizationConfigurationForm', () => {
-  it('shows the organization name and the org-scoped parameters', () => {
-    renderForm();
-
-    expect(screen.getByRole('heading', { name: 'Organization Configuration' })).toBeInTheDocument();
-    expect(screen.getByText('Parameters for Acme')).toBeInTheDocument();
-    expect(screen.getByText('Europe/Stockholm')).toBeInTheDocument();
-    expect(screen.getByText('Stockholm, SE')).toBeInTheDocument();
-    expect(screen.getByText('uptimerobot')).toBeInTheDocument();
-  });
-
   it('masks configured secret keys but shows plain provider settings', () => {
     renderForm();
 

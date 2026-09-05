@@ -28,7 +28,7 @@ public interface IMonitorOrchestrationService
     /// <summary>
     /// Retrieves monitors in one batch and hydrates their period uptime in grouped queries.
     /// </summary>
-    Task<IReadOnlyList<UptimeMonitor>> GetMonitorsAsync(ResolvedPeriod period, Guid? tenantId = null, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<UptimeMonitor>>> GetMonitorsAsync(ResolvedPeriod period, Guid? tenantId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves daily availability for the selected fleet, tenant, or monitor scope.
@@ -43,11 +43,6 @@ public interface IMonitorOrchestrationService
         CancellationToken ct = default,
         string[]? excludedTags = null,
         string[]? excludedStatuses = null);
-
-    /// <summary>
-    /// Retrieves all uptime monitors associated with a specific tenant, hydrated with uptime for the given timeframe.
-    /// </summary>
-    Task<IEnumerable<UptimeMonitor>> GetMonitorsByTenantAsync(Guid tenantId, ResolvedPeriod period, CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves unassigned monitors for the current scope: the caller's organization bucket,

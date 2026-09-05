@@ -187,7 +187,7 @@ public class MonitorControllerTests
                 It.IsAny<ResolvedPeriod>(),
                 null,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(monitors);
+            .ReturnsAsync(Result.Ok<IReadOnlyList<UptimeMonitor>>(monitors));
 
         var result = await _controller.GetMonitors(request, CancellationToken.None);
 
@@ -217,6 +217,23 @@ public class MonitorControllerTests
 
         var result = await _controller.GetLatencyMetrics(
             1, DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow, tenantId, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetMonitors_ReturnsForbiddenForDeniedTenant()
+    {
+        var tenantId = Guid.NewGuid();
+        var request = new MonitorRequestDto { TenantId = tenantId };
+        _monitorServiceMock
+            .Setup(service => service.GetMonitorsAsync(
+                It.IsAny<ResolvedPeriod>(), tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<IReadOnlyList<UptimeMonitor>>(
+                new ScopeDeniedError("the requested tenant", "the current scope")));
+
+        var result = await _controller.GetMonitors(request, CancellationToken.None);
 
         var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);

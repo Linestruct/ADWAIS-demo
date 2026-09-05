@@ -755,16 +755,14 @@ public class MonitorOrchestrationService(
         return monitors;
     }
 
-    public async Task<IEnumerable<UptimeMonitor>> GetMonitorsByTenantAsync(Guid tenantId, ResolvedPeriod period, CancellationToken ct = default)
-        => await GetMonitorsAsync(period, tenantId, ct);
-
-    public async Task<IReadOnlyList<UptimeMonitor>> GetMonitorsAsync(ResolvedPeriod period, Guid? tenantId = null, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<UptimeMonitor>>> GetMonitorsAsync(ResolvedPeriod period, Guid? tenantId = null, CancellationToken ct = default)
     {
         var start = period.CurrentStart;
         var end = period.CurrentEnd;
 
         var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
-        if (tenantId.HasValue) ValidateTenantInScope(tenantId.Value, visibleTenantIds);
+        if (tenantId.HasValue && visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
+            return Result.Fail<IReadOnlyList<UptimeMonitor>>(new ScopeDeniedError("the requested tenant", "the current scope"));
 
         IQueryable<UptimeMonitor> query = dbContext.Monitors
             .AsNoTracking()
@@ -794,7 +792,7 @@ public class MonitorOrchestrationService(
             }
         }
 
-        return monitors;
+        return Result.Ok<IReadOnlyList<UptimeMonitor>>(monitors);
     }
 
     public async Task<Result<UptimeMonitor>> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default)

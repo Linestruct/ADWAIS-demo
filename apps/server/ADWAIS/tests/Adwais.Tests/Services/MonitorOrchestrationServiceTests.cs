@@ -330,7 +330,8 @@ public class MonitorOrchestrationServiceTests
 
         var monitors = await _service.GetMonitorsAsync(period, tenantId, CancellationToken.None);
 
-        var monitor = Assert.Single(monitors);
+        Assert.True(monitors.IsSuccess);
+        var monitor = Assert.Single(monitors.Value);
         Assert.Equal(11, monitor.Id);
         Assert.Equal(99.5, monitor.CurrentUptimePercentage);
     }
@@ -643,7 +644,8 @@ public class MonitorOrchestrationServiceTests
         var unassigned = await _service.GetUnassignedMonitorsAsync(period, CancellationToken.None);
 
         // Assert
-        Assert.DoesNotContain(fleet, m => m.Name == "BucketMonitor");
+        Assert.True(fleet.IsSuccess);
+        Assert.DoesNotContain(fleet.Value, m => m.Name == "BucketMonitor");
         Assert.Contains(unassigned, m => m.Name == "BucketMonitor");
     }
 
@@ -819,12 +821,13 @@ public class MonitorOrchestrationServiceTests
 
         var monitors = await _service.GetMonitorsAsync(CreateDefaultPeriod(), ct: CancellationToken.None);
 
-        Assert.Single(monitors);
-        Assert.Equal(-11, monitors[0].Id);
+        Assert.True(monitors.IsSuccess);
+        Assert.Single(monitors.Value);
+        Assert.Equal(-11, monitors.Value[0].Id);
     }
 
     [Fact]
-    public async Task GetMonitorsAsync_RequestedTenantOutsideScope_ThrowsUnauthorizedAccess()
+    public async Task GetMonitorsAsync_RequestedTenantOutsideScope_ReturnsScopeDenied()
     {
         var orgTenantId = Guid.NewGuid();
         var otherOrgId = Guid.NewGuid();
@@ -837,8 +840,10 @@ public class MonitorOrchestrationServiceTests
         _currentAccessMock.Setup(access => access.Scope)
             .Returns(new Adwais.Application.Common.Access.AccessScope(_defaultOrgId, null, [UserRole.Employee]));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            _service.GetMonitorsAsync(CreateDefaultPeriod(), otherTenantId, CancellationToken.None));
+        var result = await _service.GetMonitorsAsync(CreateDefaultPeriod(), otherTenantId, CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 
     [Fact]
@@ -876,8 +881,9 @@ public class MonitorOrchestrationServiceTests
 
         var monitors = await _service.GetMonitorsAsync(CreateDefaultPeriod(), ct: CancellationToken.None);
 
-        Assert.Single(monitors);
-        Assert.Equal(-21, monitors[0].Id);
+        Assert.True(monitors.IsSuccess);
+        Assert.Single(monitors.Value);
+        Assert.Equal(-21, monitors.Value[0].Id);
     }
 
     [Fact]

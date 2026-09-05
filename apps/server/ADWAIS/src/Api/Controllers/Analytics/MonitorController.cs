@@ -146,13 +146,15 @@ public class MonitorController(
         }
         else if (request.TenantId.HasValue)
         {
-            var monitors = await _monitorService.GetMonitorsByTenantAsync(request.TenantId.Value, period, ct);
-            resultDtos = monitors.Select(ToDto);
+            var result = await _monitorService.GetMonitorsAsync(period, request.TenantId.Value, ct);
+            if (result.IsFailed) return result.ToProblem(HttpContext);
+            resultDtos = result.Value.Select(ToDto);
         }
         else 
         {
-            var monitors = await _monitorService.GetMonitorsAsync(period, ct: ct);
-            resultDtos = monitors.Select(ToDto);
+            var result = await _monitorService.GetMonitorsAsync(period, ct: ct);
+            if (result.IsFailed) return result.ToProblem(HttpContext);
+            resultDtos = result.Value.Select(ToDto);
         }
 
         if (request.Tags != null && request.Tags.Any())

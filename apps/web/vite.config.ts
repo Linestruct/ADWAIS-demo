@@ -1,6 +1,7 @@
-// Part of the ADWAIS project, under the Business Source License 1.1.
+// Part of the ADWAIS project, licensed under the MIT License.
+// Copyright (c) 2026 Marmenlind.
 // See /LICENSE for license information.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
@@ -55,7 +56,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@types': resolve(__dirname, '../../packages/types/index.ts'),
-        '@utils': resolve(__dirname, '../../packages/utils/index.ts'),
+        '@utils': resolve(__dirname, './src/utils/index.ts'),
       },
     },
     server: {

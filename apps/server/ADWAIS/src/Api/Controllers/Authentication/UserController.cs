@@ -1,6 +1,7 @@
-// Part of the ADWAIS project, under the Business Source License 1.1.
+// Part of the ADWAIS project, licensed under the MIT License.
+// Copyright (c) 2026 Marmenlind.
 // See /LICENSE for license information.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 
 using System.Security.Claims;
 using Adwais.Api.DTOs.Users;
@@ -34,6 +35,8 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     /// OIDC users are matched by the standard <c>sub</c> claim. Kiosk tokens use their embedded
     /// role claims and do not create a database user record.
     /// </remarks>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The authenticated application user, or the kiosk identity derived from the token.</returns>
     [HttpGet("me")]
     [Authorize(Policy = "KioskOrStaffAccess")]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
@@ -103,6 +106,11 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             isPlatformAdmin);
     }
 
+    /// <summary>
+    /// Lists all application users.
+    /// </summary>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The users stored in the application database.</returns>
     [HttpGet]
     [Authorize(Policy = "KioskOrStaffAccess")]
     public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers(CancellationToken ct)
@@ -118,6 +126,12 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
         return Ok(response);
     }
 
+    /// <summary>
+    /// Retrieves an application user by ID.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The requested user, or <see cref="NotFoundResult"/> when no user matches the ID.</returns>
     [HttpGet("{id:guid}")]
     [Authorize(Policy = "KioskOrStaffAccess")]
     public async Task<ActionResult<UserResponseDto>> GetUser(Guid id, CancellationToken ct)
@@ -136,6 +150,9 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
     /// Manually creates a new user record.
     /// Used for pre-provisioning users before OIDC sign-in.
     /// </summary>
+    /// <param name="request">The email address and role for the new user.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The newly created user.</returns>
     [HttpPost]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserRequestDto request, CancellationToken ct)
@@ -148,6 +165,13 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
             new UserResponseDto(user.Value.Id, user.Value.Name, user.Value.Email, role, IsPlatformAdmin: isPlatformAdmin));
     }
 
+    /// <summary>
+    /// Updates the name or role of an existing user.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user.</param>
+    /// <param name="request">The fields to update. Omitted fields keep their current values.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The updated user, or <see cref="NotFoundResult"/> when no user matches the ID.</returns>
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<UserResponseDto>> UpdateUser(Guid id, [FromBody] UpdateUserRequestDto request, CancellationToken ct)
@@ -159,6 +183,12 @@ public class UserController(IUserService userService, ICurrentAccess currentAcce
         return Ok(new UserResponseDto(user.Value.Id, user.Value.Name, user.Value.Email, role, IsPlatformAdmin: isPlatformAdmin));
     }
 
+    /// <summary>
+    /// Deletes an application user.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>No content when the user is deleted, or <see cref="NotFoundResult"/> when no user matches the ID.</returns>
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> DeleteUser(Guid id, CancellationToken ct)

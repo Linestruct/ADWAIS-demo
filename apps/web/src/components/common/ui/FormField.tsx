@@ -1,6 +1,7 @@
-// Part of the ADWAIS project, under the Business Source License 1.1.
+// Part of the ADWAIS project, licensed under the MIT License.
+// Copyright (c) 2026 Marmenlind.
 // See /LICENSE for license information.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 
 import { useId, type ChangeEventHandler, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { Select, type SelectProps } from './Select';
@@ -178,7 +179,7 @@ export function FormField(props: FormFieldProps) {
             aria-label={props.hideLabel ? props.label : props['aria-label']}
             aria-invalid={Boolean(props.error) || undefined}
             aria-describedby={describedBy}
-            className="w-full h-full bg-transparent outline-none disabled:bg-transparent custom-scrollbar resize-y text-inherit placeholder:text-on-surface-variant"
+            className="w-full h-full bg-transparent outline-none disabled:bg-transparent custom-scrollbar resize-none text-inherit placeholder:text-on-surface-variant"
           />
         </div>
       </FieldFrame>

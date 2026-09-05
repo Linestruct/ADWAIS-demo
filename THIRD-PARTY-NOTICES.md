@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-ADWAIS is distributed under the Business Source License 1.1 (see [LICENSE](./LICENSE)).
+ADWAIS is distributed under the MIT License (see [LICENSE](./LICENSE)).
 This document lists the third-party open-source components used by the project and
 their licenses, in accordance with their license terms.
 

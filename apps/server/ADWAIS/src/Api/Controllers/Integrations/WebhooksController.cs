@@ -39,6 +39,7 @@ public class WebhooksController(
         [FromBody] LitiumSyncResponse.LitiumOrderDto? payload,
         CancellationToken ct)
     {
+        throw new NotImplementedException();
         if (string.IsNullOrEmpty(apiKey) || apiKey != configuration["Webhooks:MotasticApiKey"])
         {
             return Unauthorized();

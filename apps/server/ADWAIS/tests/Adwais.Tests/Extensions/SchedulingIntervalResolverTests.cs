@@ -1,6 +1,6 @@
-// Part of the ADWAIS project, under the Business Source License 1.1.
+// Part of the ADWAIS project, licensed under the MIT License.
 // See /LICENSE for license information.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 
 using System;
 using Adwais.Api.Extensions;

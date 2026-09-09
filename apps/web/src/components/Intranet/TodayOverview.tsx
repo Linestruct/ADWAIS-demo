@@ -175,7 +175,7 @@ export function TodayOverview() {
                     {e.isRecurring && (
                       <span className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary-container">
                         <Repeat2 size={13} aria-hidden="true" />
-                        {e.recurrence && e.recurrence !== 'None' ? e.recurrence : 'Recurring'}
+                        <span>{e.recurrence && e.recurrence !== 'None' ? e.recurrence : 'Recurring'}</span>
                       </span>
                     )}
                     {e.location && (

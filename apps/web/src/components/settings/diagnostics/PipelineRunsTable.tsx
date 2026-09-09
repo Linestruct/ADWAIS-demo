@@ -337,7 +337,7 @@ export function PipelineRunsTable({
                     className="inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-sm font-bold text-secondary transition-colors hover:bg-secondary-container disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {selected ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
-                    {selected ? 'Hide' : 'View'}
+                    <span>{selected ? 'Hide' : 'View'}</span>
                   </button>
                 </td>
               </tr>

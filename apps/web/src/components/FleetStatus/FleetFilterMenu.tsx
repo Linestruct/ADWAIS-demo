@@ -216,18 +216,18 @@ export function FleetFilterPanel({
         <div className="mt-3 flex flex-wrap gap-2">
           <PreferenceButton disabled={!hasUnsavedChanges} onClick={onSaveDefault}>
             <BookmarkCheck size={17} aria-hidden="true" />
-            Save as default
+            <span>Save as default</span>
           </PreferenceButton>
           <PreferenceButton
             disabled={!hasSavedPreferences || !hasUnsavedChanges}
             onClick={onRestoreSaved}
           >
             <RotateCcw size={17} aria-hidden="true" />
-            Restore saved
+            <span>Restore saved</span>
           </PreferenceButton>
           <PreferenceButton disabled={!hasSavedPreferences} onClick={onForgetSaved}>
             <Trash2 size={17} aria-hidden="true" />
-            Forget default
+            <span>Forget default</span>
           </PreferenceButton>
         </div>
       </div>

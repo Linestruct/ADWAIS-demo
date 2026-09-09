@@ -74,7 +74,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button ref={ref} className={combinedClasses} disabled={disabled} {...props}>
         {icon && <span className="shrink-0 flex items-center">{icon}</span>}
-        {children}
+        {children != null && children !== false && <span>{children}</span>}
       </button>
     );
   }

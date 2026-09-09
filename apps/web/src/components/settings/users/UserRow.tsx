@@ -53,7 +53,7 @@ export function UserRow({ u, selected = false, onSelect, onDoubleClick }: UserRo
           u.role === 'Employee' ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'
         }`}>
           {isAdminRole(u.role) ? <Shield size={12} /> : <User size={12} />}
-          {u.role ?? 'No role'}
+          <span>{u.role ?? 'No role'}</span>
         </span>
       </td>
     </tr>

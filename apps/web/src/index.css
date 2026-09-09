@@ -350,11 +350,9 @@
 
 /* ── Components ── */
 @layer components {
-  :where(
-    button:not([data-md3-ripple='off']),
-    [role='button']:not([data-md3-ripple='off']),
-    [data-md3-ripple]:not([data-md3-ripple='off'])
-  ) {
+  button:not([data-md3-ripple='off']),
+  [role='button']:not([data-md3-ripple='off']),
+  [data-md3-ripple]:not([data-md3-ripple='off']) {
     position: relative;
     isolation: isolate;
     overflow: hidden;

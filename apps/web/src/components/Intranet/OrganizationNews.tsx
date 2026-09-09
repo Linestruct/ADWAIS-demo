@@ -139,7 +139,7 @@ export function OrganizationNews({ authorName, title = 'Organization news' }: Or
                       rel="noopener noreferrer"
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-on-primary-container px-5 text-base font-bold text-primary-container transition-colors hover:bg-brand-btn-quaternary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary"
                     >
-                    Read full article
+                    <span>Read full article</span>
                       <ExternalLink size={16} aria-hidden="true" />
                     </a>
                   </div>

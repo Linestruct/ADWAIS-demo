@@ -55,7 +55,7 @@ export function MonitorRow({ m, selected = false, onSelect, onDoubleClick }: Mon
       <td className="w-32 px-4 py-3 align-middle sm:px-5">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary-container px-3 py-1 text-sm font-bold text-on-secondary-container">
             {m.type === 'Ping' ? <Globe size={12} /> : <Gauge size={12} />}
-            {m.type}
+            <span>{m.type}</span>
         </span>
       </td>
       <td className="w-32 px-4 py-3 align-middle sm:px-5">
@@ -68,7 +68,7 @@ export function MonitorRow({ m, selected = false, onSelect, onDoubleClick }: Mon
           m.uptimeMonitorEnabled ? 'bg-success-container text-on-success-container' : 'bg-surface-container text-on-surface-variant'
         }`}>
           {m.uptimeMonitorEnabled ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-          {m.uptimeMonitorEnabled ? 'Enabled' : 'Paused'}
+          <span>{m.uptimeMonitorEnabled ? 'Enabled' : 'Paused'}</span>
         </span>
       </td>
     </tr>

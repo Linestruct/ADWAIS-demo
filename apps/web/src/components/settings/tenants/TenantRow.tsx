@@ -57,7 +57,7 @@ export function TenantRow({ t, selected = false, onSelect, onDoubleClick }: Tena
           t.orderFetchingEnabled ? 'bg-success-container text-on-success-container' : 'bg-surface-container text-on-surface-variant'
         }`}>
           {t.orderFetchingEnabled ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-          {t.orderFetchingEnabled ? 'Enabled' : 'Disabled'}
+          <span>{t.orderFetchingEnabled ? 'Enabled' : 'Disabled'}</span>
         </span>
       </td>
       <td className="w-32 px-4 py-3 align-middle sm:px-5">
@@ -65,7 +65,7 @@ export function TenantRow({ t, selected = false, onSelect, onDoubleClick }: Tena
           t.hasOrderProviderSettings ? 'bg-success-container text-on-success-container' : 'bg-surface-container text-on-surface-variant'
         }`}>
           {t.hasOrderProviderSettings ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-          {t.hasOrderProviderSettings ? 'Settings Set' : 'Missing Settings'}
+          <span>{t.hasOrderProviderSettings ? 'Settings Set' : 'Missing Settings'}</span>
         </span>
       </td>
     </tr>

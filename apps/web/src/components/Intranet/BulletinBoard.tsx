@@ -154,7 +154,7 @@ export function BulletinBoard() {
       {posts.length > 1 && (
         <button type="button" onClick={() => { setIsExpandedView(current => !current); setConfirmingDeleteId(null); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-base font-bold text-primary-inverse transition-colors hover:bg-surface-container hover:text-on-primary-container">
           {isExpandedView && <ArrowLeft className="h-4 w-4" aria-hidden="true" />}
-          {isExpandedView ? 'Back' : 'View all'}
+          <span>{isExpandedView ? 'Back' : 'View all'}</span>
         </button>
       )}
     </div>

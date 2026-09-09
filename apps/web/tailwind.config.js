@@ -213,20 +213,9 @@ export default {
           '--tw-parent-flex-gap-row': value,
         };
 
-        // Wrap Flex Gap Fallback (Negative Margin Hack)
-        flexGapComponents[`.flex.flex-wrap.gap-${escapedKey}`] = {
-          'margin': `-${halfValue}`,
-        };
-        flexGapComponents[`.flex.flex-wrap.gap-x-${escapedKey}`] = {
-          'margin-left': `-${halfValue}`,
-          'margin-right': `-${halfValue}`,
-        };
-        flexGapComponents[`.flex.flex-wrap.gap-y-${escapedKey}`] = {
-          'margin-top': `-${halfValue}`,
-          'margin-bottom': `-${halfValue}`,
-        };
-
-        // Children positive margins
+        // Child margins provide the internal spacing without changing the
+        // container's outer margin. A negative container margin would cancel
+        // spacing supplied by a parent stack such as space-y-*.
         flexGapComponents[`.flex.flex-wrap.gap-${escapedKey} > *`] = {
           'margin': halfValue,
         };
@@ -286,10 +275,33 @@ export default {
         };
       });
 
-      // Native flex gap and margin fallbacks must never run together. A small
-      // runtime capability test adds this class only on affected browsers.
-      const scopedFlexGapComponents = {};
+      // The shared Button uses inline-flex, so mirror every flex fallback for
+      // both display classes. Native flex gap and margin fallbacks must never
+      // run together. A small runtime capability test adds this class only on
+      // affected browsers.
+      const expandedFlexGapComponents = {};
+      const inlineFlexSelector = selector => selector.replace(/\.flex(?=[.:#\s]|$)/g, '.inline-flex');
+
       Object.entries(flexGapComponents).forEach(([selector, rules]) => {
+        expandedFlexGapComponents[selector] = rules;
+
+        if (selector.startsWith('@media')) {
+          expandedFlexGapComponents[selector] = {
+            ...rules,
+            ...Object.fromEntries(
+              Object.entries(rules).map(([mediaSelector, mediaRules]) => [
+                inlineFlexSelector(mediaSelector),
+                mediaRules,
+              ]),
+            ),
+          };
+        } else if (selector.includes('.flex')) {
+          expandedFlexGapComponents[inlineFlexSelector(selector)] = rules;
+        }
+      });
+
+      const scopedFlexGapComponents = {};
+      Object.entries(expandedFlexGapComponents).forEach(([selector, rules]) => {
         if (selector.startsWith('@media')) {
           scopedFlexGapComponents[selector] = Object.fromEntries(
             Object.entries(rules).map(([mediaSelector, mediaRules]) => [

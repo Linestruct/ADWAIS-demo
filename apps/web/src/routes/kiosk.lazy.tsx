@@ -57,7 +57,7 @@ function KioskLanding() {
         <div className="flex w-full flex-col items-center gap-5 animate-stagger delay-200">
           <div className="w-full rounded-3xl border border-outline-variant bg-surface-container px-5 py-6 sm:px-8">
             <div className="mb-4 flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wide text-on-surface-variant">
-              <KeyRound size={18} aria-hidden="true" /> Activation code
+              <KeyRound size={18} aria-hidden="true" /> <span>Activation code</span>
             </div>
             <div className="select-all overflow-hidden text-ellipsis whitespace-nowrap font-mono text-4xl font-black tracking-[0.16em] text-brand-link sm:text-6xl">
               {activationCode}
@@ -69,7 +69,7 @@ function KioskLanding() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-link opacity-75" />
               <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-link" />
             </span>
-            Waiting for authorization
+            <span>Waiting for authorization</span>
           </div>
         </div>
 
@@ -77,7 +77,7 @@ function KioskLanding() {
           to="/login"
           className="inline-flex min-h-12 items-center gap-3 rounded-full border border-outline px-6 font-bold uppercase tracking-wide text-on-surface transition-colors hover:bg-surface-container"
         >
-          <ArrowLeft size={18} aria-hidden="true" /> Staff login
+          <ArrowLeft size={18} aria-hidden="true" /> <span>Staff login</span>
         </Link>
       </div>
     );
@@ -96,10 +96,10 @@ function KioskLanding() {
           </p>
         </div>
         <div className="inline-flex min-h-11 items-center gap-3 rounded-full bg-surface-container px-5 text-sm font-bold text-on-surface-variant">
-          <LoaderCircle size={18} className="animate-spin" aria-hidden="true" /> Retrying automatically
+          <LoaderCircle size={18} className="animate-spin" aria-hidden="true" /> <span>Retrying automatically</span>
         </div>
         <Link to="/login" className="inline-flex min-h-12 items-center gap-3 rounded-full border border-outline px-6 font-bold uppercase tracking-wide text-on-surface transition-colors hover:bg-surface-container">
-          <ArrowLeft size={18} aria-hidden="true" /> Staff login
+          <ArrowLeft size={18} aria-hidden="true" /> <span>Staff login</span>
         </Link>
       </div>
     );

@@ -11,6 +11,32 @@ import type { MetricType } from './crossSegmentTypes';
 import { COHORT_COLORS } from './crossSegmentTypes';
 import { getGroupQuartiles } from './crossSegmentHelpers';
 
+function addRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  const context = ctx as CanvasRenderingContext2D & {
+    roundRect?: (x: number, y: number, width: number, height: number, radius: number) => void;
+  };
+
+  if (typeof context.roundRect === 'function') {
+    context.roundRect(x, y, width, height, radius);
+    return;
+  }
+
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
 export function useCrossSegmentPlugins(
   activeCohorts: string[],
   cohorts: CrossSegmentCohortGroupResponseDto[],
@@ -86,7 +112,7 @@ export function useCrossSegmentPlugins(
           ctx.strokeStyle = `${colorHex}66`;
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.roundRect(leftPx, topY, bandWidthPx, heightPx, 6);
+          addRoundedRectPath(ctx, leftPx, topY, bandWidthPx, heightPx, 6);
           ctx.fill();
           ctx.stroke();
         }

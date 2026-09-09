@@ -18,16 +18,16 @@ public class SystemHealthControllerTests
         var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.NotNull(authorization);
-        Assert.Equal("PlatformAdminOnly", authorization.Policy);
+        Assert.Equal("PlatformDiagnosticsRead", authorization.Policy);
     }
 
     [Fact]
-    public void GetRecentJobs_IsReadableByStaffAndKiosk()
+    public void GetRecentJobs_RequiresDiagnosticsAccess()
     {
         var action = typeof(SystemHealthController).GetMethod(nameof(SystemHealthController.GetRecentJobs));
         var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.NotNull(authorization);
-        Assert.Equal("KioskOrStaffAccess", authorization.Policy);
+        Assert.Equal("DiagnosticsRead", authorization.Policy);
     }
 }

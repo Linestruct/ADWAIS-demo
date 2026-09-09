@@ -224,7 +224,15 @@ public class UptimeRobotServiceTests
         _eventServiceMock.Verify(s => s.LogErrorAsync(
             nameof(UptimeRobotService),
             It.Is<string>(m => m.Contains("UptimeRobot request failed")),
-            It.IsAny<Exception>()
+            It.IsAny<Exception>(),
+            null,
+            _orgId,
+            "provider.failure",
+            SystemEventAudience.Platform,
+            null,
+            null,
+            null,
+            null
         ), Times.Once);
     }
 

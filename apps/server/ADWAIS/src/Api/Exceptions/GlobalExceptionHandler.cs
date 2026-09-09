@@ -7,12 +7,13 @@ using Adwais.Application.Common.Exceptions;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 namespace Adwais.Api.Exceptions;
 
 /// <summary>
-/// Intercepts all unhandled exceptions to provide consistent ProblemDetails responses 
-/// and persist audit logs to the database.
+/// Intercepts unhandled exceptions to provide consistent ProblemDetails responses
+/// and persist a best-effort operational incident.
 /// </summary>
 public class GlobalExceptionHandler(
     ILogger<GlobalExceptionHandler> logger,
@@ -23,9 +24,6 @@ public class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
-        using var scope = serviceProvider.CreateScope();
-        var eventService = scope.ServiceProvider.GetRequiredService<ISystemEventService>();
-
         var (statusCode, title, type) = MapException(exception);
 
         if (statusCode >= 500)
@@ -37,7 +35,24 @@ public class GlobalExceptionHandler(
             logger.LogWarning(exception, "Request rejected: {Message}", exception.Message);
         }
 
-        await eventService.LogErrorAsync("GlobalExceptionHandler", exception.Message, exception);
+        if (statusCode >= 500)
+        {
+            try
+            {
+                using var scope = serviceProvider.CreateScope();
+                var eventService = scope.ServiceProvider.GetRequiredService<ISystemEventService>();
+                await eventService.LogErrorAsync(
+                    "GlobalExceptionHandler",
+                    "Unhandled exception while processing a request.",
+                    exception);
+            }
+            catch (Exception loggingException)
+            {
+                // The response for the original failure must not depend on
+                // diagnostics storage or its own dependency graph.
+                logger.LogError(loggingException, "Could not persist the global exception event.");
+            }
+        }
 
         var problemDetails = new ProblemDetails
         {
@@ -45,8 +60,14 @@ public class GlobalExceptionHandler(
             Title = title,
             Type = type,
             Instance = httpContext.Request.Path,
-            Detail = exception.Message
+            Detail = statusCode >= 500
+                ? "The server could not complete the request. Use the request id when contacting support."
+                : exception.Message
         };
+        problemDetails.Extensions["requestId"] = httpContext.TraceIdentifier;
+        var traceId = Activity.Current?.TraceId.ToHexString();
+        if (traceId is not null)
+            problemDetails.Extensions["traceId"] = traceId;
 
         httpContext.Response.StatusCode = statusCode;
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);

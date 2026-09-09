@@ -21,7 +21,7 @@ public class SystemHealthController(ISystemHealthService healthService) : Contro
     /// Retrieves an aggregated health report of the entire application pipeline.
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = "PlatformAdminOnly")]
+    [Authorize(Policy = "PlatformDiagnosticsRead")]
     public async Task<ActionResult<SystemHealthDto>> GetHealth()
     {
         var health = await healthService.GetHealthAsync();
@@ -33,21 +33,34 @@ public class SystemHealthController(ISystemHealthService healthService) : Contro
     /// </summary>
     [HttpPost("clear-errors")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> ClearErrors()
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    public Task<IActionResult> ClearErrors()
     {
-        await healthService.ClearErrorsAsync();
-        return NoContent();
+        IActionResult result = StatusCode(StatusCodes.Status410Gone, new ProblemDetails
+        {
+            Title = "Clearing diagnostics is disabled",
+            Detail = "A successful operation resolves its own current state; history is retained by policy.",
+            Status = StatusCodes.Status410Gone,
+            Type = "https://adwais.app/problems/diagnostics-clearing-disabled"
+        });
+        return Task.FromResult(result);
     }
 
     /// <summary>
-    /// Retrieves a list of recent background job executions and their status,
-    /// filtered to the caller's organization.
+    /// The legacy Hangfire job projection has been retired. Use the scoped
+    /// diagnostics runs endpoints instead.
     /// </summary>
     [HttpGet("jobs")]
-    [Authorize(Policy = "KioskOrStaffAccess")]
-    public async Task<ActionResult<IEnumerable<BackgroundJobStatusDto>>> GetRecentJobs()
+    [Authorize(Policy = "DiagnosticsRead")]
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    public IActionResult GetRecentJobs()
     {
-        var jobs = await healthService.GetRecentJobsAsync();
-        return Ok(jobs);
+        return StatusCode(StatusCodes.Status410Gone, new ProblemDetails
+        {
+            Title = "Legacy job history is disabled",
+            Detail = "Use the organization or platform diagnostics runs endpoint.",
+            Status = StatusCodes.Status410Gone,
+            Type = "https://adwais.app/problems/legacy-job-history-disabled"
+        });
     }
 }

@@ -1,6 +1,7 @@
 using Adwais.Application.Common.Errors;
 using FluentResults;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 namespace Adwais.Api.Extensions;
 
@@ -25,7 +26,7 @@ public static class ResultProblemExtensions
                 Detail = validationError.Detail,
                 Instance = httpContext.Request.Path
             };
-            validationProblem.Extensions["traceId"] = httpContext.TraceIdentifier;
+            AddCorrelation(validationProblem, httpContext);
             return new BadRequestObjectResult(validationProblem);
         }
 
@@ -39,7 +40,7 @@ public static class ResultProblemExtensions
                 Detail = applicationError.Detail,
                 Instance = httpContext.Request.Path
             };
-            problem.Extensions["traceId"] = httpContext.TraceIdentifier;
+            AddCorrelation(problem, httpContext);
             return new ObjectResult(problem) { StatusCode = problem.Status };
         }
 
@@ -51,8 +52,16 @@ public static class ResultProblemExtensions
             Detail = "The operation failed unexpectedly.",
             Instance = httpContext.Request.Path
         };
-        unexpectedProblem.Extensions["traceId"] = httpContext.TraceIdentifier;
+        AddCorrelation(unexpectedProblem, httpContext);
         return new ObjectResult(unexpectedProblem) { StatusCode = unexpectedProblem.Status };
+    }
+
+    private static void AddCorrelation(ProblemDetails problem, HttpContext httpContext)
+    {
+        problem.Extensions["requestId"] = httpContext.TraceIdentifier;
+        var traceId = Activity.Current?.TraceId.ToHexString();
+        if (traceId is not null)
+            problem.Extensions["traceId"] = traceId;
     }
 
     private static int StatusFor(ApplicationError error) => error switch

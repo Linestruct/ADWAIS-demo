@@ -27,7 +27,8 @@ public class ResultProblemExtensionsTests
         Assert.Equal(expectedStatus, objectResult.StatusCode);
         Assert.Equal(expectedStatus, problem.Status);
         Assert.Equal("/api/test", problem.Instance);
-        Assert.Equal("trace-123", problem.Extensions["traceId"]);
+        Assert.Equal("trace-123", problem.Extensions["requestId"]);
+        Assert.False(problem.Extensions.ContainsKey("traceId"));
         Assert.StartsWith("https://adwais.app/problems/", problem.Type);
     }
 
@@ -47,7 +48,8 @@ public class ResultProblemExtensionsTests
         var problem = Assert.IsType<ValidationProblemDetails>(objectResult.Value);
         Assert.Equal(StatusCodes.Status400BadRequest, problem.Status);
         Assert.Equal(errors["email"], problem.Errors["email"]);
-        Assert.Equal("trace-123", problem.Extensions["traceId"]);
+        Assert.Equal("trace-123", problem.Extensions["requestId"]);
+        Assert.False(problem.Extensions.ContainsKey("traceId"));
     }
 
     [Fact]

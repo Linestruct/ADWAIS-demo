@@ -45,6 +45,7 @@ builder.Services.AddControllers(options =>
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddObservability(builder.Configuration, builder.Environment);
 builder.Services.AddAppAuthentication(builder.Configuration);
 
 builder.Services.AddScoped<IFinancialKpiService, FinancialKpiService>();
@@ -88,6 +89,10 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddMemoryCache();
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AnalyticsDbContext>(
+        "database",
+        tags: ["ready"]);
 
 var connectionString = builder.Configuration.GetConnectionString("AnalyticsDb");
 
@@ -102,6 +107,7 @@ if (!isBuildTime)
             storageOptions.SchemaName = "hangfire";
             storageOptions.PrepareSchemaIfNecessary = true;
         });
+        config.UseFilter(new Adwais.Infrastructure.Jobs.HangfireObservabilityFilter());
         config.UseFilter(new Adwais.Infrastructure.Jobs.OrgScopedJobEnforcementFilter());
     });
     builder.Services.AddHangfireServer();
@@ -123,6 +129,15 @@ if (enableSwagger)
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 if (!isBuildTime)
 {

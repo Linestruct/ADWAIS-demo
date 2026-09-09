@@ -194,6 +194,24 @@ public static class AuthenticationExtensions
                 if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
                 policy.RequireRole("Admin", "Employee", "Viewer", "PlatformAdmin");
             });
+
+            // Diagnostics are an authenticated human workflow. Kiosk tokens
+            // deliberately cannot read event or pipeline history.
+            options.AddPolicy("DiagnosticsRead", policy =>
+            {
+                policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireRole("Admin", "Employee", "Viewer", "PlatformAdmin");
+            });
+
+            options.AddPolicy("PlatformDiagnosticsRead", policy =>
+            {
+                // A kiosk may carry a platform claim for other legacy admin
+                // flows, but it is never a platform diagnostics principal.
+                policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireClaim(AccessClaimTypes.IsPlatformAdmin, "true");
+            });
         });
 
         return services;

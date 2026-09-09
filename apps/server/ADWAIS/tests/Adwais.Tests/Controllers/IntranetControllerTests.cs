@@ -67,14 +67,15 @@ public class IntranetControllerTests
     }
 
     [Fact]
-    public async Task ClearErrors_ShouldReturnNoContent()
+    public async Task ClearErrors_ShouldReturnGoneWithoutMutatingState()
     {
         // Arrange & Act
         var result = await _controller.ClearErrors();
 
         // Assert
-        Assert.IsType<NoContentResult>(result);
-        _healthServiceMock.Verify(s => s.ClearErrorsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var gone = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status410Gone, gone.StatusCode);
+        _healthServiceMock.Verify(s => s.ClearErrorsAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

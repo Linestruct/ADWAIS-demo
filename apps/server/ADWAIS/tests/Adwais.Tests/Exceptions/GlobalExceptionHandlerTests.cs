@@ -70,7 +70,7 @@ public class GlobalExceptionHandlerTests
                 It.IsAny<string>(),
                 It.IsAny<Exception>(),
                 null),
-            Times.Exactly(cases.Length));
+            Times.Exactly(cases.Length - 2));
     }
 
     [Fact]

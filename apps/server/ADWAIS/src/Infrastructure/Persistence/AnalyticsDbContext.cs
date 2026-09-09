@@ -103,7 +103,15 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         // SystemEvent
         modelBuilder.Entity<SystemEvent>(entity =>
         {
-            entity.ToTable("system_event");
+            entity.ToTable("system_event", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_system_event_level",
+                    DbEnum.CheckConstraintSql<SystemEventLevel>("level"));
+                table.HasCheckConstraint(
+                    "ck_system_event_audience",
+                    DbEnum.CheckConstraintSql<SystemEventAudience>("audience"));
+            });
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(e => e.Source).HasMaxLength(100);
@@ -131,7 +139,18 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         // PipelineRun
         modelBuilder.Entity<PipelineRun>(entity =>
         {
-            entity.ToTable("pipeline_run");
+            entity.ToTable("pipeline_run", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_pipeline_run_kind",
+                    DbEnum.CheckConstraintSql<PipelineKind>("kind"));
+                table.HasCheckConstraint(
+                    "ck_pipeline_run_trigger",
+                    DbEnum.CheckConstraintSql<PipelineTriggerKind>("trigger"));
+                table.HasCheckConstraint(
+                    "ck_pipeline_run_state",
+                    DbEnum.CheckConstraintSql<PipelineRunState>("state"));
+            });
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(e => e.Kind).HasMaxLength(50);
@@ -159,7 +178,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         // Tenant
         modelBuilder.Entity<Tenant>(entity => 
         {
-            entity.ToTable("tenant");
+            entity.ToTable("tenant", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_tenant_type",
+                    DbEnum.CheckConstraintSql<TenantType>("type"));
+            });
             entity.HasKey(t => t.Id);
             entity.Property(t => t.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(t => t.OrganizationId).IsRequired();
@@ -205,7 +229,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         // Order
         modelBuilder.Entity<Order>(entity => 
         {
-            entity.ToTable("orders");
+            entity.ToTable("orders", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_orders_order_state",
+                    DbEnum.CheckConstraintSql<OrderState>("order_state"));
+            });
             entity.HasKey(o => o.Id);
             entity.Property(o => o.OrderState)
                 .HasMaxLength(255);

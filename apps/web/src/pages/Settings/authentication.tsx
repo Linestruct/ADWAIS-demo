@@ -5,18 +5,21 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { isStaffRole } from '../../utils/roles';
 import { useContext } from 'react';
 import { AuthContext } from 'react-oidc-context';
-import { KeyRound, LogOut, MonitorSmartphone } from 'lucide-react';
+import { KeyRound, LogOut } from 'lucide-react';
 import { useActivateKioskMutation } from '../../hooks/useKioskAuth';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { SecureButton } from '../../components/common/ui/SecureButton';
-import { Input } from '../../components/common/ui/Input';
+import { Button } from '../../components/common/ui/Button';
+import { FormField } from '../../components/common/ui/FormField';
 import { removeKioskToken } from '../../utils/auth';
 import { ErrorAlert } from '../../components/common/ui/ErrorAlert';
 import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { SettingsPanelHeader } from '../../components/common/layout/SettingsPanelHeader';
 import { useDeleteApiDashboardSession } from '../../api/generated/endpoints';
+import { KioskDevicesPanel } from '../../components/settings/kiosk/KioskDevicesPanel';
 
 export function AuthenticationSettings() {
   const [activationCode, setActivationCode] = useState('');
@@ -24,7 +27,7 @@ export function AuthenticationSettings() {
   const [errorMsg, setErrorMsg] = useState('');
   
   const { role } = useCurrentUser();
-  const isStaff = role === 'Admin' || role === 'Employee';
+  const isStaff = isStaffRole(role);
 
   const activateMutation = useActivateKioskMutation(() => {
     setSuccessMsg('Kiosk activated successfully!');
@@ -76,19 +79,18 @@ export function AuthenticationSettings() {
         icon={<KeyRound size={24} />}
       />
       <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-6">
-        <div className="flex flex-col gap-6 max-w-3xl">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
           <div className="space-y-4">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
-              <MonitorSmartphone size={20} /> Kiosk activation
-            </h3>
+            <h3 className="text-lg font-bold text-on-surface">Kiosk activation</h3>
             <p className="text-sm text-on-surface-variant">Enter the code shown on a kiosk to authorize that display.</p>
 
             <form onSubmit={handleActivate} className="flex flex-col gap-4">
-              <Input
+<FormField
                 label="Activation Code"
                 type="text"
-                className="text-center font-mono text-xl uppercase tracking-[0.35em]"
-                placeholder={isStaff ? "XXXXXX" : "LOCKED"}
+                className="font-mono text-xl uppercase tracking-[0.35em]"
+                style={{ textAlign: 'center' }}
+                placeholder={isStaff ? "Input code" : "LOCKED"}
                 value={activationCode}
                 onChange={(e) => setActivationCode(e.target.value.toUpperCase().slice(0, 6))}
                 disabled={activateMutation.isPending || !isStaff}
@@ -121,12 +123,8 @@ export function AuthenticationSettings() {
             </form>
           </div>
 
-          <hr className="border-outline-variant" />
-
           <div className="space-y-4">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-on-surface">
-              <KeyRound size={20} /> Current session
-            </h3>
+            <h3 className="text-lg font-bold text-on-surface">Current session</h3>
             <p className="text-sm text-on-surface-variant">Review the signed-in account or remove access from this device.</p>
 
             <div className="rounded-xl bg-surface-container-high p-4">
@@ -135,19 +133,24 @@ export function AuthenticationSettings() {
                 {auth?.user?.profile?.preferred_username || auth?.user?.profile?.email || 'Kiosk session'}
               </p>
             </div>
-            
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm font-medium text-on-surface-variant">This only signs out the current device.</span>
-              <button
+              <Button
                 type="button"
                 onClick={handleSignOut}
-                className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full hover:bg-error px-5 text-base font-bold hover:text-on-error transition-colors bg-error-container text-on-error-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+                variant="tonal"
+                color="error"
+                icon={<LogOut size={18} aria-hidden="true" />}
               >
-                <LogOut size={18} aria-hidden="true" />
                 Sign Out
-              </button>
+              </Button>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <KioskDevicesPanel />
         </div>
       </div>
     </SettingsPanel>

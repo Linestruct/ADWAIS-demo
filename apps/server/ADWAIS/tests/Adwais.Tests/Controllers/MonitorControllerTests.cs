@@ -21,8 +21,11 @@ using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Models;
 using Adwais.Application.Services;
+using FluentResults;
+using Microsoft.AspNetCore.Http;
 
 namespace Adwais.Tests.Controllers;
 
@@ -63,16 +66,15 @@ public class MonitorControllerTests
             _dbContext,
             _monitorServiceMock.Object,
             _reportingCalendarMock.Object,
-            new[] { _monitoringProviderMock.Object },
             new[] { _orderSourceMock.Object });
+        _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
 
-        // Seed global config for IsUptimeRobotConfiguredAsync
+        // Seed org config so the monitoring provider appears configured
         using var db = new AnalyticsDbContext(_dbOptions);
-        db.GlobalConfigs.Add(new GlobalConfig
+        db.OrganizationConfigs.Add(new OrganizationConfig
         {
-            Id = 1,
-            MonitoringProviderSettings = "{\"apiKey\":\"valid-api-key\"}",
-            OrderFetchIntervalMinutes = 30
+            OrganizationId = Guid.NewGuid(),
+            MonitoringProviderSettings = "{\"apiKey\":\"valid-api-key\"}"
         });
         db.SaveChanges();
     }
@@ -173,6 +175,22 @@ public class MonitorControllerTests
     }
 
     [Fact]
+    public async Task GetAnalytics_ReturnsForbiddenForDeniedMonitor()
+    {
+        var request = new MonitorRequestDto { MonitorId = 1 };
+        _monitorServiceMock
+            .Setup(service => service.GetAnalyticsAsync(
+                It.IsAny<ResolvedPeriod>(), null, 1, null, null, It.IsAny<CancellationToken>(), null, null))
+            .ReturnsAsync(Result.Fail<MonitorAnalyticsDto>(
+                new ScopeDeniedError("the requested organization or tenant", "none")));
+
+        var result = await _controller.GetAnalytics(request, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);
+    }
+
+    [Fact]
     public async Task GetMonitors_WithoutScope_ShouldUseBatchedServiceRead()
     {
         var request = new MonitorRequestDto { Timeframe = Timeframe.T30 };
@@ -186,7 +204,7 @@ public class MonitorControllerTests
                 It.IsAny<ResolvedPeriod>(),
                 null,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(monitors);
+            .ReturnsAsync(Result.Ok<IReadOnlyList<UptimeMonitor>>(monitors));
 
         var result = await _controller.GetMonitors(request, CancellationToken.None);
 
@@ -202,6 +220,40 @@ public class MonitorControllerTests
             It.IsAny<int>(),
             It.IsAny<ResolvedPeriod>(),
             It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetLatencyMetrics_ReturnsForbiddenForDeniedTenant()
+    {
+        var tenantId = Guid.NewGuid();
+        _monitorServiceMock
+            .Setup(service => service.GetAggregatedLatencyAsync(
+                tenantId, 1, It.IsAny<DateTimeOffset>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<IEnumerable<ResponseTime>>(
+                new ScopeDeniedError("the requested tenant", "the current scope")));
+
+        var result = await _controller.GetLatencyMetrics(
+            1, DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow, tenantId, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetMonitors_ReturnsForbiddenForDeniedTenant()
+    {
+        var tenantId = Guid.NewGuid();
+        var request = new MonitorRequestDto { TenantId = tenantId };
+        _monitorServiceMock
+            .Setup(service => service.GetMonitorsAsync(
+                It.IsAny<ResolvedPeriod>(), tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<IReadOnlyList<UptimeMonitor>>(
+                new ScopeDeniedError("the requested tenant", "the current scope")));
+
+        var result = await _controller.GetMonitors(request, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, problem.StatusCode);
     }
 
     [Fact]
@@ -227,7 +279,7 @@ public class MonitorControllerTests
         };
 
         _monitorServiceMock.Setup(s => s.CreateMonitorAsync(tenantId, request.Name, request.Url, request.Type, request.UptimeSla, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createdMonitor);
+            .ReturnsAsync(Result.Ok(createdMonitor));
 
         // Act
         var result = await _controller.CreateMonitor(tenantId, request, CancellationToken.None);
@@ -246,6 +298,9 @@ public class MonitorControllerTests
         // Arrange
         var tenantId = Guid.NewGuid();
 
+        _monitorServiceMock.Setup(service => service.AssignMonitorAsync(123, tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
         // Act
         var result = await _controller.AssignMonitor(123, tenantId, CancellationToken.None);
 
@@ -255,8 +310,37 @@ public class MonitorControllerTests
     }
 
     [Fact]
+    public async Task CreateMonitor_ShouldReturnConflictForMissingProviderConfiguration()
+    {
+        var tenantId = Guid.NewGuid();
+        var request = new CreateMonitorRequestDto { Name = "New Monitor", Url = "https://test.com" };
+        _monitorServiceMock.Setup(service => service.CreateMonitorAsync(
+                tenantId, request.Name, request.Url, request.Type, request.UptimeSla, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<UptimeMonitor>(new ConfigurationError("Monitoring provider settings are not configured.")));
+
+        var result = await _controller.CreateMonitor(tenantId, request, CancellationToken.None);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status409Conflict, problem.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteMonitor_ShouldReturnNoContent()
+    {
+        _monitorServiceMock.Setup(service => service.DeleteMonitorAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        var result = await _controller.DeleteMonitor(123, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
     public async Task PauseMonitor_ShouldReturnOk()
     {
+        _monitorServiceMock.Setup(service => service.PauseMonitorAsync(123, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
         // Act
         var result = await _controller.PauseMonitor(123, CancellationToken.None);
 

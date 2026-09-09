@@ -7,6 +7,6 @@ namespace Adwais.Domain.Enums;
 
 public enum UserRole
 {
-    Admin, Viewer, Employee
+    Admin, Viewer, Employee, TenantViewer, PlatformAdmin
 }
 

@@ -81,7 +81,14 @@ public class AuthenticationExtensionsTests
         Assert.Contains(JwtBearerDefaults.AuthenticationScheme, staffPolicy.AuthenticationSchemes);
         Assert.Contains("KioskJwt", staffPolicy.AuthenticationSchemes);
         var staffRoles = Assert.Single(staffPolicy.Requirements.OfType<Microsoft.AspNetCore.Authorization.Infrastructure.RolesAuthorizationRequirement>());
-        Assert.Equal(new[] { "Admin", "Employee" }, staffRoles.AllowedRoles.Order().ToArray());
+        Assert.Equal(new[] { "Admin", "Employee", "PlatformAdmin" }, staffRoles.AllowedRoles.Order().ToArray());
+
+        var diagnosticsPolicy = await authorization.GetPolicyAsync("DiagnosticsRead");
+        Assert.NotNull(diagnosticsPolicy);
+        Assert.Contains(JwtBearerDefaults.AuthenticationScheme, diagnosticsPolicy.AuthenticationSchemes);
+        Assert.Contains("KioskJwt", diagnosticsPolicy.AuthenticationSchemes);
+        var diagnosticsRoles = Assert.Single(diagnosticsPolicy.Requirements.OfType<Microsoft.AspNetCore.Authorization.Infrastructure.RolesAuthorizationRequirement>());
+        Assert.Equal(new[] { "Admin", "Employee", "PlatformAdmin", "Viewer" }, diagnosticsRoles.AllowedRoles.Order().ToArray());
 
         var kioskToken = new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(issuer: "ADWAIS"));
         var kioskMessage = new MessageReceivedContext(
@@ -109,6 +116,24 @@ public class AuthenticationExtensionsTests
         kioskExternalMessage.HttpContext.Request.Headers.Authorization = $"Bearer {externalToken}";
         await kioskOptions.Events.MessageReceived(kioskExternalMessage);
         Assert.NotNull(kioskExternalMessage.Result);
+    }
+
+    [Fact]
+    public async Task ProductionEnvironment_DoesNotRegisterDevMockScheme()
+    {
+        var services = new ServiceCollection();
+        services.AddAppAuthentication(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = "Production"
+            })
+            .Build());
+
+        await using var provider = services.BuildServiceProvider();
+        var schemeProvider = provider.GetRequiredService<IAuthenticationSchemeProvider>();
+        var schemes = await schemeProvider.GetAllSchemesAsync();
+
+        Assert.DoesNotContain(schemes, scheme => scheme.Name == "DevMock");
     }
 
     [Fact]

@@ -16,21 +16,35 @@ using Xunit;
 using Adwais.Api.Controllers;
 using Adwais.Api.Controllers.Authentication;
 using Adwais.Api.DTOs.Users;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
+using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
+using Adwais.Infrastructure.Persistence;
+using FluentResults;
+using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Tests.Controllers;
 
 public class UserControllerTests
 {
     private readonly Mock<IUserService> _userServiceMock;
+    private readonly Mock<ICurrentAccess> _accessMock;
+    private readonly AnalyticsDbContext _dbContext;
     private readonly UserController _controller;
 
     public UserControllerTests()
     {
         _userServiceMock = new Mock<IUserService>();
-        _controller = new UserController(_userServiceMock.Object);
+        _accessMock = new Mock<ICurrentAccess>();
+        _accessMock.Setup(access => access.Scope).Returns((AccessScope?)null);
+        _dbContext = new AnalyticsDbContext(new DbContextOptionsBuilder<AnalyticsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+        _controller = new UserController(_userServiceMock.Object, _accessMock.Object, _dbContext);
+        _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
     }
 
     [Theory]
@@ -53,8 +67,8 @@ public class UserControllerTests
         // Arrange
         var users = new List<User>
         {
-            new User { Id = Guid.NewGuid(), Name = "Alice", Role = UserRole.Admin },
-            new User { Id = Guid.NewGuid(), Name = "Bob", Role = UserRole.Employee }
+            new User { Id = Guid.NewGuid(), Name = "Alice" },
+            new User { Id = Guid.NewGuid(), Name = "Bob" }
         };
 
         _userServiceMock.Setup(s => s.GetUsersAsync(It.IsAny<CancellationToken>()))
@@ -75,7 +89,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, Name = "Alice", Role = UserRole.Admin };
+        var user = new User { Id = userId, Name = "Alice" };
 
         _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -111,11 +125,11 @@ public class UserControllerTests
     public async Task CreateUser_ShouldReturnCreatedWithUser_WhenRequestContainsEmail()
     {
         // Arrange
-        var request = new CreateUserRequestDto("new@example.com", UserRole.Employee);
-        var createdUser = new User { Id = Guid.NewGuid(), Name = "new@example.com", Email = "new@example.com", Role = UserRole.Employee };
+        var request = new CreateUserRequestDto("new@example.com", UserRole.Employee, Guid.NewGuid());
+        var createdUser = new User { Id = Guid.NewGuid(), Name = "new@example.com", Email = "new@example.com" };
 
-        _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(createdUser);
+        _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(createdUser));
 
         // Act
         var result = await _controller.CreateUser(request, CancellationToken.None);
@@ -125,8 +139,24 @@ public class UserControllerTests
         var returnedUser = Assert.IsType<UserResponseDto>(createdResult.Value);
         Assert.Equal("new@example.com", returnedUser.Name);
         Assert.Equal("new@example.com", returnedUser.Email);
-        Assert.Equal(UserRole.Employee, returnedUser.Role);
-        _userServiceMock.Verify(s => s.CreateUserAsync(request.Email, request.Role, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Null(returnedUser.Role);
+        _userServiceMock.Verify(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("validation", StatusCodes.Status400BadRequest)]
+    [InlineData("scope", StatusCodes.Status403Forbidden)]
+    [InlineData("not-found", StatusCodes.Status404NotFound)]
+    [InlineData("conflict", StatusCodes.Status409Conflict)]
+    public async Task CreateUser_ShouldMapExpectedFailures(string kind, int expectedStatus)
+    {
+        var request = new CreateUserRequestDto("new@example.com", UserRole.Employee, Guid.NewGuid());
+        _userServiceMock.Setup(s => s.CreateUserAsync(request.Email, request.Role, request.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<User>(CreateError(kind)));
+
+        var result = await _controller.CreateUser(request, CancellationToken.None);
+
+        AssertProblem(result.Result, expectedStatus);
     }
 
     [Fact]
@@ -134,11 +164,23 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
         var request = new UpdateUserRequestDto("Updated User", UserRole.Admin);
-        var updatedUser = new User { Id = userId, Name = "Updated User", Role = UserRole.Admin };
+        var updatedUser = new User { Id = userId, Name = "Updated User" };
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+        _dbContext.UserAccesses.Add(new UserAccess
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            OrganizationId = orgId,
+            Role = UserRole.Employee,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await _dbContext.SaveChangesAsync();
 
         _userServiceMock.Setup(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(updatedUser);
+            .ReturnsAsync(Result.Ok(updatedUser));
 
         // Act
         var result = await _controller.UpdateUser(userId, request, CancellationToken.None);
@@ -147,7 +189,7 @@ public class UserControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
         Assert.Equal("Updated User", returnedUser.Name);
-        Assert.Equal(UserRole.Admin, returnedUser.Role);
+        Assert.Equal(UserRole.Employee, returnedUser.Role);
         _userServiceMock.Verify(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -158,13 +200,13 @@ public class UserControllerTests
         var userId = Guid.NewGuid();
         var request = new UpdateUserRequestDto("Updated User", UserRole.Admin);
         _userServiceMock.Setup(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .ReturnsAsync(Result.Fail<User>(new NotFoundError("User", userId)));
 
         // Act
         var result = await _controller.UpdateUser(userId, request, CancellationToken.None);
 
         // Assert
-        Assert.IsType<NotFoundResult>(result.Result);
+        AssertProblem(result.Result, StatusCodes.Status404NotFound);
         _userServiceMock.Verify(s => s.UpdateUserAsync(userId, request.Name, request.Role, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -174,7 +216,7 @@ public class UserControllerTests
         // Arrange
         var userId = Guid.NewGuid();
         _userServiceMock.Setup(s => s.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(Result.Ok());
 
         // Act
         var result = await _controller.DeleteUser(userId, CancellationToken.None);
@@ -190,13 +232,13 @@ public class UserControllerTests
         // Arrange
         var userId = Guid.NewGuid();
         _userServiceMock.Setup(s => s.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .ReturnsAsync(Result.Fail(new NotFoundError("User", userId)));
 
         // Act
         var result = await _controller.DeleteUser(userId, CancellationToken.None);
 
         // Assert
-        Assert.IsType<NotFoundResult>(result);
+        AssertProblem(result, StatusCodes.Status404NotFound);
         _userServiceMock.Verify(s => s.DeleteUserAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -205,7 +247,7 @@ public class UserControllerTests
     {
         // Arrange
         var subjectId = "auth0|user-123";
-        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "OIDC User", Role = UserRole.Employee };
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "OIDC User" };
         
         _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -262,6 +304,288 @@ public class UserControllerTests
     }
 
     [Fact]
+    public async Task GetMe_ShouldReturnOrganizationFields_WhenScopeIsAnOrganization()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var subjectId = "auth0|org-user";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Org User" };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _dbContext.Organizations.Add(new Organization { Id = orgId, Name = "Acme Consulting" });
+        await _dbContext.SaveChangesAsync();
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Equal("Acme Consulting", returnedUser.OrganizationName);
+        Assert.Null(returnedUser.TenantId);
+        Assert.False(returnedUser.IsPlatformAdmin);
+    }
+
+    [Fact]
+    public async Task GetMe_ShouldReturnPlatformAdminFields_WhenScopeIsPlatform()
+    {
+        // Arrange
+        var subjectId = "auth0|platform-user";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Platform User" };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _dbContext.UserAccesses.Add(new UserAccess
+        {
+            UserId = user.Id,
+            OrganizationId = null,
+            Role = UserRole.PlatformAdmin
+        });
+        await _dbContext.SaveChangesAsync();
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.True(returnedUser.IsPlatformAdmin);
+        Assert.Null(returnedUser.OrganizationId);
+        Assert.Null(returnedUser.OrganizationName);
+    }
+
+    [Fact]
+    public async Task GetMe_PlatformAdminWearingAnOrganization_KeepsPlatformStatus()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var subjectId = "auth0|wearing-user";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Wearing User" };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _dbContext.UserAccesses.Add(new UserAccess
+        {
+            UserId = user.Id,
+            OrganizationId = null,
+            Role = UserRole.PlatformAdmin
+        });
+        _dbContext.Organizations.Add(new Organization { Id = orgId, Name = "Worn Org" });
+        await _dbContext.SaveChangesAsync();
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.True(returnedUser.IsPlatformAdmin);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Equal("Worn Org", returnedUser.OrganizationName);
+    }
+
+    [Fact]
+    public async Task GetMe_ShouldReturnTenantPin_WhenScopeIsTenantRestricted()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var subjectId = "auth0|tenant-viewer";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Viewer" };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, tenantId, [UserRole.TenantViewer]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Equal(tenantId, returnedUser.TenantId);
+    }
+
+    private void GivenPrincipal(IEnumerable<System.Security.Claims.Claim> claims)
+    {
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+        var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+    }
+
+    [Fact]
+    public async Task GetMe_ShouldReturnOrgIdWithNullName_WhenOrganizationRowIsMissing()
+    {
+        // Arrange
+        var orgId = Guid.NewGuid();
+        var subjectId = "auth0|orphan-org";
+        var user = new User { Id = Guid.NewGuid(), ExternalSubjectId = subjectId, Name = "Orphan User" };
+        _userServiceMock.Setup(s => s.GetUserByExternalSubjectIdAsync(subjectId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(orgId, null, [UserRole.Admin]));
+
+        var claims = new List<System.Security.Claims.Claim> { new("sub", subjectId) };
+        GivenPrincipal(claims);
+
+        // Act
+        var result = await _controller.GetMe(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedUser = Assert.IsType<UserResponseDto>(okResult.Value);
+        Assert.Equal(orgId, returnedUser.OrganizationId);
+        Assert.Null(returnedUser.OrganizationName);
+    }
+
+    [Fact]
+    public async Task GetUserMemberships_ReturnsOkWithRows()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member" };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _userServiceMock.Setup(s => s.GetUserMembershipsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = Guid.NewGuid(), Role = UserRole.Admin },
+                new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = null, Role = UserRole.Admin }
+            ]);
+
+        // Act
+        var result = await _controller.GetUserMemberships(userId, CancellationToken.None);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var rows = Assert.IsAssignableFrom<IEnumerable<UserMembershipResponseDto>>(ok.Value).ToList();
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, row => Assert.Equal(userId, row.UserId));
+    }
+
+    [Fact]
+    public async Task GetUserMemberships_UserMissing_ReturnsNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.GetUserMemberships(userId, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NotFoundResult>(result.Result);
+        _userServiceMock.Verify(s => s.GetUserMembershipsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AddUserMembership_ReturnsCreatedWithRow()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member" };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        var membership = new UserAccess { Id = Guid.NewGuid(), UserId = userId, OrganizationId = orgId, Role = UserRole.Admin };
+        _userServiceMock.Setup(s => s.AddUserMembershipAsync(userId, orgId, UserRole.Admin, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok(membership));
+
+        // Act
+        var result = await _controller.AddUserMembership(
+            userId,
+            new AddUserMembershipRequestDto(orgId, UserRole.Admin),
+            CancellationToken.None);
+
+        // Assert
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var dto = Assert.IsType<UserMembershipResponseDto>(created.Value);
+        Assert.Equal(membership.Id, dto.Id);
+        Assert.Equal(orgId, dto.OrganizationId);
+    }
+
+    [Fact]
+    public async Task AddUserMembership_UserMissing_ReturnsNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.AddUserMembership(
+            userId,
+            new AddUserMembershipRequestDto(Guid.NewGuid(), UserRole.Employee),
+            CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NotFoundResult>(result.Result);
+        _userServiceMock.Verify(s => s.AddUserMembershipAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<UserRole>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteUserMembership_ReturnsNoContent_WhenRemoved()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var membershipId = Guid.NewGuid();
+        var callerId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member" };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, callerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        GivenPrincipal([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, callerId.ToString())]);
+
+        // Act
+        var result = await _controller.DeleteUserMembership(userId, membershipId, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteUserMembership_ReturnsNotFound_WhenNotRemoved()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var membershipId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Member" };
+        _userServiceMock.Setup(s => s.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _userServiceMock.Setup(s => s.RemoveUserMembershipAsync(userId, membershipId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail(new NotFoundError("Membership", membershipId)));
+        GivenPrincipal([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())]);
+
+        // Act
+        var result = await _controller.DeleteUserMembership(userId, membershipId, CancellationToken.None);
+
+        // Assert
+        AssertProblem(result, StatusCodes.Status404NotFound);
+    }
+
+    [Fact]
     public async Task GetMe_ShouldReturnUnauthorized_WhenClaimsAreInvalid()
     {
         // Arrange
@@ -277,4 +601,19 @@ public class UserControllerTests
         // Assert
         Assert.IsType<UnauthorizedObjectResult>(result.Result);
     }
+
+    private static void AssertProblem(IActionResult? action, int expectedStatus)
+    {
+        var result = Assert.IsAssignableFrom<ObjectResult>(action);
+        Assert.Equal(expectedStatus, result.StatusCode);
+    }
+
+    private static ApplicationError CreateError(string kind) => kind switch
+    {
+        "validation" => new ValidationError(new Dictionary<string, string[]> { ["email"] = ["Email is invalid."] }),
+        "scope" => new ScopeDeniedError("create users", "organization"),
+        "not-found" => new NotFoundError("Organization", Guid.NewGuid()),
+        "conflict" => new ConflictError("The user already exists."),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 }

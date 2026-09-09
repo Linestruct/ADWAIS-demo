@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useState, useMemo } from 'react';
+import { isAdminRole } from '../utils/roles';
 import { useTenantsQuery, useCreateTenantMutation, useDeleteTenantMutation } from './useTenantQueries';
 import { useMonitorsQuery, useUnassignedMonitorsQuery, useCreateMonitorMutation, useDeleteMonitorMutation, useControlMonitorMutation, useAssignMonitorMutation, useUnassignMonitorMutation } from './useMonitorQueries';
 import { useCurrentUser } from './useCurrentUser';
@@ -12,7 +13,7 @@ import { DEFAULT_UPTIME_MONITOR_TYPE } from '../utils/monitorTypeHelper';
 
 export function useTenantsViewModel() {
     const { role } = useCurrentUser();
-    const isAdmin = role === 'Admin';
+    const isAdmin = isAdminRole(role);
 
     const [isCreatingTenant, setIsCreatingTenant] = useState(false);
     const [newTenantDraft, setNewTenantDraft] = useState({ name: '', endpointUrl: '', imageUrl: '', authorization: '' });
@@ -90,12 +91,14 @@ export function useTenantsViewModel() {
         return Array.from(typesSet).sort();
     }, [allMonitors]);
 
-    const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+    const unassignedMonitorIds = useMemo(
+      () => new Set((unassignedMonitors || []).map(m => m.id)),
+      [unassignedMonitors]
+    );
 
     // Filter & Sort Tenants
     const sortedTenants = useMemo(() => {
         return [...(tenants || [])].filter((t) => {
-            if (t.id === SYSTEM_TENANT_ID) return false;
             if (tenantSearch) {
                 const q = tenantSearch.toLowerCase();
                 const matchName = t.name?.toLowerCase().includes(q);
@@ -124,8 +127,8 @@ export function useTenantsViewModel() {
                 const matchTenant = m.tenantName?.toLowerCase().includes(q);
                 if (!matchName && !matchUrl && !matchType && !matchTenant) return false;
             }
-            if (monitorFilters.assignment === 'assigned' && (m.tenantId == null || m.tenantId === SYSTEM_TENANT_ID)) return false;
-            if (monitorFilters.assignment === 'unassigned' && (m.tenantId != null && m.tenantId !== SYSTEM_TENANT_ID)) return false;
+            if (monitorFilters.assignment === 'assigned' && unassignedMonitorIds.has(m.id)) return false;
+            if (monitorFilters.assignment === 'unassigned' && !unassignedMonitorIds.has(m.id)) return false;
             if (monitorFilters.status === 'enabled' && !m.uptimeMonitorEnabled) return false;
             if (monitorFilters.status === 'disabled' && m.uptimeMonitorEnabled) return false;
             if (monitorFilters.type !== 'all' && m.type !== monitorFilters.type) return false;
@@ -138,7 +141,7 @@ export function useTenantsViewModel() {
             const nameB = b.name || '';
             return monitorSort === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
         });
-    }, [allMonitors, monitorSearch, monitorFilters, monitorSort]);
+    }, [allMonitors, unassignedMonitorIds, monitorSearch, monitorFilters, monitorSort]);
 
     return {
         isAdmin,

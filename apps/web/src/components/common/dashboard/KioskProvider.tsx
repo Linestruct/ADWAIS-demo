@@ -7,6 +7,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { KioskContext, type KioskMode } from './KioskContext';
 import { useMediaQuery } from '../../../hooks/useMediaQuery';
+import { getKioskToken, tryRefreshKioskToken } from '../../../utils/auth';
+
+const KIOSK_TOKEN_REFRESH_MS = 45 * 60 * 1000;
 
 const KIOSK_ROTATION_SECONDS = 15;
 const IDLE_TIMEOUT_SECONDS = 10;
@@ -94,6 +97,14 @@ export function KioskProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('touchstart', handleInteraction);
     };
   }, [isKioskEnabled, mode]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (getKioskToken() === null) return;
+      void tryRefreshKioskToken();
+    }, KIOSK_TOKEN_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   const togglePaused = () => {
     if (mode === 'paused') {

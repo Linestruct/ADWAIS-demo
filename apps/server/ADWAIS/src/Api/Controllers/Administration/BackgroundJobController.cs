@@ -3,10 +3,15 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: MIT
 
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Interfaces;
+using Adwais.Application.Common.Jobs;
+using Adwais.Application.Interfaces;
 using Hangfire;
 using Hangfire.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Api.Controllers.Administration;
 
@@ -15,60 +20,67 @@ namespace Adwais.Api.Controllers.Administration;
 /// </summary>
 [ApiController]
 [Route("api/job")]
-public class BackgroundJobController : ControllerBase
+public class BackgroundJobController(
+    IJobTriggerService jobTriggerService,
+    ICurrentAccess currentAccess,
+    IApplicationDbContext dbContext) : ControllerBase
 {
+    private readonly IJobTriggerService _jobTriggerService = jobTriggerService;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+    private readonly IApplicationDbContext _dbContext = dbContext;
+
     /// <summary>
-    /// Triggers the monitoring-provider synchronization job immediately.
+    /// Triggers the monitoring-provider synchronization job for the caller's organization.
     /// </summary>
     [HttpPost("trigger/monitor-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerMonitorSync()
+    public async Task<ActionResult> TriggerMonitorSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("sync-monitoring-fleet");
+        await _jobTriggerService.TriggerFleetSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
     
     /// <summary>
-    /// Triggers the monitoring uptime metrics collection job immediately.
+    /// Triggers uptime metrics collection for the caller's organization.
     /// </summary>
     [HttpPost("trigger/uptime-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerUptimeSync()
+    public async Task<ActionResult> TriggerUptimeSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("dispatch-monitoring-uptime");
+        await _jobTriggerService.TriggerUptimeSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 
     /// <summary>
-    /// Triggers the monitoring latency metrics collection job immediately.
+    /// Triggers latency metrics collection for the caller's organization.
     /// </summary>
     [HttpPost("trigger/latency-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerLatencySync()
+    public async Task<ActionResult> TriggerLatencySync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("dispatch-monitoring-latency");
+        await _jobTriggerService.TriggerLatencySyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 
     /// <summary>
-    /// Triggers the monitoring account statistics synchronization job immediately.
+    /// Triggers monitoring account statistics synchronization for the caller's organization.
     /// </summary>
     [HttpPost("trigger/user-stats-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerUserStatsSync()
+    public async Task<ActionResult> TriggerUserStatsSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("sync-monitoring-account-stats");
+        await _jobTriggerService.TriggerAccountStatsSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 
     /// <summary>
-    /// Triggers the order ingestion job immediately.
+    /// Triggers order ingestion for the caller's organization.
     /// </summary>
     [HttpPost("trigger/order-sync")]
     [Authorize(Policy = "AdminOnly")]
-    public ActionResult TriggerOrderSync()
+    public async Task<ActionResult> TriggerOrderSync(CancellationToken ct)
     {
-        RecurringJob.TriggerJob("dispatch-order-fetch");
+        await _jobTriggerService.TriggerOrderSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
         return Ok();
     }
 
@@ -76,10 +88,10 @@ public class BackgroundJobController : ControllerBase
     /// Triggers a refresh of the financial materialized views.
     /// </summary>
     [HttpPost("trigger/refresh-historic-order-data")]
-    [Authorize(Policy = "StaffAccess")]
+    [Authorize(Policy = "PlatformAdminOnly")]
     public ActionResult TriggerMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob("refresh-financial-materialized-views");
+        RecurringJob.TriggerJob(RecurringJobId.Platform(RecurringJobKind.FinancialViewRefresh));
         return Ok();
     }
     
@@ -87,30 +99,63 @@ public class BackgroundJobController : ControllerBase
     /// Triggers a refresh of all monitoring materialized views (latency and availability).
     /// </summary>
     [HttpPost("trigger/refresh-monitoring-data")]
-    [Authorize(Policy = "StaffAccess")]
+    [Authorize(Policy = "PlatformAdminOnly")]
     public ActionResult TriggerMonitoringMaterialViewRefresh()
     {
-        RecurringJob.TriggerJob("refresh-monitoring-materialized-views");
+        RecurringJob.TriggerJob(RecurringJobId.Platform(RecurringJobKind.MonitoringViewRefresh));
         return Ok();
     }
 
     /// <summary>
-    /// Retrieves a list of all registered recurring jobs and their current schedules.
+    /// Retrieves the recurring jobs visible to the caller. Organization
+    /// scope returns the organization's jobs plus the curated platform-wide
+    /// jobs; platform scope returns everything.
     /// </summary>
     [HttpGet("recurring")]
     [Authorize(Policy = "KioskOrStaffAccess")]
-    public async Task<ActionResult> GetRecurringJobs()
+    public async Task<ActionResult> GetRecurringJobs(CancellationToken ct)
     {
         var recurringJobs = await Task.Run(() => JobStorage.Current.GetConnection().GetRecurringJobs());
-        return Ok(recurringJobs.Select(j => new
+        var scopeOrgId = _currentAccess.Scope?.OrganizationId;
+
+        IReadOnlySet<RecurringJobKind> visiblePlatformKinds = new HashSet<RecurringJobKind>();
+        if (scopeOrgId is not null)
         {
-            j.Id,
-            j.Cron,
-            j.LastExecution,
-            j.NextExecution,
-            j.LastJobState,
-            j.Queue
-        }));
+            var globalConfig = await _dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
+            visiblePlatformKinds = RecurringJobVisibility
+                .ParseVisibleKinds(globalConfig?.VisibleRecurringJobsCsv)
+                .ToHashSet();
+        }
+
+        var orgIds = recurringJobs
+            .Select(j => RecurringJobId.TryParse(j.Id, out _, out var orgId) ? orgId : null)
+            .Where(id => id is not null)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToArray();
+        var orgNames = await _dbContext.Organizations
+            .AsNoTracking()
+            .Where(o => orgIds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, o => o.Name, ct);
+
+        return Ok(recurringJobs
+            .Where(j => scopeOrgId is null || RecurringJobVisibility.IsVisible(j.Id, scopeOrgId.Value, visiblePlatformKinds))
+            .Select(j =>
+            {
+                var parsed = RecurringJobId.TryParse(j.Id, out var kind, out var organizationId);
+                return new
+                {
+                    j.Id,
+                    Kind = parsed ? kind : (RecurringJobKind?)null,
+                    Name = RecurringJobId.DisplayName(j.Id, organizationId is null ? null : orgNames.GetValueOrDefault(organizationId.Value)),
+                    PlatformWide = RecurringJobVisibility.IsPlatformWide(j.Id),
+                    j.Cron,
+                    j.LastExecution,
+                    j.NextExecution,
+                    j.LastJobState,
+                    j.Queue
+                };
+            }));
     }
 
     /// <summary>

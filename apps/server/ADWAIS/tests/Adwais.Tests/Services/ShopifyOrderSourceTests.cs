@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Services;
 using Moq;
@@ -308,7 +309,7 @@ public class ShopifyOrderSourceTests
     [Fact]
     public async Task FetchOrdersAsync_ThrowsWhenSettingsIncomplete()
     {
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.FetchOrdersAsync(
+        await Assert.ThrowsAsync<ConfigurationException>(() => _service.FetchOrdersAsync(
             "{\"endpointUrl\":\"https://shop.example.com\"}",
             new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 8, 31, 0, 0, 0, TimeSpan.Zero),

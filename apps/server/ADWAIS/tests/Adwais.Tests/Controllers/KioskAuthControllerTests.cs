@@ -9,19 +9,26 @@ using Moq;
 using Xunit;
 using Adwais.Api.Controllers.Authentication;
 using Adwais.Api.DTOs.Kiosk;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
+using Adwais.Domain.Enums;
 
 namespace Adwais.Tests.Controllers;
 
 public class KioskAuthControllerTests
 {
     private readonly Mock<IKioskService> _kioskServiceMock;
+    private readonly Mock<ICurrentAccess> _currentAccessMock;
+    private readonly Guid _organizationId = Guid.NewGuid();
     private readonly KioskAuthController _controller;
 
     public KioskAuthControllerTests()
     {
         _kioskServiceMock = new Mock<IKioskService>();
-        _controller = new KioskAuthController(_kioskServiceMock.Object);
+        _currentAccessMock = new Mock<ICurrentAccess>();
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(_organizationId, null, [UserRole.Employee]));
+        _controller = new KioskAuthController(_kioskServiceMock.Object, _currentAccessMock.Object);
     }
 
     [Fact]
@@ -50,7 +57,7 @@ public class KioskAuthControllerTests
     {
         // Arrange
         var code = "XY98ZA";
-        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code))
+        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code, _organizationId))
             .ReturnsAsync(true);
 
         var request = new ActivateKioskRequestDto { ActivationCode = code };
@@ -60,7 +67,35 @@ public class KioskAuthControllerTests
 
         // Assert
         Assert.IsType<OkResult>(result);
-        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code), Times.Once);
+        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code, _organizationId), Times.Once);
+    }
+
+    [Fact]
+    public async Task Activate_ShouldReturnBadRequest_WhenActivatorHasNoOrganization()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
+
+        var result = await _controller.Activate(new ActivateKioskRequestDto { ActivationCode = "XY98ZA" });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        _kioskServiceMock.Verify(
+            s => s.ActivateDeviceAsync(It.IsAny<string>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Activate_ShouldReturnBadRequest_WhenScopeIsMissing()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns((AccessScope?)null);
+
+        var result = await _controller.Activate(new ActivateKioskRequestDto { ActivationCode = "XY98ZA" });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        _kioskServiceMock.Verify(
+            s => s.ActivateDeviceAsync(It.IsAny<string>(), It.IsAny<Guid>()),
+            Times.Never);
     }
 
     [Fact]
@@ -68,7 +103,7 @@ public class KioskAuthControllerTests
     {
         // Arrange
         var code = "EX1234";
-        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code))
+        _kioskServiceMock.Setup(s => s.ActivateDeviceAsync(code, _organizationId))
             .ReturnsAsync(false);
 
         var request = new ActivateKioskRequestDto { ActivationCode = code };
@@ -79,7 +114,7 @@ public class KioskAuthControllerTests
         // Assert
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("Activation code has expired or is invalid.", badRequest.Value);
-        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code), Times.Once);
+        _kioskServiceMock.Verify(s => s.ActivateDeviceAsync(code, _organizationId), Times.Once);
     }
 
     [Fact]
@@ -98,7 +133,7 @@ public class KioskAuthControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<KioskTokenResponseDto>(okResult.Value);
         Assert.Equal(expectedToken, response.Token);
-        Assert.Equal(30, response.ExpiresInDays);
+        Assert.Equal(1, response.ExpiresInHours);
         _kioskServiceMock.Verify(s => s.GetTokenAsync(deviceId), Times.Once);
     }
 
@@ -127,7 +162,7 @@ public class KioskAuthControllerTests
         mockConfig.Setup(c => c["Authentication:KioskJwtSecret"]).Returns("SuperSecretKeyForTestingKioskTokens32CharsMinimum!");
         
         var mockTokenService = new Mock<ITokenService>();
-        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "Admin")).Returns("generated-token");
+        mockTokenService.Setup(s => s.GenerateKioskToken("swagger-admin", "PlatformAdmin", null, true)).Returns("generated-token");
 
         var mockEnv = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
         mockEnv.Setup(e => e.EnvironmentName).Returns("Development");
@@ -147,8 +182,7 @@ public class KioskAuthControllerTests
 
     [Fact]
     public void GenerateSwaggerAdminToken_InProduction_ReturnsNotFound()
-    {
-        // Arrange
+    {        // Arrange
         var mockConfig = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
         var mockTokenService = new Mock<ITokenService>();
         
@@ -163,6 +197,60 @@ public class KioskAuthControllerTests
             mockEnv.Object);
 
         // Assert
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task GetDevices_OrgStaff_PassesOwnOrganization()
+    {
+        var devices = new List<Adwais.Domain.Entities.KioskDevice>
+        {
+            new() { Id = Guid.NewGuid(), DeviceId = "kiosk-a1", OrganizationId = _organizationId, ActivationCode = "A00001", ActivationCodeExpires = DateTimeOffset.UtcNow, IsAuthorized = true, CreatedDate = DateTimeOffset.UtcNow }
+        };
+        _kioskServiceMock.Setup(s => s.GetDevicesAsync(_organizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(devices);
+
+        var result = await _controller.GetDevices(CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<List<KioskDeviceResponseDto>>(okResult.Value);
+        Assert.Single(response);
+        Assert.Equal("kiosk-a1", response[0].DeviceId);
+    }
+
+    [Fact]
+    public async Task GetDevices_PlatformAdmin_PassesNoOrganization()
+    {
+        _currentAccessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
+        _kioskServiceMock.Setup(s => s.GetDevicesAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Adwais.Domain.Entities.KioskDevice>());
+
+        var result = await _controller.GetDevices(CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        _kioskServiceMock.Verify(s => s.GetDevicesAsync(null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteDevice_ReachableDevice_ReturnsNoContent()
+    {
+        _kioskServiceMock.Setup(s => s.DeleteDeviceAsync("kiosk-a1", _organizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _controller.DeleteDevice("kiosk-a1", CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteDevice_UnreachableDevice_ReturnsNotFound()
+    {
+        _kioskServiceMock.Setup(s => s.DeleteDeviceAsync("kiosk-b1", _organizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.DeleteDevice("kiosk-b1", CancellationToken.None);
+
         Assert.IsType<NotFoundResult>(result);
     }
 }

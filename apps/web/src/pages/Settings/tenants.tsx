@@ -16,6 +16,7 @@ import { useTenantsViewModel } from '../../hooks/useTenantsViewModel';
 import { CreateTenantModal } from '../../components/settings/tenants/CreateTenantModal';
 import { TenantRow } from '../../components/settings/tenants/TenantRow';
 import { TenantSettingsFilterMenu } from '../../components/settings/tenants/SettingsFilterMenu';
+import { DataTable } from '../../components/common/ui/DataTable';
 
 export function TenantsMonitorsView() {
     const navigate = useNavigate();
@@ -117,8 +118,10 @@ export function TenantsMonitorsView() {
                             </Button>
                 </SettingsPanelHeader>
 
-                <div className="border border-outline-variant bg-surface custom-scrollbar flex-1 overflow-auto">
-                        <table className="w-full whitespace-nowrap text-left text-sm">
+                <DataTable
+                    viewportClassName="border border-outline-variant bg-surface"
+                    tableClassName="whitespace-nowrap"
+                >
                             <thead className="sticky top-0 z-10 border-b border-outline-variant bg-surface-container-high text-on-surface-variant">
                                 <tr>
                                     <th className="w-12 px-4 py-4 sm:px-5"></th>
@@ -152,8 +155,7 @@ export function TenantsMonitorsView() {
                                     <EmptyState message="No tenants found" isTableRow colSpan={5} />
                                 )}
                             </tbody>
-                        </table>
-                </div>
+                </DataTable>
             </SettingsPanel>
 
             {isAdmin && (

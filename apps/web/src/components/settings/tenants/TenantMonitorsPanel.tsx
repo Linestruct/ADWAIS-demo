@@ -9,6 +9,7 @@ import { Link as LinkIcon, Unlink } from 'lucide-react';
 import { useTenantsViewModel } from '../../../hooks/useTenantsViewModel';
 
 import { SearchInput } from '../../common/ui/SearchInput';
+import { DataTable } from '../../common/ui/DataTable';
 import { MonitorSettingsFilterMenu } from './SettingsFilterMenu';
 import { MonitorRow } from './MonitorRow';
 import { Button } from '../../common/ui/Button';
@@ -21,10 +22,14 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
     tenantId
 }: TenantMonitorsPanelProps) {
     const navigate = useNavigate();
-    const { allMonitors, allUniqueTypes, allUniqueTags, assignMonitor, unassignMonitor, isAdmin } = useTenantsViewModel();
+    const { allMonitors, unassignedMonitors, allUniqueTypes, allUniqueTags, assignMonitor, unassignMonitor, isAdmin } = useTenantsViewModel();
     const isAssignPending = assignMonitor.isPending;
     const isUnassignPending = unassignMonitor.isPending;
-    const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+    const unassignedMonitorIds = useMemo(
+        () => new Set((unassignedMonitors || []).map(m => m.id)),
+        [unassignedMonitors]
+    );
 
     const [assignedSelected, setAssignedSelected] = useState<Set<number>>(new Set());
     const [availableSelected, setAvailableSelected] = useState<Set<number>>(new Set());
@@ -54,8 +59,8 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                 if (!matchName && !matchUrl) return false;
             }
             
-            if (monitorFilters.assignment === 'assigned' && (m.tenantId == null || m.tenantId === SYSTEM_TENANT_ID)) return false;
-            if (monitorFilters.assignment === 'unassigned' && (m.tenantId != null && m.tenantId !== SYSTEM_TENANT_ID)) return false;
+            if (monitorFilters.assignment === 'assigned' && unassignedMonitorIds.has(m.id)) return false;
+            if (monitorFilters.assignment === 'unassigned' && !unassignedMonitorIds.has(m.id)) return false;
 
             if (monitorFilters.status === 'enabled' && !m.uptimeMonitorEnabled) return false;
             if (monitorFilters.status === 'disabled' && m.uptimeMonitorEnabled) return false;
@@ -76,7 +81,7 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
         });
 
         return filtered;
-    }, [allMonitors, tenantId, availableSearch, monitorFilters, monitorSort]);
+    }, [allMonitors, unassignedMonitorIds, tenantId, availableSearch, monitorFilters, monitorSort]);
 
     const handleAssignSelected = () => {
         if (!isAdmin) return;
@@ -141,11 +146,12 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                     </Button>
                 </div>
 
-                <div className="border border-outline-variant bg-surface-container-low rounded-xl overflow-hidden bg-surface">
-                    <div className="custom-scrollbar overflow-x-auto h-[500px] overflow-y-auto">
-                        <table className="w-full whitespace-nowrap text-left text-sm">
+                <DataTable
+                    className="rounded-xl border border-outline-variant bg-surface-container-low"
+                    viewportClassName="h-[500px] flex-none"
+                >
                             {renderThead()}
-                            <tbody className="">
+                            <tbody>
                                 {assignedMonitors.map(m => (
                                     <MonitorRow
                                         key={m.id}
@@ -163,9 +169,7 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                                     </tr>
                                 )}
                             </tbody>
-                        </table>
-                    </div>
-                </div>
+                </DataTable>
             </div>
 
             {/* Available Monitors */}
@@ -188,25 +192,26 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                     </Button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 pb-2">
-                    <SearchInput
-                        value={availableSearch}
-                        onChange={setAvailableSearch}
-                        placeholder="Search monitors..."
-                    />
-                    <MonitorSettingsFilterMenu
-                        filters={monitorFilters}
-                        setFilters={setMonitorFilters}
-                        sort={monitorSort}
-                        setSort={setMonitorSort}
-                        tags={allUniqueTags}
-                        types={allUniqueTypes}
-                    />
-                </div>
-
-                    <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface">
-                        <div className="custom-scrollbar overflow-x-auto h-[500px] overflow-y-auto">
-                            <table className="w-full whitespace-nowrap text-left text-sm">
+                <DataTable
+                    filters={(
+                        <div className="flex flex-wrap items-center gap-3 pb-2">
+                            <SearchInput
+                                value={availableSearch}
+                                onChange={setAvailableSearch}
+                                placeholder="Search monitors..."
+                            />
+                            <MonitorSettingsFilterMenu
+                                filters={monitorFilters}
+                                setFilters={setMonitorFilters}
+                                sort={monitorSort}
+                                setSort={setMonitorSort}
+                                tags={allUniqueTags}
+                                types={allUniqueTypes}
+                            />
+                        </div>
+                    )}
+                    viewportClassName="h-[500px] flex-none rounded-xl border border-outline-variant bg-surface"
+                >
                                 {renderThead()}
                                 <tbody className="divide-y divide-outline-variant">
                                     {availableMonitors.map(m => (
@@ -226,9 +231,7 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                                         </tr>
                                     )}
                                 </tbody>
-                            </table>
-                        </div>
-                    </div>
+                </DataTable>
                 </div>
         </>
     );

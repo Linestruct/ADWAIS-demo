@@ -11,6 +11,9 @@ using Adwais.Application.DTOs.Intranet;
 using Adwais.Domain.Entities.Intranet;
 using Adwais.Domain.Enums;
 using Adwais.Infrastructure.Persistence;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
+using Moq;
 using Adwais.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -44,7 +47,7 @@ public class CalendarEventServiceTests
         dbContext.CalendarEvents.Add(calendarEvent);
         await dbContext.SaveChangesAsync();
 
-        var result = (await new CalendarEventService(dbContext).GetEventsAsync(
+        var result = (await new CalendarEventService(dbContext, PlatformAccess()).GetEventsAsync(
             new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2025, 3, 31, 23, 59, 59, TimeSpan.Zero))).ToArray();
 
@@ -70,7 +73,7 @@ public class CalendarEventServiceTests
             dbContext.CalendarEvents.Add(calendarEvent);
             await dbContext.SaveChangesAsync();
 
-            var service = new CalendarEventService(dbContext);
+            var service = new CalendarEventService(dbContext, PlatformAccess());
             var updatedStartTime = DateTimeOffset.UtcNow.AddHours(2);
             var updatedEndTime = DateTimeOffset.UtcNow.AddHours(3);
             var dto = new UpdateCalendarEventDto(
@@ -88,15 +91,15 @@ public class CalendarEventServiceTests
             var result = await service.UpdateEventAsync(calendarEvent.Id, dto, CancellationToken.None);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal("Updated Title", result.Title);
-            Assert.Equal(updatedStartTime.ToUniversalTime(), result.StartTime);
-            Assert.Equal(updatedEndTime.ToUniversalTime(), result.EndTime);
+            Assert.True(result.IsSuccess);
+            Assert.Equal("Updated Title", result.Value.Title);
+            Assert.Equal(updatedStartTime.ToUniversalTime(), result.Value.StartTime);
+            Assert.Equal(updatedEndTime.ToUniversalTime(), result.Value.EndTime);
         }
     }
 
     [Fact]
-    public async Task UpdateEventAsync_WithEndTimeLessThanStartTime_ThrowsArgumentException()
+    public async Task UpdateEventAsync_WithEndTimeLessThanStartTime_ReturnsValidationError()
     {
         // Arrange
         var options = CreateNewContextOptions();
@@ -113,7 +116,7 @@ public class CalendarEventServiceTests
             dbContext.CalendarEvents.Add(calendarEvent);
             await dbContext.SaveChangesAsync();
 
-            var service = new CalendarEventService(dbContext);
+            var service = new CalendarEventService(dbContext, PlatformAccess());
             var updatedStartTime = DateTimeOffset.UtcNow.AddHours(2);
             var updatedEndTime = DateTimeOffset.UtcNow.AddHours(1); // Less than StartTime
             var dto = new UpdateCalendarEventDto(
@@ -127,11 +130,105 @@ public class CalendarEventServiceTests
                 Recurrence: null
             );
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
-                service.UpdateEventAsync(calendarEvent.Id, dto, CancellationToken.None));
+            var result = await service.UpdateEventAsync(calendarEvent.Id, dto, CancellationToken.None);
 
-            Assert.Equal("End time must be greater than or equal to start time.", exception.Message);
+            Assert.True(result.IsFailed);
+            Assert.IsType<ValidationError>(Assert.Single(result.Errors));
         }
+    }
+
+    [Fact]
+    public async Task GetEventsAsync_ReturnsOnlyOrganizationEvents()
+    {
+        var options = CreateNewContextOptions();
+        using var dbContext = new AnalyticsDbContext(options);
+        var ownOrgId = Guid.NewGuid();
+        var otherOrgId = Guid.NewGuid();
+
+        var ownEvent = new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            Title = "Own event",
+            StartTime = DateTimeOffset.UtcNow,
+            EndTime = DateTimeOffset.UtcNow.AddHours(1),
+            EventType = EventType.Meeting,
+            OrganizationId = ownOrgId
+        };
+        var otherEvent = new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            Title = "Other event",
+            StartTime = DateTimeOffset.UtcNow,
+            EndTime = DateTimeOffset.UtcNow.AddHours(1),
+            EventType = EventType.Meeting,
+            OrganizationId = otherOrgId
+        };
+        dbContext.CalendarEvents.AddRange(ownEvent, otherEvent);
+        await dbContext.SaveChangesAsync();
+
+        var orgMock = new Mock<ICurrentAccess>();
+        orgMock.Setup(access => access.Scope).Returns(new AccessScope(ownOrgId, null, [UserRole.Admin]));
+
+        var result = (await new CalendarEventService(dbContext, orgMock.Object).GetEventsAsync(
+            DateTimeOffset.UtcNow.AddHours(-1),
+            DateTimeOffset.UtcNow.AddHours(2))).ToArray();
+
+        Assert.Single(result);
+        Assert.Equal("Own event", result[0].Title);
+    }
+
+    private static ICurrentAccess PlatformAccess()
+    {
+        var mock = new Mock<ICurrentAccess>();
+        mock.Setup(access => access.Scope).Returns(new AccessScope(null, null, [UserRole.Admin]));
+        return mock.Object;
+    }
+
+    private static ICurrentAccess OrgAccess(Guid organizationId)
+    {
+        var mock = new Mock<ICurrentAccess>();
+        mock.Setup(access => access.Scope).Returns(new AccessScope(organizationId, null, [UserRole.Admin]));
+        return mock.Object;
+    }
+
+    [Fact]
+    public async Task CreateEventAsync_WithoutOrganizationScope_ReturnsScopeDenied()
+    {
+        var options = CreateNewContextOptions();
+        using var dbContext = new AnalyticsDbContext(options);
+        var dto = new CreateCalendarEventDto(
+            "Event", null, null, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1),
+            EventType.Meeting, false, RecurrenceType.None);
+
+        var result = await new CalendarEventService(dbContext, PlatformAccess())
+            .CreateEventAsync(null, dto, CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
+    }
+
+    [Fact]
+    public async Task DeleteEventAsync_OutsideOrganizationScope_ReturnsScopeDenied()
+    {
+        var options = CreateNewContextOptions();
+        using var dbContext = new AnalyticsDbContext(options);
+        var otherOrganizationId = Guid.NewGuid();
+        var calendarEvent = new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = otherOrganizationId,
+            Title = "Other event",
+            StartTime = DateTimeOffset.UtcNow,
+            EndTime = DateTimeOffset.UtcNow.AddHours(1),
+            EventType = EventType.Meeting
+        };
+        dbContext.CalendarEvents.Add(calendarEvent);
+        await dbContext.SaveChangesAsync();
+
+        var result = await new CalendarEventService(dbContext, OrgAccess(Guid.NewGuid()))
+            .DeleteEventAsync(calendarEvent.Id, CancellationToken.None);
+
+        Assert.True(result.IsFailed);
+        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
     }
 }

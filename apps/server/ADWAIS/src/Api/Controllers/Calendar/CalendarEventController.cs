@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 using System.Security.Claims;
+using Adwais.Api.Extensions;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Adwais.Api.Controllers.Calendar;
@@ -74,6 +76,9 @@ public class CalendarEventController(ICalendarEventService eventService) : Contr
     /// <returns>The created calendar event.</returns>
     [HttpPost]
     [Authorize(Policy = "StaffAccess")]
+    [ProducesResponseType(typeof(CalendarEventDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CalendarEventDto>> CreateEvent([FromBody] CreateCalendarEventDto dto, CancellationToken ct)
     {
         var nameIdentifier = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -83,8 +88,10 @@ public class CalendarEventController(ICalendarEventService eventService) : Contr
             userId = parsedId;
         }
 
-        var calendarEvent = await _eventService.CreateEventAsync(userId, dto, ct);
-        return CreatedAtAction(nameof(GetEvent), new { id = calendarEvent.Id }, calendarEvent);
+        var result = await _eventService.CreateEventAsync(userId, dto, ct);
+        return result.IsFailed
+            ? result.ToProblem(HttpContext)
+            : CreatedAtAction(nameof(GetEvent), new { id = result.Value.Id }, result.Value);
     }
 
     /// <summary>
@@ -96,11 +103,14 @@ public class CalendarEventController(ICalendarEventService eventService) : Contr
     /// <returns>The updated event, or <see cref="NotFoundResult"/> when no event matches the ID.</returns>
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = "StaffAccess")]
+    [ProducesResponseType(typeof(CalendarEventDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CalendarEventDto>> UpdateEvent(Guid id, [FromBody] UpdateCalendarEventDto dto, CancellationToken ct)
     {
-        var calendarEvent = await _eventService.UpdateEventAsync(id, dto, ct);
-        if (calendarEvent == null) return NotFound();
-        return Ok(calendarEvent);
+        var result = await _eventService.UpdateEventAsync(id, dto, ct);
+        return result.IsFailed ? result.ToProblem(HttpContext) : Ok(result.Value);
     }
 
     /// <summary>
@@ -111,10 +121,13 @@ public class CalendarEventController(ICalendarEventService eventService) : Contr
     /// <returns>No content when the event is deleted, or <see cref="NotFoundResult"/> when no event matches the ID.</returns>
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "StaffAccess")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteEvent(Guid id, CancellationToken ct)
     {
-        var success = await _eventService.DeleteEventAsync(id, ct);
-        if (!success) return NotFound();
+        var result = await _eventService.DeleteEventAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return NoContent();
     }
 }

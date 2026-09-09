@@ -4,236 +4,251 @@
 // SPDX-License-Identifier: MIT
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
+using Adwais.Application.Common.Interfaces;
+using Adwais.Application.Common.Jobs;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
-using Adwais.Application.Common.Interfaces;
+using Adwais.Domain;
 using Adwais.Domain.Entities;
 using Adwais.Infrastructure.Helpers;
 using Adwais.Infrastructure.Jobs;
+using Adwais.Infrastructure.Jobs.MaterializedViews;
 using Adwais.Infrastructure.Jobs.Monitor;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
 public class GlobalConfigService(
     IApplicationDbContext dbContext,
     ISystemEventService eventService,
-    IReportingRollupRefresher reportingRollupRefresher,
-    IEnumerable<IMonitoringProvider> monitoringProviders) : IGlobalConfigService
+    IOrganizationConfigService organizationConfigService,
+    ICurrentAccess currentAccess,
+    IJobTriggerService jobTriggerService) : IGlobalConfigService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
+    private readonly IJobTriggerService _jobTriggerService = jobTriggerService;
     private readonly ISystemEventService _eventService = eventService;
-    private readonly IReportingRollupRefresher _reportingRollupRefresher = reportingRollupRefresher;
-    private readonly IEnumerable<IMonitoringProvider> _monitoringProviders = monitoringProviders;
+    private readonly IOrganizationConfigService _organizationConfigService = organizationConfigService;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
 
     public async Task<GlobalConfigResponseDto> GetConfigAsync(CancellationToken ct = default)
     {
         var config = await _dbContext.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
-        if (config == null) throw new InvalidOperationException("Global configuration not found.");
+        if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
         return MapToDto(config);
     }
 
-    public async Task<GlobalConfigResponseDto> UpdateConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct = default)
+    public async Task<Result<GlobalConfigResponseDto>> UpdateConfigAsync(UpdateGlobalConfigRequestDto request, CancellationToken ct = default)
     {
         var config = await _dbContext.GlobalConfigs.SingleOrDefaultAsync(ct);
-        if (config == null) throw new InvalidOperationException("Global configuration not found.");
+        if (config == null) throw new KeyNotFoundException("Global configuration not found.");
 
-        if (request.OrderFetchEnabled.HasValue) config.OrderFetchEnabled = request.OrderFetchEnabled.Value;
-        if (request.MonitoringFetchEnabled.HasValue) config.MonitoringFetchEnabled = request.MonitoringFetchEnabled.Value;
-        if (!string.IsNullOrWhiteSpace(request.MonitoringProvider))
-        {
-            var provider = request.MonitoringProvider.Trim().ToLowerInvariant();
-            _monitoringProviders.ForProvider(provider);
-            config.MonitoringProvider = provider;
-            config.MonitoringProviderSettings = null;
-        }
-        if (request.MonitoringProviderSettings != null)
-        {
-            config.MonitoringProviderSettings = _monitoringProviders
-                .ForProvider(config.MonitoringProvider)
-                .MergeSettings(config.MonitoringProviderSettings, request.MonitoringProviderSettings);
-        }
         if (request.SystemEventRetentionDays.HasValue) config.SystemEventRetentionDays = request.SystemEventRetentionDays.Value;
-        if (request.FeedFetchIntervalHours.HasValue)
+        if (request.MatViewRefreshIntervalMinutes.HasValue)
         {
-            config.FeedFetchIntervalHours = request.FeedFetchIntervalHours.Value;
-            RecurringJob.AddOrUpdate<FeedAggregationJob>(
-                "aggregate-intranet-feeds",
-                job => job.ExecuteAsync(CancellationToken.None),
-                Cron.HourInterval(request.FeedFetchIntervalHours.Value));
+            var interval = request.MatViewRefreshIntervalMinutes.Value;
+            if (interval < 5)
+                return Result.Fail<GlobalConfigResponseDto>(new ValidationError(new Dictionary<string, string[]>
+                {
+                    [nameof(request.MatViewRefreshIntervalMinutes)] = ["Interval must be at least 5 minutes."]
+                }));
+            config.MatViewRefreshIntervalMinutes = interval;
         }
-        if (!string.IsNullOrWhiteSpace(request.WeatherLocation)) config.WeatherLocation = request.WeatherLocation.Trim();
-        if (request.WeatherFetchIntervalMinutes.HasValue) config.WeatherFetchIntervalMinutes = request.WeatherFetchIntervalMinutes.Value;
-        var reportingTimeZoneChanged = request.ReportingTimeZoneId is not null
-            && !string.Equals(config.ReportingTimeZoneId, request.ReportingTimeZoneId.Trim(), StringComparison.Ordinal);
-        if (request.ReportingTimeZoneId is not null) config.ReportingTimeZoneId = request.ReportingTimeZoneId.Trim();
-
+        if (request.VisibleRecurringJobs is not null)
+        {
+            config.VisibleRecurringJobsCsv = RecurringJobVisibility.JoinVisibleKinds(request.VisibleRecurringJobs);
+        }
         await _dbContext.SaveChangesAsync(ct);
-        // Once the config is persisted, finish rebuilding even if the HTTP request is cancelled.
-        if (reportingTimeZoneChanged) await _reportingRollupRefresher.RefreshAsync(CancellationToken.None);
+
+        if (request.MatViewRefreshIntervalMinutes.HasValue)
+        {
+            RecurringJob.AddOrUpdate<RefreshStaleMaterializedViewsJob>(
+                RecurringJobId.Platform(RecurringJobKind.StaleViewRefresh),
+                job => job.ExecuteAsync(),
+                CronHelper.FromMinutes(config.MatViewRefreshIntervalMinutes));
+            await _eventService.LogAsync(nameof(GlobalConfigService), $"Stale materialized view refresh interval updated to {config.MatViewRefreshIntervalMinutes} minutes.");
+        }
+
         await _eventService.LogAsync(nameof(GlobalConfigService), "Global configuration updated.");
 
-        return MapToDto(config);
+        return Result.Ok(MapToDto(config));
     }
 
     public async Task TriggerFeedFetchAsync(CancellationToken ct = default)
     {
-        await Task.Run(() => RecurringJob.TriggerJob("aggregate-intranet-feeds"), ct);
+        await _jobTriggerService.TriggerFeedSyncAsync(_currentAccess.Scope?.OrganizationId, ct);
     }
 
-    public async Task UpdateFeedIntervalAsync(int intervalHours, CancellationToken ct = default)
+    public async Task<Result> UpdateFeedIntervalAsync(int intervalHours, CancellationToken ct = default)
     {
-        if (intervalHours <= 0) throw new ArgumentException("Interval must be at least 1 hour.", nameof(intervalHours));
+        if (intervalHours <= 0)
+            return Result.Fail(new ValidationError(new Dictionary<string, string[]> { [nameof(intervalHours)] = ["Interval must be at least 1 hour."] }));
 
-        var config = await _dbContext.GlobalConfigs.SingleOrDefaultAsync(ct);
-        if (config == null) throw new InvalidOperationException("Global configuration not found.");
+        var orgId = _currentAccess.Scope?.OrganizationId;
+        if (orgId is null) return Result.Fail(new ScopeDeniedError("an organization scope", "platform"));
 
-        config.FeedFetchIntervalHours = intervalHours;
-        await _dbContext.SaveChangesAsync(ct);
+        var orgConfig = await _organizationConfigService.UpdateConfigAsync(orgId.Value, new UpdateOrganizationConfigRequestDto(
+            WeatherLocation: null,
+            WeatherFetchIntervalMinutes: null,
+            ReportingTimeZoneId: null,
+            MonitoringProvider: null,
+            MonitoringProviderSettings: null,
+            OrderFetchIntervalMinutes: null,
+            UptimeFetchIntervalMinutes: null,
+            LatencyFetchIntervalMinutes: null,
+            UserStatsFetchIntervalMinutes: null,
+            FeedFetchIntervalHours: intervalHours), ct);
+        if (orgConfig.IsFailed) return Result.Fail(orgConfig.Errors);
 
-        RecurringJob.AddOrUpdate<FeedAggregationJob>(
-            "aggregate-intranet-feeds",
-            job => job.ExecuteAsync(CancellationToken.None),
+        RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
+            RecurringJobId.For(RecurringJobKind.FeedFetch, orgId.Value),
+            job => job.ExecuteAsync(orgId.Value, CancellationToken.None),
             Cron.HourInterval(intervalHours));
 
         await _eventService.LogAsync(nameof(GlobalConfigService), $"Feed aggregation interval updated to {intervalHours} hours.");
+        return Result.Ok();
     }
 
     public async Task<FetchIntervalsDto> GetFetchIntervalsAsync(CancellationToken ct = default)
     {
-        var config = await _dbContext.GlobalConfigs
-            .AsNoTracking()
-            .Select(g => new
-            {
-                g.LatencyFetchIntervalMinutes,
-                g.UptimeFetchIntervalMinutes,
-                g.OrderFetchIntervalMinutes,
-                g.UserStatsFetchIntervalMinutes,
-                g.FeedFetchIntervalHours
-            })
-            .SingleOrDefaultAsync(ct);
+        var orgId = _currentAccess.Scope?.OrganizationId;
+        var orgConfig = orgId is null
+            ? null
+            : await _organizationConfigService.GetConfigAsync(orgId.Value, ct);
+        var intervals = orgConfig ?? DefaultOrgConfig();
 
-        if (config == null) throw new InvalidOperationException("Global configuration not found.");
-
-        var lowestInterval = await _dbContext.Monitors
-            .Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid)
-            .MinAsync(m => (int?)m.UpdateInterval, ct);
+        var lowestInterval = orgId is null
+            ? await _dbContext.Monitors
+                .Where(m => !_dbContext.Tenants.Any(s => s.IsSystem && s.Id == m.TenantId))
+                .MinAsync(m => (int?)m.UpdateInterval, ct)
+            : await _dbContext.Monitors
+                .Where(m => !_dbContext.Tenants.Any(s => s.IsSystem && s.Id == m.TenantId)
+                    && m.Tenant!.OrganizationId == orgId.Value)
+                .MinAsync(m => (int?)m.UpdateInterval, ct);
 
         var lowestIntervalMins = Math.Max(1, (lowestInterval ?? 300) / 60);
 
         return new FetchIntervalsDto
         {
-            LatencyFetchIntervalMinutes = config.LatencyFetchIntervalMinutes,
-            UptimeFetchIntervalMinutes = config.UptimeFetchIntervalMinutes,
+            LatencyFetchIntervalMinutes = intervals.LatencyFetchIntervalMinutes,
+            UptimeFetchIntervalMinutes = intervals.UptimeFetchIntervalMinutes,
             StatusFetchIntervalMinutes = lowestIntervalMins,
-            OrderFetchIntervalMinutes = config.OrderFetchIntervalMinutes,
-            UserStatsFetchIntervalMinutes = config.UserStatsFetchIntervalMinutes,
-            FeedFetchIntervalHours = config.FeedFetchIntervalHours
+            OrderFetchIntervalMinutes = intervals.OrderFetchIntervalMinutes,
+            UserStatsFetchIntervalMinutes = intervals.UserStatsFetchIntervalMinutes,
+            FeedFetchIntervalHours = intervals.FeedFetchIntervalHours
         };
     }
 
-    public async Task<FetchIntervalsDto> UpdateFetchIntervalsAsync(UpdateFetchIntervalsRequestDto request, CancellationToken ct = default)
+    public async Task<Result<FetchIntervalsDto>> UpdateFetchIntervalsAsync(UpdateFetchIntervalsRequestDto request, CancellationToken ct = default)
     {
-        var config = await _dbContext.GlobalConfigs.SingleOrDefaultAsync(ct);
-        if (config == null) throw new InvalidOperationException("Global configuration not found.");
+        var orgId = _currentAccess.Scope?.OrganizationId;
+        if (orgId is null) return Result.Fail<FetchIntervalsDto>(new ScopeDeniedError("an organization scope", "platform"));
+
+        var orgConfigResult = await _organizationConfigService.UpdateConfigAsync(orgId.Value, new UpdateOrganizationConfigRequestDto(
+            WeatherLocation: null,
+            WeatherFetchIntervalMinutes: null,
+            ReportingTimeZoneId: null,
+            MonitoringProvider: null,
+            MonitoringProviderSettings: null,
+            OrderFetchIntervalMinutes: request.OrderFetchIntervalMinutes,
+            UptimeFetchIntervalMinutes: request.UptimeFetchIntervalMinutes,
+            LatencyFetchIntervalMinutes: request.LatencyFetchIntervalMinutes,
+            UserStatsFetchIntervalMinutes: request.UserStatsFetchIntervalMinutes,
+            FeedFetchIntervalHours: request.FeedFetchIntervalHours), ct);
+        if (orgConfigResult.IsFailed) return Result.Fail<FetchIntervalsDto>(orgConfigResult.Errors);
+        var orgConfig = orgConfigResult.Value;
 
         if (request.UptimeFetchIntervalMinutes.HasValue)
         {
-            config.UptimeFetchIntervalMinutes = request.UptimeFetchIntervalMinutes.Value;
-            RecurringJob.AddOrUpdate<UptimeDispatcherJob>(
-                "dispatch-monitoring-uptime",
-                job => job.ExecuteAsync(), 
+            RecurringJob.AddOrUpdate<MonitorUptimeDispatchJob>(
+                RecurringJobId.For(RecurringJobKind.UptimeFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.UptimeFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Uptime Fetch Interval to {request.UptimeFetchIntervalMinutes.Value} minutes");
         }
-            
+
         if (request.LatencyFetchIntervalMinutes.HasValue)
         {
-            config.LatencyFetchIntervalMinutes = request.LatencyFetchIntervalMinutes.Value;
-            RecurringJob.AddOrUpdate<LatencyDispatcherJob>(
-                "dispatch-monitoring-latency",
-                job => job.ExecuteAsync(), 
+            RecurringJob.AddOrUpdate<MonitorLatencyDispatchJob>(
+                RecurringJobId.For(RecurringJobKind.LatencyFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.LatencyFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Latency Fetch Interval to {request.LatencyFetchIntervalMinutes.Value} minutes");
         }
 
         if (request.UserStatsFetchIntervalMinutes.HasValue)
         {
-            config.UserStatsFetchIntervalMinutes = request.UserStatsFetchIntervalMinutes.Value;
-            RecurringJob.AddOrUpdate<UpdateGlobalMonitoringStatsJob>(
-                "sync-monitoring-account-stats",
-                job => job.ExecuteAsync(), 
+            RecurringJob.AddOrUpdate<SyncOrganizationAccountStatsJob>(
+                RecurringJobId.For(RecurringJobKind.UserStatsFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.UserStatsFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated User Stats Fetch Interval to {request.UserStatsFetchIntervalMinutes.Value} minutes");
         }
-            
+
         if (request.OrderFetchIntervalMinutes.HasValue)
         {
-            config.OrderFetchIntervalMinutes = request.OrderFetchIntervalMinutes.Value;
-            RecurringJob.AddOrUpdate<OrderFetchDispatcherJob>(
-                "dispatch-order-fetch",
-                job => job.ExecuteAsync(), 
+            RecurringJob.AddOrUpdate<OrderFetchDispatchJob>(
+                RecurringJobId.For(RecurringJobKind.OrderFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value),
                 CronHelper.FromMinutes(request.OrderFetchIntervalMinutes.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated order fetch interval to {request.OrderFetchIntervalMinutes.Value} minutes");
         }
 
         if (request.FeedFetchIntervalHours.HasValue)
         {
-            config.FeedFetchIntervalHours = request.FeedFetchIntervalHours.Value;
-            RecurringJob.AddOrUpdate<FeedAggregationJob>(
-                "aggregate-intranet-feeds",
-                job => job.ExecuteAsync(CancellationToken.None),
+            RecurringJob.AddOrUpdate<AggregateOrganizationFeedsJob>(
+                RecurringJobId.For(RecurringJobKind.FeedFetch, orgId.Value),
+                job => job.ExecuteAsync(orgId.Value, CancellationToken.None),
                 Cron.HourInterval(request.FeedFetchIntervalHours.Value));
             await _eventService.LogAsync(nameof(GlobalConfigService), $"Updated Feed Fetch Interval to {request.FeedFetchIntervalHours.Value} hours");
         }
 
-        await _dbContext.SaveChangesAsync(ct);
-
         var lowestInterval = await _dbContext.Monitors
-            .Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid)
+            .Where(m => !_dbContext.Tenants.Any(s => s.IsSystem && s.Id == m.TenantId)
+                && m.Tenant!.OrganizationId == orgId)
             .MinAsync(m => (int?)m.UpdateInterval, ct);
 
         var lowestIntervalMins = Math.Max(1, (lowestInterval ?? 300) / 60);
 
-        return new FetchIntervalsDto
+        return Result.Ok(new FetchIntervalsDto
         {
-            LatencyFetchIntervalMinutes = config.LatencyFetchIntervalMinutes,
-            UptimeFetchIntervalMinutes = config.UptimeFetchIntervalMinutes,
+            LatencyFetchIntervalMinutes = orgConfig.LatencyFetchIntervalMinutes,
+            UptimeFetchIntervalMinutes = orgConfig.UptimeFetchIntervalMinutes,
             StatusFetchIntervalMinutes = lowestIntervalMins,
-            OrderFetchIntervalMinutes = config.OrderFetchIntervalMinutes,
-            UserStatsFetchIntervalMinutes = config.UserStatsFetchIntervalMinutes,
-            FeedFetchIntervalHours = config.FeedFetchIntervalHours
-        };
+            OrderFetchIntervalMinutes = orgConfig.OrderFetchIntervalMinutes,
+            UserStatsFetchIntervalMinutes = orgConfig.UserStatsFetchIntervalMinutes,
+            FeedFetchIntervalHours = orgConfig.FeedFetchIntervalHours
+        });
     }
 
-    private GlobalConfigResponseDto MapToDto(GlobalConfig config)
-    {
-        return new GlobalConfigResponseDto(
-            config.Id,
-            config.LastPolled,
-            config.OrderFetchEnabled,
-            config.MonitoringFetchEnabled,
-            config.OrderFetchIntervalMinutes,
-            _monitoringProviders.ForProvider(config.MonitoringProvider).GetPublicSettings(config.MonitoringProviderSettings),
-            _monitoringProviders.ForProvider(config.MonitoringProvider).GetConfiguredSecretKeys(config.MonitoringProviderSettings),
-            config.UptimeFetchIntervalMinutes,
-            config.LatencyFetchIntervalMinutes,
-            config.UserStatsFetchIntervalMinutes,
-            config.SystemEventRetentionDays,
-            config.MonitorsCount,
-            config.MonitorsLimit,
-            config.ActiveSubscription,
-            config.FeedFetchIntervalHours,
-            config.WeatherLocation,
-            config.WeatherFetchIntervalMinutes,
-            config.ReportingTimeZoneId,
-            config.MonitoringProvider
-        );
-    }
+    private GlobalConfigResponseDto MapToDto(GlobalConfig config) =>
+        new(config.Id, config.LastPolled, config.SystemEventRetentionDays, config.MatViewRefreshIntervalMinutes,
+            RecurringJobVisibility.ParseVisibleKinds(config.VisibleRecurringJobsCsv));
 
+    private static OrganizationConfigDto DefaultOrgConfig() => new(
+        WeatherLocation: null,
+        WeatherFetchIntervalMinutes: 15,
+        ReportingTimeZoneId: "Europe/Stockholm",
+        MonitoringProvider: IntegrationProviders.UptimeRobot,
+        MonitoringProviderSettings: new Dictionary<string, string?>(),
+        MonitoringProviderConfiguredSecretKeys: [],
+        OrderFetchEnabled: true,
+        MonitoringFetchEnabled: true,
+        OrderFetchIntervalMinutes: 60,
+        UptimeFetchIntervalMinutes: 60,
+        LatencyFetchIntervalMinutes: 10,
+        UserStatsFetchIntervalMinutes: 60,
+        FeedFetchIntervalHours: 2,
+        MonitorsCount: null,
+        MonitorsLimit: null,
+        ActiveSubscription: null,
+        LastSyncError: null);
 }

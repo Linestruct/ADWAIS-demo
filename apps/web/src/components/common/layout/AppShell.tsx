@@ -14,6 +14,7 @@ import { MobileNavigationMenu } from './MobileNavigationMenu';
 import { useMediaQuery } from '../../../hooks/useMediaQuery';
 import { useVisualViewportCssVars } from '../../../hooks/useVisualViewportCssVars';
 import { useOrderNotifier } from '../../../hooks/useOrderNotifier';
+import { useOrgSelectionWatcher } from '../../../hooks/useOrgSelectionWatcher';
 import { MobileFooterActionsSlotContext } from '../ui/MobileFooterActionsContext';
 import { RightSidebarSlotContext } from '../ui/RightSidebarSlotContext';
 
@@ -46,6 +47,7 @@ export function AppShell({
 }: AppShellProps) {
   const isMobileView = useMediaQuery('(max-width: 767px)');
   useVisualViewportCssVars();
+  useOrgSelectionWatcher();
   useOrderNotifier();
 
   const isFetching = useIsFetching();

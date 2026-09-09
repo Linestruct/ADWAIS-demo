@@ -6,6 +6,12 @@
  */
 
 export type GetApiIntranetEventsParams = {
+/**
+ * The inclusive start of the requested range.
+ */
 start?: string;
+/**
+ * The exclusive end of the requested range.
+ */
 end?: string;
 };

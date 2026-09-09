@@ -5,25 +5,146 @@
 
 using Adwais.Domain.Entities;
 using Adwais.Application.Common.Models;
+using Adwais.Application.Common.Errors;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Application.DTOs.Monitoring;
 using Adwais.Domain.Enums;
 using Adwais.Application.Common.Caching;
 using Adwais.Application.Common.Interfaces;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using FluentResults;
 
 namespace Adwais.Application.Services;
 
 public class MonitorOrchestrationService(
     IApplicationDbContext dbContext,
     IEnumerable<IMonitoringProvider> monitoringProviders,
-    ICacheService cache) : IMonitorOrchestrationService
+    ICacheService cache,
+    ICurrentAccess currentAccess,
+    IOrganizationConfigService organizationConfigService) : IMonitorOrchestrationService
 {
     private record LatencyRow(DateTimeOffset Timestamp, double? Average, double? P10, double? P90);
     private record AvailabilityRow(int MonitorId, DateTimeOffset Timestamp, double? UptimePercentage);
 
-    public async Task<MonitorAnalyticsDto> GetAnalyticsAsync(
+    private async Task<Guid[]?> GetVisibleTenantIdsAsync(CancellationToken ct)
+    {
+        var filter = OrganizationFilter.From(currentAccess.Scope);
+        return await TenantVisibility.ResolveAsync(filter, dbContext.Tenants, ct);
+    }
+
+    private async Task<List<Guid>> GetSystemTenantIdsAsync(CancellationToken ct)
+        => await dbContext.Tenants
+            .AsNoTracking()
+            .Where(t => t.IsSystem)
+            .Select(t => t.Id)
+            .ToListAsync(ct);
+
+    private async Task<Guid> ResolveOrganizationBucketIdAsync(Guid organizationId, CancellationToken ct)
+        => await dbContext.Tenants
+            .Where(t => t.OrganizationId == organizationId && t.IsSystem)
+            .Select(t => (Guid?)t.Id)
+            .SingleOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Organization {organizationId} has no unassigned monitor bucket.");
+
+    private static void ValidateTenantInScope(Guid tenantId, Guid[]? visibleTenantIds)
+    {
+        if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
+            throw new UnauthorizedAccessException($"Tenant {tenantId} is outside the current scope.");
+    }
+
+    private async Task ValidateMonitorInScopeAsync(int monitorId, CancellationToken ct)
+    {
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        if (visibleTenantIds is null)
+        {
+            return;
+        }
+
+        var tenantId = await dbContext.Monitors
+            .Where(monitor => monitor.Id == monitorId)
+            .Select(monitor => monitor.TenantId)
+            .SingleOrDefaultAsync(ct);
+        ValidateTenantInScope(tenantId, visibleTenantIds);
+    }
+
+    private ScopeDeniedError ScopeDenied()
+        => new("the requested organization or tenant", currentAccess.Scope?.OrganizationId?.ToString() ?? "none");
+
+    private async Task<ScopeDeniedError?> GetReadScopeFailureAsync(
+        Guid? tenantId,
+        int? monitorId,
+        Guid[]? visibleTenantIds,
+        CancellationToken ct)
+    {
+        if (visibleTenantIds is null)
+            return null;
+
+        if (tenantId.HasValue && !visibleTenantIds.Contains(tenantId.Value))
+            return ScopeDenied();
+
+        if (!monitorId.HasValue)
+            return null;
+
+        var monitorTenantId = await dbContext.Monitors
+            .Where(monitor => monitor.Id == monitorId.Value)
+            .Select(monitor => (Guid?)monitor.TenantId)
+            .SingleOrDefaultAsync(ct);
+        return monitorTenantId.HasValue && !visibleTenantIds.Contains(monitorTenantId.Value)
+            ? ScopeDenied()
+            : null;
+    }
+
+    private async Task<Result<Tenant>> GetVisibleTenantForMutationAsync(Guid tenantId, CancellationToken ct)
+    {
+        var tenant = await dbContext.Tenants.SingleOrDefaultAsync(candidate => candidate.Id == tenantId, ct);
+        if (tenant is null) return Result.Fail<Tenant>(new NotFoundError("tenant", tenantId));
+
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        return visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId)
+            ? Result.Fail<Tenant>(ScopeDenied())
+            : Result.Ok(tenant);
+    }
+
+    private async Task<Result<UptimeMonitor>> GetVisibleMonitorForMutationAsync(int monitorId, CancellationToken ct)
+    {
+        var monitor = await dbContext.Monitors
+            .SingleOrDefaultAsync(candidate => candidate.Id == monitorId, ct);
+        if (monitor is null) return Result.Fail<UptimeMonitor>(new NotFoundError("monitor", monitorId));
+
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        return visibleTenantIds is not null && !visibleTenantIds.Contains(monitor.TenantId)
+            ? Result.Fail<UptimeMonitor>(ScopeDenied())
+            : Result.Ok(monitor);
+    }
+
+    private Task<Guid> GetMonitorOrganizationIdAsync(UptimeMonitor monitor, CancellationToken ct)
+        => dbContext.Tenants
+            .Where(tenant => tenant.Id == monitor.TenantId)
+            .Select(tenant => tenant.OrganizationId)
+            .SingleAsync(ct);
+
+    private async Task<Result<IMonitoringProvider>> GetConfiguredMonitoringProviderAsync(
+        Guid organizationId,
+        CancellationToken ct,
+        string? providerName = null)
+    {
+        var config = await organizationConfigService.GetConfigAsync(organizationId, ct);
+        if (config is null)
+            return Result.Fail<IMonitoringProvider>(new ConfigurationError("Monitoring is not configured for this organization."));
+
+        var provider = monitoringProviders.ForProvider(providerName ?? config.MonitoringProvider);
+        var settings = await dbContext.OrganizationConfigs
+            .Where(candidate => candidate.OrganizationId == organizationId)
+            .Select(candidate => candidate.MonitoringProviderSettings)
+            .SingleOrDefaultAsync(ct);
+        return provider.IsConfigured(settings)
+            ? Result.Ok(provider)
+            : Result.Fail<IMonitoringProvider>(new ConfigurationError("Monitoring provider settings are not configured."));
+    }
+
+    public async Task<Result<MonitorAnalyticsDto>> GetAnalyticsAsync(
         ResolvedPeriod period,
         Guid? tenantId = null,
         int? monitorId = null,
@@ -40,13 +161,22 @@ public class MonitorOrchestrationService(
         var isHourly = period.IsHourly;
         var includeActualTime = period.IncludeActualTime;
 
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        var scopeFailure = await GetReadScopeFailureAsync(tenantId, monitorId, visibleTenantIds, ct);
+        if (scopeFailure is not null) return Result.Fail<MonitorAnalyticsDto>(scopeFailure);
+
         IQueryable<UptimeMonitor> monitorQuery = dbContext.Monitors.AsNoTracking().Include(m => m.Tenant);
-        if (monitorId.HasValue) 
+        if (monitorId.HasValue)
             monitorQuery = monitorQuery.Where(m => m.Id == monitorId.Value);
-        else if (tenantId.HasValue) 
+        else if (tenantId.HasValue)
             monitorQuery = monitorQuery.Where(m => m.TenantId == tenantId.Value);
-        else 
-            monitorQuery = monitorQuery.Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid);
+        else
+        {
+            var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+            monitorQuery = monitorQuery.Where(m => !systemTenantIds.Contains(m.TenantId));
+            if (visibleTenantIds is not null)
+                monitorQuery = monitorQuery.Where(m => visibleTenantIds.Contains(m.TenantId));
+        }
 
         var monitors = await monitorQuery.ToListAsync(ct);
         foreach (var m in monitors)
@@ -146,11 +276,13 @@ public class MonitorOrchestrationService(
             globalAvgLatency = monitors.Where(m => m.CurrentLatency.HasValue).Average(m => m.CurrentLatency!.Value);
         }
 
-        return new MonitorAnalyticsDto(globalAvgLatency, latencyPoints, kpis);
+        return Result.Ok(new MonitorAnalyticsDto(globalAvgLatency, latencyPoints, kpis));
     }
 
     private async Task<Dictionary<int, double?>> GetPeriodUptimesAsync(DateTimeOffset start, DateTimeOffset end, List<int>? allowedMonitorIds, CancellationToken ct = default)
     {
+        var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+
         // Floor start boundary to UTC midnight to capture preceding time-series buckets
         var queryStart = new DateTimeOffset(start.UtcDateTime.Date, TimeSpan.Zero);
         var yesterday = new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero);
@@ -166,7 +298,7 @@ public class MonitorOrchestrationService(
         else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
             histQuery = histQuery.Where(r => false); // no allowed monitors
         else
-            histQuery = histQuery.Where(r => r.UptimeMonitor.TenantId != IApplicationDbContext.SystemTenantGuid);
+            histQuery = histQuery.Where(r => !systemTenantIds.Contains(r.UptimeMonitor.TenantId));
 
         var historicalDaily = await histQuery
             .GroupBy(r => r.MonitorId)
@@ -190,7 +322,7 @@ public class MonitorOrchestrationService(
             else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
                 liveQuery = liveQuery.Where(ma => false);
             else
-                liveQuery = liveQuery.Where(ma => ma.UptimeMonitor!.TenantId != IApplicationDbContext.SystemTenantGuid);
+                liveQuery = liveQuery.Where(ma => !systemTenantIds.Contains(ma.UptimeMonitor!.TenantId));
 
             todayLive = await liveQuery
                 .GroupBy(ma => ma.MonitorId)
@@ -231,7 +363,7 @@ public class MonitorOrchestrationService(
         return results;
     }
 
-    public async Task<MonitorAvailabilitySeriesDto> GetAvailabilitySeriesAsync(
+    public async Task<Result<MonitorAvailabilitySeriesDto>> GetAvailabilitySeriesAsync(
         ResolvedPeriod period,
         TimeZoneInfo reportingTimeZone,
         Guid? tenantId = null,
@@ -242,13 +374,22 @@ public class MonitorOrchestrationService(
         string[]? excludedTags = null,
         string[]? excludedStatuses = null)
     {
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        var scopeFailure = await GetReadScopeFailureAsync(tenantId, monitorId, visibleTenantIds, ct);
+        if (scopeFailure is not null) return Result.Fail<MonitorAvailabilitySeriesDto>(scopeFailure);
+
         IQueryable<UptimeMonitor> monitorQuery = dbContext.Monitors.AsNoTracking();
         if (monitorId.HasValue)
             monitorQuery = monitorQuery.Where(m => m.Id == monitorId.Value);
         else if (tenantId.HasValue)
             monitorQuery = monitorQuery.Where(m => m.TenantId == tenantId.Value);
         else
-            monitorQuery = monitorQuery.Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid);
+        {
+            var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+            monitorQuery = monitorQuery.Where(m => !systemTenantIds.Contains(m.TenantId));
+            if (visibleTenantIds is not null)
+                monitorQuery = monitorQuery.Where(m => visibleTenantIds.Contains(m.TenantId));
+        }
 
         var monitors = await monitorQuery.ToListAsync(ct);
         foreach (var monitor in monitors)
@@ -322,26 +463,28 @@ public class MonitorOrchestrationService(
             bucketStart = bucketEnd.AddDays(1);
         }
 
-        return new MonitorAvailabilitySeriesDto(
+        return Result.Ok(new MonitorAvailabilitySeriesDto(
             period.CurrentStart,
             period.CurrentEnd,
             monitorDayValues.Count > 0 ? monitorDayValues.Average(value => value.Uptime) : null,
             monitorDayValues.Count > 0 ? monitorDayValues.Min(value => value.Uptime) : null,
-            points);
+            points));
     }
 
     private async Task<List<LatencyRow>> GetMergedLatencyDataAsync(
         IApplicationDbContext db, DateTimeOffset start, DateTimeOffset end, bool isHourly, List<int>? allowedMonitorIds, CancellationToken ct = default)
     {
+        var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+
         if (isHourly)
         {
             var query = db.ResponseTimes.AsNoTracking().Where(rt => rt.Date >= start && rt.Date < end);
-            if (allowedMonitorIds != null && allowedMonitorIds.Any()) 
+            if (allowedMonitorIds != null && allowedMonitorIds.Any())
                 query = query.Where(rt => allowedMonitorIds.Contains(rt.MonitorId));
             else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
                 query = query.Where(rt => false);
-            else 
-                query = query.Where(rt => rt.UptimeMonitor!.TenantId != IApplicationDbContext.SystemTenantGuid);
+            else
+                query = query.Where(rt => !systemTenantIds.Contains(rt.UptimeMonitor!.TenantId));
 
             var raw = await query
                 .Select(rt => new { rt.Date, rt.Average })
@@ -363,7 +506,7 @@ public class MonitorOrchestrationService(
         else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
             histQuery = histQuery.Where(r => false);
         else
-            histQuery = histQuery.Where(r => r.UptimeMonitor.TenantId != IApplicationDbContext.SystemTenantGuid);
+            histQuery = histQuery.Where(r => !systemTenantIds.Contains(r.UptimeMonitor.TenantId));
 
         var historical = await histQuery
             .Select(r => new LatencyRow(r.Date, r.Average, r.P10, r.P90))
@@ -377,7 +520,7 @@ public class MonitorOrchestrationService(
             else if (allowedMonitorIds != null && !allowedMonitorIds.Any())
                 liveQuery = liveQuery.Where(rt => false);
             else
-                liveQuery = liveQuery.Where(rt => rt.UptimeMonitor!.TenantId != IApplicationDbContext.SystemTenantGuid);
+                liveQuery = liveQuery.Where(rt => !systemTenantIds.Contains(rt.UptimeMonitor!.TenantId));
 
             var liveRaw = await liveQuery
                 .Select(rt => new { rt.Date, rt.Average })
@@ -480,14 +623,34 @@ public class MonitorOrchestrationService(
         return filtered.ToList();
     }
 
-    public async Task<UptimeMonitor> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
+    public async Task<Result<UptimeMonitor>> CreateUnassignedMonitorAsync(string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
     {
+        var filter = OrganizationFilter.From(currentAccess.Scope);
+        if (filter.Denied)
+        {
+            return Result.Fail<UptimeMonitor>(ScopeDenied());
+        }
+
+        var organizationId = filter.OrganizationId ?? IApplicationDbContext.DefaultOrganizationGuid;
+        var bucketId = await dbContext.Tenants
+            .Where(tenant => tenant.OrganizationId == organizationId && tenant.IsSystem)
+            .Select(tenant => (Guid?)tenant.Id)
+            .SingleOrDefaultAsync(ct);
+        if (bucketId is null)
+            return Result.Fail<UptimeMonitor>(new ConfigurationError("The organization has no unassigned monitor bucket."));
+        return await CreateMonitorAsync(bucketId.Value, name, url, type, uptimeSla, ct, latencyDegradedFloor);
+    }
+
+    public async Task<Result<UptimeMonitor>> CreateMonitorAsync(Guid tenantId, string name, string url, string? type, double? uptimeSla, CancellationToken ct = default, int? latencyDegradedFloor = null)
+    {
+        var tenantResult = await GetVisibleTenantForMutationAsync(tenantId, ct);
+        if (tenantResult.IsFailed) return Result.Fail<UptimeMonitor>(tenantResult.Errors);
+        var tenant = tenantResult.Value;
         var normalizedType = UptimeMonitorTypes.Normalize(type);
-        var tenant = await dbContext.Tenants.SingleOrDefaultAsync(t => t.Id == tenantId, ct)
-            ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
-        var config = await dbContext.GlobalConfigs.SingleAsync(ct);
-        var monitoringProvider = monitoringProviders.ForProvider(config.MonitoringProvider);
-        var remoteMonitor = await monitoringProvider.CreateMonitorAsync(name, url, normalizedType);
+        var providerResult = await GetConfiguredMonitoringProviderAsync(tenant.OrganizationId, ct);
+        if (providerResult.IsFailed) return Result.Fail<UptimeMonitor>(providerResult.Errors);
+        var monitoringProvider = providerResult.Value;
+        var remoteMonitor = await monitoringProvider.CreateMonitorAsync(tenant.OrganizationId, name, url, normalizedType);
         
         var monitor = new UptimeMonitor
         {
@@ -523,49 +686,124 @@ public class MonitorOrchestrationService(
         await dbContext.SaveChangesAsync(ct);
 
         HydrateLiveStatus(monitor);
-        return monitor;
+        return Result.Ok(monitor);
     }
 
-    public async Task AssignMonitorAsync(int monitorId, Guid tenantId, CancellationToken ct = default)
+    public async Task<Result> AssignMonitorAsync(int monitorId, Guid tenantId, CancellationToken ct = default)
     {
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == monitorId, ct);
-        if (monitor == null) throw new KeyNotFoundException($"Monitor {monitorId} not found.");
+        var tenantResult = await GetVisibleTenantForMutationAsync(tenantId, ct);
+        if (tenantResult.IsFailed) return Result.Fail(tenantResult.Errors);
+        var monitorResult = await GetVisibleMonitorForMutationAsync(monitorId, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
 
-        var tenantExists = await dbContext.Tenants.AnyAsync(t => t.Id == tenantId, ct);
-        if (!tenantExists) throw new KeyNotFoundException($"Tenant {tenantId} not found.");
-
-        monitor.TenantId = tenantId;
+        monitorResult.Value.TenantId = tenantId;
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
     public async Task ReassignAllTenantMonitorsToSystemAsync(Guid tenantId, CancellationToken ct = default)
     {
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        ValidateTenantInScope(tenantId, visibleTenantIds);
+
+        var organizationId = await dbContext.Tenants
+            .Where(t => t.Id == tenantId)
+            .Select(t => (Guid?)t.OrganizationId)
+            .SingleOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
+        var bucketId = await ResolveOrganizationBucketIdAsync(organizationId, ct);
+
         var monitors = await dbContext.Monitors
             .Where(m => m.TenantId == tenantId)
             .ToListAsync(ct);
 
         foreach (var m in monitors)
         {
-            m.TenantId = IApplicationDbContext.SystemTenantGuid;
+            m.TenantId = bucketId;
         }
         await dbContext.SaveChangesAsync(ct);
     }
 
-    public async Task<IEnumerable<UptimeMonitor>> GetMonitorsByTenantAsync(Guid tenantId, ResolvedPeriod period, CancellationToken ct = default)
-        => await GetMonitorsAsync(period, tenantId, ct);
+    public async Task<Result> UnassignMonitorAsync(int monitorId, CancellationToken ct = default)
+    {
+        var monitorResult = await GetVisibleMonitorForMutationAsync(monitorId, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
-    public async Task<IReadOnlyList<UptimeMonitor>> GetMonitorsAsync(ResolvedPeriod period, Guid? tenantId = null, CancellationToken ct = default)
+        var organizationId = await dbContext.Tenants
+            .Where(t => t.Id == monitor.TenantId)
+            .Select(t => t.OrganizationId)
+            .SingleOrDefaultAsync(ct);
+        var bucketId = await dbContext.Tenants
+            .Where(tenant => tenant.OrganizationId == organizationId && tenant.IsSystem)
+            .Select(tenant => (Guid?)tenant.Id)
+            .SingleOrDefaultAsync(ct);
+        if (bucketId is null)
+            return Result.Fail(new ConfigurationError("The organization has no unassigned monitor bucket."));
+
+        monitor.TenantId = bucketId.Value;
+        await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    public async Task<IEnumerable<UptimeMonitor>> GetUnassignedMonitorsAsync(ResolvedPeriod period, CancellationToken ct = default)
+    {
+        var filter = OrganizationFilter.From(currentAccess.Scope);
+        if (filter.Denied) return [];
+
+        IQueryable<Tenant> buckets = dbContext.Tenants.AsNoTracking().Where(t => t.IsSystem);
+        if (filter.OrganizationId is { } orgId)
+            buckets = buckets.Where(t => t.OrganizationId == orgId);
+        if (filter.TenantId is { } pinned)
+            buckets = buckets.Where(t => t.Id == pinned);
+        var bucketIds = await buckets.Select(t => t.Id).ToListAsync(ct);
+
+        var start = period.CurrentStart;
+        var end = period.CurrentEnd;
+
+        var monitors = await dbContext.Monitors
+            .AsNoTracking()
+            .Include(m => m.Tenant)
+            .Where(m => bucketIds.Contains(m.TenantId))
+            .ToListAsync(ct);
+
+        var monitorIds = monitors.Select(m => m.Id).ToList();
+        var uptimes = await GetPeriodUptimesAsync(start, end, monitorIds, ct);
+
+        foreach (var m in monitors)
+        {
+            HydrateLiveStatus(m);
+            if (uptimes.TryGetValue(m.Id, out var uptime))
+            {
+                m.CurrentUptimePercentage = uptime;
+            }
+        }
+
+        return monitors;
+    }
+
+    public async Task<Result<IReadOnlyList<UptimeMonitor>>> GetMonitorsAsync(ResolvedPeriod period, Guid? tenantId = null, CancellationToken ct = default)
     {
         var start = period.CurrentStart;
         var end = period.CurrentEnd;
+
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        if (tenantId.HasValue && visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId.Value))
+            return Result.Fail<IReadOnlyList<UptimeMonitor>>(new ScopeDeniedError("the requested tenant", "the current scope"));
 
         IQueryable<UptimeMonitor> query = dbContext.Monitors
             .AsNoTracking()
             .Include(m => m.Tenant);
 
-        query = tenantId.HasValue
-            ? query.Where(m => m.TenantId == tenantId.Value)
-            : query.Where(m => m.TenantId != IApplicationDbContext.SystemTenantGuid);
+        if (tenantId.HasValue)
+            query = query.Where(m => m.TenantId == tenantId.Value);
+        else
+        {
+            var systemTenantIds = await GetSystemTenantIdsAsync(ct);
+            query = query.Where(m => !systemTenantIds.Contains(m.TenantId));
+            if (visibleTenantIds is not null)
+                query = query.Where(m => visibleTenantIds.Contains(m.TenantId));
+        }
 
         var monitors = await query.ToListAsync(ct);
         var monitorIds = monitors.Select(m => m.Id).ToList();
@@ -581,11 +819,15 @@ public class MonitorOrchestrationService(
             }
         }
 
-        return monitors;
+        return Result.Ok<IReadOnlyList<UptimeMonitor>>(monitors);
     }
 
-    public async Task<UptimeMonitor> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default)
+    public async Task<Result<UptimeMonitor>> GetMonitorAsync(Guid tenantId, int id, ResolvedPeriod period, CancellationToken ct = default)
     {
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
+            return Result.Fail<UptimeMonitor>(new ScopeDeniedError("the requested tenant", "the current scope"));
+
         var start = period.CurrentStart;
         var end = period.CurrentEnd;
 
@@ -594,7 +836,7 @@ public class MonitorOrchestrationService(
             .Include(m => m.Tenant)
             .SingleOrDefaultAsync(m => m.TenantId == tenantId && m.Id == id, ct);
 
-        if (monitor == null) throw new KeyNotFoundException($"Monitor {id} not found.");
+        if (monitor == null) return Result.Fail<UptimeMonitor>(new NotFoundError("monitor", id));
 
         var uptimes = await GetPeriodUptimesAsync(start, end, new List<int> { id }, ct);
         if (uptimes.TryGetValue(id, out var uptime))
@@ -603,7 +845,7 @@ public class MonitorOrchestrationService(
         }
 
         HydrateLiveStatus(monitor);
-        return monitor;
+        return Result.Ok(monitor);
     }
     
     private void HydrateLiveStatus(UptimeMonitor monitor)
@@ -631,71 +873,92 @@ public class MonitorOrchestrationService(
             : status;
     }
 
-    public async Task DeleteMonitorAsync(Guid tenantId, int id, CancellationToken ct = default)
+    public async Task<Result> DeleteMonitorAsync(int id, CancellationToken ct = default)
     {
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.TenantId == tenantId && m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException();
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).DeleteMonitorAsync(monitor.ExternalId);
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail(providerResult.Errors);
+            await providerResult.Value.DeleteMonitorAsync(organizationId, monitor.ExternalId);
         }
 
         dbContext.Monitors.Remove(monitor);
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
-    public async Task PauseMonitorAsync(int id, CancellationToken ct = default)
+    public async Task<Result> PauseMonitorAsync(int id, CancellationToken ct = default)
     {
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException();
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).PauseMonitorAsync(monitor.ExternalId);
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail(providerResult.Errors);
+            await providerResult.Value.PauseMonitorAsync(organizationId, monitor.ExternalId);
         }
         
         monitor.UptimeMonitorEnabled = false;
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
-    public async Task StartMonitorAsync(int id, CancellationToken ct = default)
+    public async Task<Result> StartMonitorAsync(int id, CancellationToken ct = default)
     {
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException();
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         if (id > 0)
         {
-            await monitoringProviders.ForProvider(monitor.Provider).StartMonitorAsync(monitor.ExternalId);
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail(providerResult.Errors);
+            await providerResult.Value.StartMonitorAsync(organizationId, monitor.ExternalId);
         }
         
         monitor.UptimeMonitorEnabled = true;
         await dbContext.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 
-    public async Task<IEnumerable<ResponseTime>> GetAggregatedLatencyAsync(Guid tenantId, int id, DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
+    public async Task<Result<IEnumerable<ResponseTime>>> GetAggregatedLatencyAsync(Guid tenantId, int id, DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
     {
+        var visibleTenantIds = await GetVisibleTenantIdsAsync(ct);
+        if (visibleTenantIds is not null && !visibleTenantIds.Contains(tenantId))
+            return Result.Fail<IEnumerable<ResponseTime>>(new ScopeDeniedError("the requested tenant", "the current scope"));
+
         var monitorExists = await dbContext.Monitors
             .AsNoTracking()
             .AnyAsync(m => m.TenantId == tenantId && m.Id == id, ct);
 
         if (!monitorExists)
         {
-            throw new KeyNotFoundException($"Monitor {id} not found.");
+            return Result.Fail<IEnumerable<ResponseTime>>(new NotFoundError("monitor", id));
         }
 
-        return await dbContext.ResponseTimes
+        var responseTimes = await dbContext.ResponseTimes
             .AsNoTracking()
             .Where(rt => rt.MonitorId == id)
             .Where(rt => rt.Date >= from && rt.Date <= to)
             .OrderBy(rt => rt.Date)
             .ToListAsync(ct);
+        return Result.Ok<IEnumerable<ResponseTime>>(responseTimes);
     }
 
-    public async Task<UptimeMonitor> UpdateMonitorAsync(int id, string? name, string? url, string? type, double? uptimeSla, List<string>? tags, CancellationToken ct = default, int? latencyDegradedFloor = null)
+    public async Task<Result<UptimeMonitor>> UpdateMonitorAsync(int id, string? name, string? url, string? type, double? uptimeSla, List<string>? tags, CancellationToken ct = default, int? latencyDegradedFloor = null)
     {
-        var monitor = await dbContext.Monitors.SingleOrDefaultAsync(m => m.Id == id, ct);
-        if (monitor == null) throw new KeyNotFoundException($"Monitor {id} not found.");
+        var monitorResult = await GetVisibleMonitorForMutationAsync(id, ct);
+        if (monitorResult.IsFailed) return Result.Fail<UptimeMonitor>(monitorResult.Errors);
+        var monitor = monitorResult.Value;
 
         List<string>? cleanedTags = null;
         if (tags != null)
@@ -714,7 +977,11 @@ public class MonitorOrchestrationService(
 
         if (id > 0 && (nameChanged || urlChanged || typeChanged || tagsChanged))
         {
-            await monitoringProviders.ForProvider(monitor.Provider).UpdateMonitorAsync(
+            var organizationId = await GetMonitorOrganizationIdAsync(monitor, ct);
+            var providerResult = await GetConfiguredMonitoringProviderAsync(organizationId, ct, monitor.Provider);
+            if (providerResult.IsFailed) return Result.Fail<UptimeMonitor>(providerResult.Errors);
+            await providerResult.Value.UpdateMonitorAsync(
+                organizationId,
                 monitor.ExternalId,
                 nameChanged ? name : null,
                 urlChanged ? url : null,
@@ -752,7 +1019,7 @@ public class MonitorOrchestrationService(
         await dbContext.SaveChangesAsync(ct);
 
         HydrateLiveStatus(monitor);
-        return monitor;
+        return Result.Ok(monitor);
     }
 
     private static double? CalculateGrowthPercentage(double? current, double? previous)

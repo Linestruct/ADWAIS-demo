@@ -21,11 +21,15 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     : DbContext(options), IApplicationDbContext
 {
     public DbSet<GlobalConfig> GlobalConfigs => Set<GlobalConfig>();
+    public DbSet<OrganizationConfig> OrganizationConfigs => Set<OrganizationConfig>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<UserAccess> UserAccesses => Set<UserAccess>();
     public DbSet<KioskDevice> KioskDevices => Set<KioskDevice>();
     public static readonly Guid SystemTenantGuid = new Guid("00000000-0000-0000-0000-000000000001");
     public static readonly Guid SystemUserGuid = new Guid("00000000-0000-0000-0000-000000000002");
+    public static readonly Guid DefaultOrganizationGuid = new Guid("00000000-0000-0000-0000-00000000000A");
     
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<DailyFinancialTenantRollup> DailyTenantRollups => Set<DailyFinancialTenantRollup>();
@@ -42,6 +46,8 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     public DbSet<DailyAvailabilityGlobalRollup> DailyAvailabilityGlobalRollups => Set<DailyAvailabilityGlobalRollup>();
 
     public DbSet<SystemEvent> SystemEvents => Set<SystemEvent>();
+    public DbSet<PipelineRun> PipelineRuns => Set<PipelineRun>();
+    public DbSet<MaterializedViewDirty> MaterializedViewDirty => Set<MaterializedViewDirty>();
     public DbSet<BulletinPost> BulletinPosts => Set<BulletinPost>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
     public DbSet<CalendarSubscription> CalendarSubscriptions => Set<CalendarSubscription>();
@@ -49,6 +55,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     public DbSet<FeedItem> FeedItems => Set<FeedItem>();
     
     // intranät
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Conventions.Add(_ => new EnumToStringConvention());
+    }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -92,27 +103,92 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         // SystemEvent
         modelBuilder.Entity<SystemEvent>(entity =>
         {
-            entity.ToTable("system_event");
+            entity.ToTable("system_event", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_system_event_level",
+                    DbEnum.CheckConstraintSql<SystemEventLevel>("level"));
+                table.HasCheckConstraint(
+                    "ck_system_event_audience",
+                    DbEnum.CheckConstraintSql<SystemEventAudience>("audience"));
+            });
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(e => e.Source).HasMaxLength(100);
-            entity.Property(e => e.Level).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.Code).HasMaxLength(100).IsRequired()
+                .HasDefaultValue("legacy");
+            entity.Property(e => e.Audience).HasMaxLength(50)
+                .HasDefaultValue(SystemEventAudience.Platform);
+            entity.Property(e => e.TraceId).HasMaxLength(64);
+            entity.Property(e => e.RequestId).HasMaxLength(200);
+            entity.Property(e => e.SuggestedAction).HasMaxLength(500);
+            entity.Property(e => e.Level).HasMaxLength(50);
             entity.HasOne(e => e.Tenant)
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.OrganizationId, e.Timestamp, e.Id });
+            entity.HasIndex(e => new { e.TenantId, e.Timestamp, e.Id });
+        });
+
+        // PipelineRun
+        modelBuilder.Entity<PipelineRun>(entity =>
+        {
+            entity.ToTable("pipeline_run", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_pipeline_run_kind",
+                    DbEnum.CheckConstraintSql<PipelineKind>("kind"));
+                table.HasCheckConstraint(
+                    "ck_pipeline_run_trigger",
+                    DbEnum.CheckConstraintSql<PipelineTriggerKind>("trigger"));
+                table.HasCheckConstraint(
+                    "ck_pipeline_run_state",
+                    DbEnum.CheckConstraintSql<PipelineRunState>("state"));
+            });
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.Kind).HasMaxLength(50);
+            entity.Property(e => e.Trigger).HasMaxLength(50);
+            entity.Property(e => e.State).HasMaxLength(50);
+            entity.Property(e => e.ResourceKey).HasMaxLength(200);
+            entity.Property(e => e.ResourceName).HasMaxLength(255);
+            entity.Property(e => e.HangfireJobId).HasMaxLength(100);
+            entity.Property(e => e.RequestId).HasMaxLength(200);
+            entity.Property(e => e.TraceId).HasMaxLength(64);
+            entity.Property(e => e.OutcomeCode).HasMaxLength(100);
+            entity.Property(e => e.SafeSummary).HasMaxLength(500);
+            entity.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => new { e.OrganizationId, e.RequestedAt, e.Id });
+            entity.HasIndex(e => new { e.OrganizationId, e.TenantId, e.Kind, e.State });
         });
 
         // Tenant
         modelBuilder.Entity<Tenant>(entity => 
         {
-            entity.ToTable("tenant");
+            entity.ToTable("tenant", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_tenant_type",
+                    DbEnum.CheckConstraintSql<TenantType>("type"));
+            });
             entity.HasKey(t => t.Id);
             entity.Property(t => t.Id).HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(t => t.OrganizationId).IsRequired();
             entity.Property(t => t.Name).HasMaxLength(255);
             entity.Property(t => t.Type)
-                .HasConversion<string>()
                 .HasMaxLength(50)
                 .HasDefaultValue(TenantType.Mixed);
             entity.Property(t => t.OrderProvider)
@@ -127,16 +203,25 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                     .HasConversion(new EncryptedStringConverter(dataProtectionProvider));
             }
             entity.Property(t => t.CurrentlyFetching).HasDefaultValue(false);
+            entity.Property(t => t.OrderFetchingEnabled).HasDefaultValue(false);
+            entity.Property(t => t.IsSystem).HasDefaultValue(false);
+
+            entity.HasOne(t => t.Organization)
+                .WithMany(org => org.Tenants)
+                .HasForeignKey(t => t.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // to catch unassigned monitors since TenantId is not nullable and a foreign key
             entity.HasData(
                 new Tenant
                 {
                     Id = SystemTenantGuid,
+                    OrganizationId = DefaultOrganizationGuid,
                     Name = "System (unassigned monitors)",
                     Type = TenantType.Mixed,
                     OrderProviderSettings = null,
-                    OrderFetchingEnabled = false
+                    OrderFetchingEnabled = false,
+                    IsSystem = true
                 }
             );
         });
@@ -144,10 +229,14 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         // Order
         modelBuilder.Entity<Order>(entity => 
         {
-            entity.ToTable("orders");
+            entity.ToTable("orders", table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_orders_order_state",
+                    DbEnum.CheckConstraintSql<OrderState>("order_state"));
+            });
             entity.HasKey(o => o.Id);
             entity.Property(o => o.OrderState)
-                .HasConversion<string>()
                 .HasMaxLength(255);
             entity.Property(o => o.OrderNumber).HasMaxLength(255);
             entity.Property(o => o.Provider).HasMaxLength(100).IsRequired();
@@ -176,46 +265,46 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         });
 
         // Rollups
-        modelBuilder.Entity<DailyFinancialTenantRollup>(entity => 
+        modelBuilder.Entity<DailyFinancialTenantRollup>(entity =>
         {
             entity.ToView("v_mat_financial_daily_tenant_rollup");
-            entity.HasKey(r => new { r.CreatedDate, r.TenantId });
+            entity.HasKey(r => new { r.CreatedDate, r.OrganizationId, r.TenantId });
         });
-        
-        modelBuilder.Entity<DailyFinancialGlobalRollup>(entity => 
+
+        modelBuilder.Entity<DailyFinancialGlobalRollup>(entity =>
         {
             entity.ToView("v_mat_financial_daily_global_rollup");
-            entity.HasKey(r => r.CreatedDate);
+            entity.HasKey(r => new { r.CreatedDate, r.OrganizationId });
         });
-        
-        modelBuilder.Entity<DailyLatencyMonitorRollup>(entity => 
+
+        modelBuilder.Entity<DailyLatencyMonitorRollup>(entity =>
         {
             entity.ToView("v_mat_daily_latency_monitor_rollup");
-            entity.HasKey(r => new { r.Date, r.MonitorId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.MonitorId });
             entity.HasOne(r => r.UptimeMonitor)
                 .WithMany()
                 .HasForeignKey(r => r.MonitorId);
         });
-        
-        modelBuilder.Entity<DailyLatencyTenantRollup>(entity => 
+
+        modelBuilder.Entity<DailyLatencyTenantRollup>(entity =>
         {
             entity.ToView("v_mat_daily_latency_tenant_rollup");
-            entity.HasKey(r => new { r.Date, r.TenantId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.TenantId });
             entity.HasOne(r => r.Tenant)
                 .WithMany()
                 .HasForeignKey(r => r.TenantId);
         });
-        
-        modelBuilder.Entity<DailyLatencyGlobalRollup>(entity => 
+
+        modelBuilder.Entity<DailyLatencyGlobalRollup>(entity =>
         {
             entity.ToView("v_mat_daily_latency_global_rollup");
-            entity.HasKey(r => r.Date);
+            entity.HasKey(r => new { r.Date, r.OrganizationId });
         });
 
         modelBuilder.Entity<DailyAvailabilityMonitorRollup>(entity =>
         {
             entity.ToView("v_mat_daily_availability_monitor_rollup");
-            entity.HasKey(r => new { r.Date, r.MonitorId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.MonitorId });
             entity.HasOne(r => r.UptimeMonitor)
                 .WithMany()
                 .HasForeignKey(r => r.MonitorId);
@@ -224,7 +313,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         modelBuilder.Entity<DailyAvailabilityTenantRollup>(entity =>
         {
             entity.ToView("v_mat_daily_availability_tenant_rollup");
-            entity.HasKey(r => new { r.Date, r.TenantId });
+            entity.HasKey(r => new { r.Date, r.OrganizationId, r.TenantId });
             entity.HasOne(r => r.Tenant)
                 .WithMany()
                 .HasForeignKey(r => r.TenantId);
@@ -233,9 +322,21 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
         modelBuilder.Entity<DailyAvailabilityGlobalRollup>(entity =>
         {
             entity.ToView("v_mat_daily_availability_global_rollup");
-            entity.HasKey(r => r.Date);
+            entity.HasKey(r => new { r.Date, r.OrganizationId });
         });
         
+        // MaterializedViewDirty
+        modelBuilder.Entity<MaterializedViewDirty>(entity =>
+        {
+            entity.ToTable("materialized_view_dirty");
+            entity.HasKey(e => e.OrganizationId);
+            entity.Property(e => e.MarkedAt).IsRequired();
+            entity.HasOne<Organization>()
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // GlobalConfig
         modelBuilder.Entity<GlobalConfig>(entity => 
         {
@@ -243,40 +344,17 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 t.HasCheckConstraint("CK_GlobalConfig_SingleRow", 
                     "\"id\" = 1"));
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.MonitoringProvider)
-                .HasMaxLength(100)
-                .HasDefaultValue(IntegrationProviders.UptimeRobot)
-                .IsRequired();
-            entity.Property(x => x.MonitoringProviderSettings).HasMaxLength(4096);
-            if (dataProtectionProvider != null)
-            {
-                entity.Property(x => x.MonitoringProviderSettings)
-                    .HasConversion(new EncryptedStringConverter(dataProtectionProvider));
-            }
-            entity.Property(x => x.UptimeFetchIntervalMinutes).HasDefaultValue(60);
-            entity.Property(x => x.LatencyFetchIntervalMinutes).HasDefaultValue(10);
-            entity.Property(x => x.UserStatsFetchIntervalMinutes).HasDefaultValue(60);
             entity.Property(x => x.SystemEventRetentionDays).HasDefaultValue(2);
-            entity.Property(x => x.OrderFetchEnabled).HasDefaultValue(true);
-            entity.Property(x => x.MonitoringFetchEnabled).HasDefaultValue(true);
-            entity.Property(x => x.WeatherLocation).HasDefaultValue("Karlstad");
-            entity.Property(x => x.WeatherFetchIntervalMinutes).HasDefaultValue(15);
-            entity.Property(x => x.ReportingTimeZoneId).HasMaxLength(100).HasDefaultValue("Europe/Stockholm");
+            entity.Property(x => x.MatViewRefreshIntervalMinutes).HasDefaultValue(60);
+            entity.Property(x => x.VisibleRecurringJobsCsv)
+                .HasDefaultValueSql($"'{Adwais.Application.Common.Jobs.RecurringJobVisibility.DefaultVisiblePlatformJobs}'");
 
             entity.HasData(new GlobalConfig
             {
                 Id = 1,
-                OrderFetchEnabled = true,
-                MonitoringFetchEnabled = true,
-                OrderFetchIntervalMinutes = 60,
-                UptimeFetchIntervalMinutes = 60,
-                LatencyFetchIntervalMinutes = 10,
-                UserStatsFetchIntervalMinutes = 60,
                 SystemEventRetentionDays = 2,
-                FeedFetchIntervalHours = 2,
-                WeatherLocation = "Karlstad",
-                WeatherFetchIntervalMinutes = 15,
-                ReportingTimeZoneId = "Europe/Stockholm"
+                MatViewRefreshIntervalMinutes = 60,
+                VisibleRecurringJobsCsv = Adwais.Application.Common.Jobs.RecurringJobVisibility.DefaultVisiblePlatformJobs
             });
         });
         
@@ -290,11 +368,6 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             
             entity.Property(u => u.Name)
                 .HasMaxLength(255)
-                .IsRequired();
-
-            entity.Property(u => u.Role)
-                .HasConversion<string>()
-                .HasMaxLength(50)
                 .IsRequired();
 
             entity.Property(u => u.Email)
@@ -322,9 +395,102 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             {
                 Id = SystemUserGuid,
                 Name = "System",
-                Role = UserRole.Employee,
                 Email = "system@adwais.local"
             });
+        });
+
+        modelBuilder.Entity<Organization>(entity =>
+        {
+            entity.ToTable("organization");
+            entity.HasKey(org => org.Id);
+            entity.Property(org => org.Id)
+                .HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(org => org.Name)
+                .HasMaxLength(255)
+                .IsRequired();
+            entity.Property(org => org.CreatedAt)
+                .IsRequired();
+
+            entity.HasData(
+                new Organization
+                {
+                    Id = DefaultOrganizationGuid,
+                    Name = "Default Organization",
+                    CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                }
+            );
+        });
+
+        modelBuilder.Entity<OrganizationConfig>(entity =>
+        {
+            entity.ToTable("organization_config");
+            entity.HasKey(config => config.OrganizationId);
+            entity.Property(config => config.WeatherLocation).HasMaxLength(255);
+            entity.Property(config => config.ReportingTimeZoneId).HasMaxLength(100).HasDefaultValue("Europe/Stockholm");
+            entity.Property(config => config.MonitoringProvider).HasMaxLength(50).HasDefaultValue(IntegrationProviders.UptimeRobot);
+            entity.Property(config => config.MonitoringProviderSettings).HasMaxLength(4096);
+            if (dataProtectionProvider != null)
+            {
+                entity.Property(config => config.MonitoringProviderSettings)
+                    .HasConversion(new EncryptedStringConverter(dataProtectionProvider));
+            }
+            entity.Property(config => config.WeatherFetchIntervalMinutes).HasDefaultValue(15);
+            entity.Property(config => config.OrderFetchEnabled).HasDefaultValue(true);
+            entity.Property(config => config.MonitoringFetchEnabled).HasDefaultValue(true);
+            entity.Property(config => config.OrderFetchIntervalMinutes).HasDefaultValue(60);
+            entity.Property(config => config.UptimeFetchIntervalMinutes).HasDefaultValue(60);
+            entity.Property(config => config.LatencyFetchIntervalMinutes).HasDefaultValue(10);
+            entity.Property(config => config.UserStatsFetchIntervalMinutes).HasDefaultValue(60);
+            entity.Property(config => config.FeedFetchIntervalHours).HasDefaultValue(2);
+
+            entity.HasOne(config => config.Organization)
+                .WithOne()
+                .HasForeignKey<OrganizationConfig>(config => config.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserAccess>(entity =>
+        {
+            entity.ToTable("user_access", table =>
+            {
+                // The platform shape is structural: a null organization only
+                // ever pairs with the PlatformAdmin role, and the role never
+                // pairs with an organization. The database rejects every other
+                // combination, so no write path can bypass the invariant.
+                table.HasCheckConstraint(
+                    "ck_user_access_role",
+                    $"""
+                    {DbEnum.CheckConstraintSql<Adwais.Domain.Enums.UserRole>("role")}
+                    AND (
+                      ("organization_id" IS NULL AND "role" = '{nameof(Adwais.Domain.Enums.UserRole.PlatformAdmin)}')
+                      OR ("organization_id" IS NOT NULL AND "role" <> '{nameof(Adwais.Domain.Enums.UserRole.PlatformAdmin)}')
+                    )
+                    """);
+            });
+            entity.HasKey(access => access.Id);
+            entity.Property(access => access.Id)
+                .HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(access => access.Role)
+                .HasMaxLength(50)
+                .IsRequired();
+            entity.Property(access => access.CreatedAt)
+                .IsRequired();
+
+            entity.HasOne(access => access.User)
+                .WithMany()
+                .HasForeignKey(access => access.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(access => access.Organization)
+                .WithMany(org => org.UserAccesses)
+                .HasForeignKey(access => access.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(access => access.Tenant)
+                .WithMany()
+                .HasForeignKey(access => access.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(access => access.UserId);
+            entity.HasIndex(access => access.OrganizationId);
         });
         
         modelBuilder.Entity<KioskDevice>(entity =>
@@ -355,6 +521,13 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(kd => kd.CreatedDate)
                 .IsRequired();
             
+            entity.Property(kd => kd.OrganizationId)
+                .IsRequired(false);
+            entity.HasOne<Organization>()
+                .WithMany()
+                .HasForeignKey(kd => kd.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasIndex(kd => kd.DeviceId).IsUnique();
             entity.HasIndex(kd => kd.ActivationCode);
         });
@@ -430,7 +603,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .WithMany()
                 .HasForeignKey(cp => cp.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(cp => cp.Organization)
+                .WithMany()
+                .HasForeignKey(cp => cp.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(cp => cp.UserId);
+            entity.HasIndex(cp => cp.OrganizationId);
             entity.HasIndex(cp => cp.CreatedAt);
         });
 
@@ -441,10 +619,10 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             {
                 table.HasCheckConstraint(
                     "ck_calendar_event_event_type",
-                    "\"event_type\" IN ('General', 'Meeting', 'Fika', 'Social', 'Birthday', 'GoLive', 'ExternalSync')");
+                    DbEnum.CheckConstraintSql<Adwais.Domain.Enums.EventType>("event_type"));
                 table.HasCheckConstraint(
                     "ck_calendar_event_recurrence",
-                    "\"recurrence\" IN ('None', 'Daily', 'Weekly', 'Monthly', 'Yearly')");
+                    DbEnum.CheckConstraintSql<Adwais.Domain.Enums.RecurrenceType>("recurrence"));
             });
             entity.HasKey(oe => oe.Id);
             entity.Property(oe => oe.Id).HasDefaultValueSql("uuid_generate_v4()");
@@ -452,12 +630,10 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(oe => oe.Description).IsRequired(false);
             entity.Property(oe => oe.Location).HasMaxLength(255).IsRequired(false);
             entity.Property(oe => oe.EventType)
-                .HasConversion<string>()
                 .HasMaxLength(20)
                 .IsRequired()
                 .HasDefaultValue(EventType.General);
             entity.Property(oe => oe.Recurrence)
-                .HasConversion<string>()
                 .HasMaxLength(20)
                 .IsRequired()
                 .HasDefaultValue(RecurrenceType.None);
@@ -470,6 +646,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .WithMany(cs => cs.Events)
                 .HasForeignKey(oe => oe.CalendarSubscriptionId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(oe => oe.Organization)
+                .WithMany()
+                .HasForeignKey(oe => oe.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(oe => oe.OrganizationId);
             entity.HasIndex(oe => oe.StartTime);
             entity.HasIndex(oe => oe.EndTime);
             entity.HasIndex(oe => oe.ExternalUid);
@@ -485,6 +666,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(cs => cs.Url).HasMaxLength(2048).IsRequired();
             entity.Property(cs => cs.IsActive).HasDefaultValue(true);
             entity.Property(cs => cs.LastSyncError).HasMaxLength(4000);
+            entity.HasOne(cs => cs.Organization)
+                .WithMany()
+                .HasForeignKey(cs => cs.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(cs => cs.OrganizationId);
         });
 
         // FeedSource
@@ -495,7 +681,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(fs => fs.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(fs => fs.Name).HasMaxLength(255).IsRequired();
             entity.Property(fs => fs.Url).HasMaxLength(2048).IsRequired();
-            entity.HasIndex(fs => fs.Url).IsUnique();
+            entity.HasOne(fs => fs.Organization)
+                .WithMany()
+                .HasForeignKey(fs => fs.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(fs => new { fs.OrganizationId, fs.Url }).IsUnique();
             entity.Property(fs => fs.LastSuccessAt);
             entity.Property(fs => fs.LastSyncError).HasMaxLength(4000);
         });

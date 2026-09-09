@@ -3,6 +3,11 @@
 // See /LICENSE for license information.
 // SPDX-License-Identifier: MIT
 
+using System;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Models;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Enums;
@@ -10,38 +15,51 @@ using Adwais.Domain.Enums;
 namespace Adwais.Application.Services;
 
 /// <summary>
-/// Resolves reporting periods using the time zone stored in global configuration.
-/// UTC remains the persistence format; the configured zone only defines business
-/// calendar concepts such as a day, year, weekday, and hour.
+/// Resolves reporting periods using the time zone stored in the current
+/// organization's configuration. UTC remains the persistence format; the
+/// configured zone only defines business calendar concepts such as a day,
+/// year, weekday, and hour.
 /// </summary>
-public sealed class ReportingCalendar(IGlobalConfigService globalConfigService) : IReportingCalendar
+public sealed class ReportingCalendar(
+    IOrganizationConfigService organizationConfigService,
+    ICurrentAccess currentAccess) : IReportingCalendar
 {
     private const string DefaultTimeZoneId = "Europe/Stockholm";
-    private TimeZoneInfo? _timeZone;
+    private readonly ConcurrentDictionary<Guid, TimeZoneInfo> _timeZonesByOrg = new();
 
     public async Task<TimeZoneInfo> GetTimeZoneAsync(CancellationToken ct = default)
     {
-        if (_timeZone is not null) return _timeZone;
+        var orgId = currentAccess.Scope?.OrganizationId;
+        if (orgId is not null && _timeZonesByOrg.TryGetValue(orgId.Value, out var cached))
+            return cached;
 
-        var config = await globalConfigService.GetConfigAsync(ct);
-        var timeZoneId = string.IsNullOrWhiteSpace(config.ReportingTimeZoneId)
-            ? DefaultTimeZoneId
-            : config.ReportingTimeZoneId;
+        var timeZoneId = DefaultTimeZoneId;
+        if (orgId is not null)
+        {
+            var config = await organizationConfigService.GetConfigAsync(orgId.Value, ct);
+            if (!string.IsNullOrWhiteSpace(config?.ReportingTimeZoneId))
+                timeZoneId = config.ReportingTimeZoneId;
+        }
 
+        var resolved = ResolveTimeZone(timeZoneId);
+        if (orgId is not null) _timeZonesByOrg[orgId.Value] = resolved;
+        return resolved;
+    }
+
+    private static TimeZoneInfo ResolveTimeZone(string timeZoneId)
+    {
         try
         {
-            _timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
         }
         catch (TimeZoneNotFoundException)
         {
-            _timeZone = TimeZoneInfo.FindSystemTimeZoneById(DefaultTimeZoneId);
+            return TimeZoneInfo.FindSystemTimeZoneById(DefaultTimeZoneId);
         }
         catch (InvalidTimeZoneException)
         {
-            _timeZone = TimeZoneInfo.FindSystemTimeZoneById(DefaultTimeZoneId);
+            return TimeZoneInfo.FindSystemTimeZoneById(DefaultTimeZoneId);
         }
-
-        return _timeZone!;
     }
 
     public async Task<ResolvedPeriod> ResolvePeriodAsync(

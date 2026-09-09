@@ -10,13 +10,15 @@ import {
    usePatchApiUsersId, 
    useDeleteApiUsersId 
  } from '../api/generated/endpoints';
+import { useOrgSelection } from './useOrgSelection';
 import type { UserResponseDto, UserRole } from '@types';
 import { toast } from 'sonner';
 
 export function useUsersQuery() {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiUsers<UserResponseDto[], Error>({
     query: {
-      queryKey: ['users'],
+      queryKey: ['users', selectedOrgId],
       select: (res) => res.data as UserResponseDto[]
     }
   });
@@ -43,13 +45,14 @@ export function useCreateUserMutation(onSuccessCallback?: () => void) {
   return {
     ...mutation,
     mutate: (
-      user: { email: string; role: string },
+      user: { email: string; role: string; organizationId?: string | null },
       options?: Parameters<typeof mutation.mutate>[1]
     ) => 
       mutation.mutate({ 
         data: {
           email: user.email,
-          role: user.role as UserRole
+          role: user.role as UserRole,
+          organizationId: user.organizationId ?? null,
         }
       }, options),
   };

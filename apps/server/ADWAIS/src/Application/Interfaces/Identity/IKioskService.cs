@@ -5,6 +5,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Domain.Entities;
 
 namespace Adwais.Application.Interfaces;
 
@@ -24,17 +25,32 @@ public interface IKioskService
 
     /// <summary>
     /// Activates a registered kiosk device by verifying and matching a valid, non-expired activation code.
+    /// The device joins the given organization.
     /// </summary>
     /// <param name="activationCode">The case-insensitive code displayed on the kiosk screen.</param>
+    /// <param name="organizationId">The organization the activating staff member belongs to.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>True if the activation was successful, otherwise false.</returns>
-    Task<bool> ActivateDeviceAsync(string activationCode, CancellationToken ct = default);
+    Task<bool> ActivateDeviceAsync(string activationCode, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Retrieves a valid 30-day JWT bearer token for the kiosk device if it is authorized.
+    /// Retrieves a valid one-hour JWT bearer token for the kiosk device if it is authorized.
     /// </summary>
     /// <param name="deviceId">The unique device identifier.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The generated JWT local bearer token, or null if the device is unauthorized or not found.</returns>
     Task<string?> GetTokenAsync(string deviceId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lists kiosk devices. A null organization id returns every device;
+    /// otherwise only that organization's devices.
+    /// </summary>
+    Task<IReadOnlyList<KioskDevice>> GetDevicesAsync(Guid? organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes a kiosk device row. A null organization id matches any
+    /// device; otherwise only that organization's devices. Returns false
+    /// when no reachable device exists.
+    /// </summary>
+    Task<bool> DeleteDeviceAsync(string deviceId, Guid? organizationId, CancellationToken ct = default);
 }

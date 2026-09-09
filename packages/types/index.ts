@@ -100,7 +100,10 @@ export type SystemHealthDto = {
   lastFleetLatencyUpdate: string | null;
 };
 
-export type BackgroundJobStatusDto = Required<Omit<Generated.BackgroundJobStatusDto, 'jobId' | 'jobName' | 'jobArgs' | 'state' | 'createdAt' | 'durationSeconds' | 'exceptionMessage'>> & {
+// The legacy settings jobs table still uses this presentation shape while
+// its data now comes from the scoped PipelineRun diagnostics endpoint. It is
+// intentionally kept local because the old public Hangfire DTO was retired.
+export type BackgroundJobStatusDto = {
   jobId: string;
   jobName: string;
   jobArgs: string | null;
@@ -108,19 +111,18 @@ export type BackgroundJobStatusDto = Required<Omit<Generated.BackgroundJobStatus
   createdAt: string | null;
   durationSeconds: number | null;
   exceptionMessage: string | null;
+  tenantName: string | null;
+  monitorName: string | null;
 };
 
-export type UserResponseDto = {
-  id: string;
-  name: string;
-  email: string | null;
-  role: string;
-};
+export type UserResponseDto = Generated.UserResponseDto;
 
 export type GlobalConfigDto = Generated.GlobalConfigResponseDto;
 
 // Added back for compatibility
 export type AccumulatedRevenuePointDto = Required<Generated.AccumulatedRevenuePointResponseDto>;
+export type KioskDeviceDto = Required<Generated.KioskDeviceResponseDto>;
+export type OrganizationSummaryDto = Required<Generated.OrganizationSummaryResponseDto>;
 export type LatencyPoint = Required<Generated.LatencyPointResponseDto>;
 export type MonitorAnalyticsDto = Required<Omit<Generated.MonitorAnalyticsResponseDto, 'latencyPoints' | 'globalAverageLatency'>> & {
   globalAverageLatency: number | null;
@@ -131,6 +133,9 @@ export type MonitorAnalyticsDto = Required<Omit<Generated.MonitorAnalyticsRespon
 // and is not generated in the OpenAPI specs.
 export interface RecurringJobDto {
   id: string;
+  kind: Generated.RecurringJobKind | null;
+  name: string;
+  platformWide: boolean;
   cron: string;
   nextExecution: string | null;
   lastExecution: string | null;

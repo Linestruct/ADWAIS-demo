@@ -7,9 +7,11 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.Monitoring.Upstream;
 using Adwais.Application.DTOs.Integrations;
 using Adwais.Application.Interfaces;
+using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -73,20 +75,20 @@ public class UptimeRobotService(
         return JsonSerializer.Serialize(new UptimeRobotSettings(updatedApiKey));
     }
 
-    private async Task<string> GetApiKeyAsync()
+    private async Task<string> GetApiKeyAsync(Guid organizationId)
     {
         using var context = await contextFactory.CreateDbContextAsync();
-        var config = await context.GlobalConfigs.SingleOrDefaultAsync();
+        var config = await context.OrganizationConfigs.AsNoTracking().SingleOrDefaultAsync(c => c.OrganizationId == organizationId);
         if (config == null || !IsConfigured(config.MonitoringProviderSettings))
         {
-            throw new InvalidOperationException("UptimeRobot provider settings require apiKey.");
+            throw new ConfigurationException("UptimeRobot provider settings require apiKey.");
         }
         return ParseSettings(config.MonitoringProviderSettings).ApiKey!;
     }
 
-    private async Task<JsonDocument> GetResponseAsync(HttpRequestMessage request, string? context = null)
+    private async Task<JsonDocument> GetResponseAsync(HttpRequestMessage request, Guid organizationId, string? context = null)
     {
-        var apiKey = await GetApiKeyAsync();
+        var apiKey = await GetApiKeyAsync(organizationId);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         
         var response = await httpClient.SendAsync(request);
@@ -97,18 +99,28 @@ public class UptimeRobotService(
             var msg = $"UptimeRobot request failed with HTTP {(int)response.StatusCode}";
             if (!string.IsNullOrEmpty(context)) msg += $" ({context})";
             
-            await eventService.LogErrorAsync(nameof(UptimeRobotService), msg, new Exception(responseContent));
-            throw new HttpRequestException($"{msg}: {responseContent}");
+            // Provider bodies may contain account or credential-adjacent data;
+            // keep the durable event to a safe classification and leave the
+            // response body out of the event store.
+            var safeException = new HttpRequestException(msg, null, response.StatusCode);
+            await eventService.LogErrorAsync(
+                nameof(UptimeRobotService),
+                msg,
+                safeException,
+                organizationId: organizationId,
+                code: "provider.failure",
+                audience: SystemEventAudience.Platform);
+            throw safeException;
         }
         return JsonDocument.Parse(responseContent);
     }
 
-    public async Task<MonitoringProviderMonitor> CreateMonitorAsync(string name, string url, string? type)
+    public async Task<MonitoringProviderMonitor> CreateMonitorAsync(Guid organizationId, string name, string url, string? type)
     {
         var normalizedType = UptimeMonitorTypes.Normalize(type);
         var request = new HttpRequestMessage(HttpMethod.Post, "https://api.uptimerobot.com/v3/monitors");
         request.Content = JsonContent.Create(new { friendlyName = name, url, type = normalizedType, interval = 300, timeout = 60 });
-        using var response = await GetResponseAsync(request, $"Create: {name}");
+        using var response = await GetResponseAsync(request, organizationId, $"Create: {name}");
         
         var monitor = new MonitoringProviderMonitor(
             ExternalId: response.RootElement.GetProperty("id").GetInt32().ToString(CultureInfo.InvariantCulture),
@@ -130,7 +142,7 @@ public class UptimeRobotService(
         return monitor;
     }
 
-    public async Task UpdateMonitorAsync(string externalId, string? name, string? url, string? type, List<string>? tags)
+    public async Task UpdateMonitorAsync(Guid organizationId, string externalId, string? name, string? url, string? type, List<string>? tags)
     {
         var payload = new Dictionary<string, object>();
         if (name != null)
@@ -160,10 +172,10 @@ public class UptimeRobotService(
         {
             Content = JsonContent.Create(payload)
         };
-        using var response = await GetResponseAsync(request, $"Update: {name ?? "Unspecified"} ({monitorId})");
+        using var response = await GetResponseAsync(request, organizationId, $"Update: {name ?? "Unspecified"} ({monitorId})");
     }
 
-    public async Task<List<MonitoringProviderMonitor>> GetMonitorsAsync(IReadOnlyCollection<string>? externalIds = null)
+    public async Task<List<MonitoringProviderMonitor>> GetMonitorsAsync(Guid organizationId, IReadOnlyCollection<string>? externalIds = null)
     {
         var monitors = new List<MonitoringProviderMonitor>();
         var baseUrl = "https://api.uptimerobot.com/v3/monitors";
@@ -180,7 +192,7 @@ public class UptimeRobotService(
         while (!string.IsNullOrEmpty(nextUrl))
         {
             var request = new HttpRequestMessage(HttpMethod.Get, nextUrl);
-            using var response = await GetResponseAsync(request, context);
+            using var response = await GetResponseAsync(request, organizationId, context);
 
             if (response.RootElement.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
             {
@@ -363,7 +375,7 @@ public class UptimeRobotService(
             ParseNullableLong(incident, "duration"));
     }
     
-    public async Task<double> GetUptimeAsync(string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null)
+    public async Task<double> GetUptimeAsync(Guid organizationId, string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null)
     {
         var monitorId = ParseExternalId(externalId);
         var url = $"https://api.uptimerobot.com/v3/monitors/{monitorId}/stats/uptime";
@@ -374,11 +386,11 @@ public class UptimeRobotService(
             url += $"?from={fromStr}&to={toStr}";
         }
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        using var response = await GetResponseAsync(request, monitorName != null ? $"Monitor: {monitorName}" : $"MonitorId: {monitorId}");
+        using var response = await GetResponseAsync(request, organizationId, monitorName != null ? $"Monitor: {monitorName}" : $"MonitorId: {monitorId}");
         return response.RootElement.GetProperty("uptime").GetDouble();
     }
         
-    public async Task<(int? Average, int? Lowest, int? Highest)> GetResponseTimeAsync(string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null)
+    public async Task<(int? Average, int? Lowest, int? Highest)> GetResponseTimeAsync(Guid organizationId, string externalId, DateTimeOffset? startDate = null, DateTimeOffset? endDate = null, string? monitorName = null)
     {
         var monitorId = ParseExternalId(externalId);
         var url = $"https://api.uptimerobot.com/v3/monitors/{monitorId}/stats/response-time";
@@ -389,7 +401,7 @@ public class UptimeRobotService(
             url += $"?from={fromStr}&to={toStr}";
         }
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        using var response = await GetResponseAsync(request, monitorName != null ? $"Monitor: {monitorName}" : $"MonitorId: {monitorId}");
+        using var response = await GetResponseAsync(request, organizationId, monitorName != null ? $"Monitor: {monitorName}" : $"MonitorId: {monitorId}");
         var summary = response.RootElement.GetProperty("summary");
         
         int? avg = summary.TryGetProperty("avg", out var avgProp) && avgProp.ValueKind != JsonValueKind.Null ? avgProp.GetInt32() : null;
@@ -399,33 +411,33 @@ public class UptimeRobotService(
         return (avg, lowest, highest);
     }
 
-    public async Task DeleteMonitorAsync(string externalId)
+    public async Task DeleteMonitorAsync(Guid organizationId, string externalId)
     {
         var monitorId = ParseExternalId(externalId);
         var request = new HttpRequestMessage(HttpMethod.Delete, $"https://api.uptimerobot.com/v3/monitors/{monitorId}");
-        await GetResponseAsync(request, $"Delete MonitorId: {monitorId}");
+        await GetResponseAsync(request, organizationId, $"Delete MonitorId: {monitorId}");
     }
 
-    public async Task PauseMonitorAsync(string externalId)
+    public async Task PauseMonitorAsync(Guid organizationId, string externalId)
     {
         var monitorId = ParseExternalId(externalId);
         var request = new HttpRequestMessage(HttpMethod.Post, $"https://api.uptimerobot.com/v3/monitors/{monitorId}/pause");
         request.Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
-        await GetResponseAsync(request, $"Pause MonitorId: {monitorId}");
+        await GetResponseAsync(request, organizationId, $"Pause MonitorId: {monitorId}");
     }
 
-    public async Task StartMonitorAsync(string externalId)
+    public async Task StartMonitorAsync(Guid organizationId, string externalId)
     {
         var monitorId = ParseExternalId(externalId);
         var request = new HttpRequestMessage(HttpMethod.Post, $"https://api.uptimerobot.com/v3/monitors/{monitorId}/start");
         request.Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
-        await GetResponseAsync(request, $"Start MonitorId: {monitorId}");
+        await GetResponseAsync(request, organizationId, $"Start MonitorId: {monitorId}");
     }
 
-    public async Task<MonitoringProviderAccount> GetAccountDetailsAsync()
+    public async Task<MonitoringProviderAccount> GetAccountDetailsAsync(Guid organizationId)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, "https://api.uptimerobot.com/v3/user/me");
-        using var response = await GetResponseAsync(request, "GetAccountDetails");
+        using var response = await GetResponseAsync(request, organizationId, "GetAccountDetails");
         
         var root = response.RootElement;
         var sub = root.GetProperty("activeSubscription");

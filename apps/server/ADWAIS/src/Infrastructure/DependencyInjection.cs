@@ -9,7 +9,11 @@ using Adwais.Application.Services;
 using Adwais.Infrastructure.Caching;
 using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Services;
+using Adwais.Infrastructure.Services.Jobs;
+using Adwais.Infrastructure.Services.Reporting;
+using Adwais.Infrastructure.Jobs;
 using Adwais.Infrastructure.Jobs.MaterializedViews;
+using Adwais.Infrastructure.Jobs.Monitor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,15 +36,26 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContextFactory, ApplicationDbContextFactory>();
 
         services.AddScoped<ISystemEventService, SystemEventService>();
+        services.AddScoped<IPipelineRunService, PipelineRunService>();
+        services.AddScoped<IDiagnosticsService, DiagnosticsService>();
         services.AddScoped<ICacheService, MemoryCacheService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IKioskService, KioskService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IGlobalConfigService, GlobalConfigService>();
+        services.AddScoped<IOrganizationConfigService, OrganizationConfigService>();
         services.AddScoped<IReportingCalendar, ReportingCalendar>();
+        services.AddScoped<IViewRefreshTracker, ViewRefreshTracker>();
+        services.AddScoped<IJobTriggerService, JobTriggerService>();
         services.AddScoped<RefreshFinancialMaterializedViewJob>();
         services.AddScoped<RefreshMonitoringMaterializedViewJob>();
-        services.AddScoped<IReportingRollupRefresher, ReportingRollupRefresher>();
+        services.AddScoped<RefreshStaleMaterializedViewsJob>();
+        services.AddScoped<SyncOrganizationFleetJob>();
+        services.AddScoped<SyncOrganizationAccountStatsJob>();
+        services.AddScoped<OrderFetchDispatchJob>();
+        services.AddScoped<MonitorUptimeDispatchJob>();
+        services.AddScoped<MonitorLatencyDispatchJob>();
+        services.AddScoped<AggregateOrganizationFeedsJob>();
 
         // Register Typed HTTP Clients with resilience policies
         services.AddTransient<UptimeRobotRateLimitHandler>();

@@ -4,8 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 using Adwais.Application.DTOs.Intranet;
+using Adwais.Api.Extensions;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Adwais.Api.Controllers.Calendar;
@@ -55,10 +57,13 @@ public class CalendarSubscriptionController(ICalendarSubscriptionService subscri
     /// <returns>The created subscription.</returns>
     [HttpPost]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(CalendarSubscriptionDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CalendarSubscriptionDto>> CreateSubscription([FromBody] CreateCalendarSubscriptionDto dto, CancellationToken ct)
     {
-        var sub = await _subscriptionService.CreateSubscriptionAsync(dto, ct);
-        return CreatedAtAction(nameof(GetSubscription), new { id = sub.Id }, sub);
+        var result = await _subscriptionService.CreateSubscriptionAsync(dto, ct);
+        return result.IsFailed ? result.ToProblem(HttpContext) : CreatedAtAction(nameof(GetSubscription), new { id = result.Value.Id }, result.Value);
     }
 
     /// <summary>
@@ -70,11 +75,14 @@ public class CalendarSubscriptionController(ICalendarSubscriptionService subscri
     /// <returns>The updated subscription, or <see cref="NotFoundResult"/> when no subscription matches the ID.</returns>
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(CalendarSubscriptionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CalendarSubscriptionDto>> UpdateSubscription(Guid id, [FromBody] UpdateCalendarSubscriptionDto dto, CancellationToken ct)
     {
-        var sub = await _subscriptionService.UpdateSubscriptionAsync(id, dto, ct);
-        if (sub == null) return NotFound();
-        return Ok(sub);
+        var result = await _subscriptionService.UpdateSubscriptionAsync(id, dto, ct);
+        return result.IsFailed ? result.ToProblem(HttpContext) : Ok(result.Value);
     }
 
     /// <summary>
@@ -85,10 +93,13 @@ public class CalendarSubscriptionController(ICalendarSubscriptionService subscri
     /// <returns>No content when the subscription is deleted, or <see cref="NotFoundResult"/> when no subscription matches the ID.</returns>
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteSubscription(Guid id, CancellationToken ct)
     {
-        var success = await _subscriptionService.DeleteSubscriptionAsync(id, ct);
-        if (!success) return NotFound();
+        var result = await _subscriptionService.DeleteSubscriptionAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return NoContent();
     }
 

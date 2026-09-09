@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 using Adwais.Api.DTOs.Kiosk;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,7 @@ namespace Adwais.Api.Controllers.Authentication;
 /// </summary>
 [ApiController]
 [Route("api/kiosk")]
-public class KioskAuthController(IKioskService kioskService) : ControllerBase
+public class KioskAuthController(IKioskService kioskService, ICurrentAccess currentAccess) : ControllerBase
 {
     /// <summary>
     /// Registers a new kiosk device and generates a temporary case-insensitive activation code.
@@ -41,7 +42,13 @@ public class KioskAuthController(IKioskService kioskService) : ControllerBase
     [Authorize(Policy = "StaffAccess")]
     public async Task<IActionResult> Activate([FromBody] ActivateKioskRequestDto request)
     {
-        var activated = await kioskService.ActivateDeviceAsync(request.ActivationCode);
+        var organizationId = currentAccess.Scope?.OrganizationId;
+        if (organizationId is null)
+        {
+            return BadRequest("Kiosk activation requires organization access.");
+        }
+
+        var activated = await kioskService.ActivateDeviceAsync(request.ActivationCode, organizationId.Value);
         if (!activated)
         {
             return BadRequest("Activation code has expired or is invalid.");
@@ -50,7 +57,7 @@ public class KioskAuthController(IKioskService kioskService) : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves a valid 30-day JWT local token for an authorized kiosk device.
+    /// Retrieves a valid 1-hour JWT local token for an authorized kiosk device.
     /// </summary>
     /// <param name="deviceId">The unique device identifier.</param>
     /// <returns>The kiosk token response containing the JWT bearer token.</returns>
@@ -62,7 +69,39 @@ public class KioskAuthController(IKioskService kioskService) : ControllerBase
         {
             return Unauthorized("Kiosk device is not authorized.");
         }
-        return Ok(new KioskTokenResponseDto { Token = token, ExpiresInDays = 30 });
+        return Ok(new KioskTokenResponseDto { Token = token, ExpiresInHours = 1 });
+    }
+
+    /// <summary>
+    /// Lists kiosk devices. Platform admins see every device; staff see
+    /// their own organization's devices.
+    /// </summary>
+    [HttpGet("devices")]
+    [Authorize(Policy = "StaffAccess")]
+    public async Task<ActionResult<IReadOnlyList<KioskDeviceResponseDto>>> GetDevices(CancellationToken ct)
+    {
+        var organizationId = currentAccess.Scope?.OrganizationId;
+        var devices = await kioskService.GetDevicesAsync(organizationId, ct);
+        return Ok(devices.Select(d => new KioskDeviceResponseDto(
+            d.DeviceId,
+            d.OrganizationId,
+            d.IsAuthorized,
+            d.AuthorizedAt,
+            d.LastSeenAt,
+            d.CreatedDate)).ToList());
+    }
+
+    /// <summary>
+    /// Removes a kiosk device row. The display drops to the activation
+    /// screen at its next token refresh.
+    /// </summary>
+    [HttpDelete("devices/{deviceId}")]
+    [Authorize(Policy = "StaffAccess")]
+    public async Task<IActionResult> DeleteDevice(string deviceId, CancellationToken ct)
+    {
+        var organizationId = currentAccess.Scope?.OrganizationId;
+        var deleted = await kioskService.DeleteDeviceAsync(deviceId, organizationId, ct);
+        return deleted ? NoContent() : NotFound();
     }
 
     /// <summary>
@@ -84,7 +123,7 @@ public class KioskAuthController(IKioskService kioskService) : ControllerBase
             return Unauthorized("Invalid secret.");
         }
         
-        var token = tokenService.GenerateKioskToken("swagger-admin", "Admin");
-        return Ok(new KioskTokenResponseDto { Token = token, ExpiresInDays = 30 });
+        var token = tokenService.GenerateKioskToken("swagger-admin", "PlatformAdmin", isPlatformAdmin: true);
+        return Ok(new KioskTokenResponseDto { Token = token, ExpiresInHours = 1 });
     }
 }

@@ -14,7 +14,8 @@ namespace Adwais.Api.DTOs.Users;
 /// <param name="Role">The application role assigned to the user.</param>
 public record CreateUserRequestDto(
     string Email,
-    UserRole Role
+    UserRole Role,
+    Guid? OrganizationId = null
 );
 
 

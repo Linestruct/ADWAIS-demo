@@ -7,10 +7,17 @@
 import type { UserRole } from './userRole';
 
 export interface UserResponseDto {
-  id?: string;
-  /** @nullable */
-  name?: string | null;
+  id: string;
+  /** @minLength 1 */
+  name: string;
   /** @nullable */
   email?: string | null;
   role?: UserRole;
+  /** @nullable */
+  organizationId?: string | null;
+  /** @nullable */
+  organizationName?: string | null;
+  /** @nullable */
+  tenantId?: string | null;
+  isPlatformAdmin?: boolean;
 }

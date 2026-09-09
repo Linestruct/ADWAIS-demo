@@ -4,6 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using Adwais.Application.Common.Exceptions;
+using Adwais.Application.Common.Observability;
 using Adwais.Application.DTOs.Financial.Upstream;
 using Adwais.Domain;
 using Adwais.Domain.Entities;
@@ -18,16 +21,62 @@ public class OrderIngestionService(
     IDbContextFactory<AnalyticsDbContext> contextFactory,
     IEnumerable<IOrderSource> orderSources,
     ILogger<OrderIngestionService> logger,
-    ISystemEventService eventService)
+    ISystemEventService eventService,
+    IViewRefreshTracker viewRefreshTracker,
+    IPipelineRunService? pipelineRunService = null)
     : IOrderIngestionService
 {
-    public async Task<int> ExecuteIngestionAsync(Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct = default)
+    public async Task<int> ExecuteIngestionAsync(Guid organizationId, Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct = default)
+        => await ExecuteIngestionInternalAsync(organizationId, tenantId, startDate, endDate, null, ct);
+
+    public async Task<int> ExecuteIngestionTrackedAsync(Guid organizationId, Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, Guid pipelineRunId, CancellationToken ct = default)
+        => await ExecuteIngestionInternalAsync(organizationId, tenantId, startDate, endDate, pipelineRunId, ct);
+
+    private async Task<int> ExecuteIngestionInternalAsync(Guid organizationId, Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, Guid? pipelineRunId, CancellationToken ct)
     {
         Tenant tenant;
         await using (var context = await contextFactory.CreateDbContextAsync(ct))
         {
             tenant = await context.Tenants.FirstAsync(t => t.Id == tenantId, ct);
         }
+
+        if (tenant.OrganizationId != organizationId)
+            throw new InvalidOperationException($"Tenant {tenantId} does not belong to organization {organizationId}.");
+
+        var hadPreviousError = tenant.LastSyncError is not null;
+        var startedAt = Stopwatch.GetTimestamp();
+        var run = pipelineRunService is null
+            ? null
+            : pipelineRunId is { } trackedRunId
+                ? await LoadRunAsync(trackedRunId, tenant, ct)
+                : await pipelineRunService.StartAsync(
+                organizationId,
+                tenantId,
+                PipelineKind.OrderIngestion,
+                PipelineTriggerKind.System,
+                resourceKey: tenantId.ToString("D"),
+                resourceName: tenant.Name,
+                traceId: Activity.Current?.TraceId.ToHexString(),
+                ct: ct);
+        if (run is not null)
+            await pipelineRunService!.MarkRunningAsync(run.Id, ct);
+
+        using var activity = ObservabilityTelemetry.ActivitySource.StartActivity(
+            "adwais.pipeline.order_ingestion", ActivityKind.Internal);
+        activity?.SetTag("adwais.organization_id", organizationId);
+        activity?.SetTag("adwais.tenant_id", tenantId);
+        activity?.SetTag("adwais.pipeline", PipelineKind.OrderIngestion.ToString());
+        activity?.SetTag("adwais.pipeline_run_id", run?.Id);
+        using var logScope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["OrganizationId"] = organizationId,
+            ["TenantId"] = tenantId,
+            ["Pipeline"] = PipelineKind.OrderIngestion.ToString(),
+            ["PipelineRunId"] = run?.Id,
+            ["TraceId"] = Activity.Current?.TraceId.ToHexString()
+        });
+        ObservabilityTelemetry.PipelineAttempts.Add(1,
+            new KeyValuePair<string, object?>("pipeline", "order_ingestion"));
 
         try
         {
@@ -40,10 +89,32 @@ public class OrderIngestionService(
                 await context.SaveChangesAsync(ct);
             }
 
-            if (result > 0)
+            if (result > 0 || hadPreviousError)
             {
-                await eventService.LogAsync(nameof(OrderIngestionService), $"Successfully ingested {result} orders.", SystemEventLevel.Information, $"Period: {startDate:O} to {endDate:O}", tenantId);
+                await eventService.LogAsync(
+                    nameof(OrderIngestionService),
+                    hadPreviousError
+                        ? "Order ingestion recovered for this tenant."
+                        : $"Successfully ingested {result} orders.",
+                    SystemEventLevel.Information,
+                    details: null,
+                    tenantId: tenantId,
+                    organizationId: organizationId,
+                    code: "pipeline.succeeded",
+                    audience: SystemEventAudience.Organization,
+                    pipelineRunId: run?.Id,
+                    traceId: Activity.Current?.TraceId.ToHexString());
+                await viewRefreshTracker.MarkDirtyAsync(tenant.OrganizationId, ct);
             }
+
+            if (run is not null)
+                await pipelineRunService!.CompleteAsync(run.Id, result, $"Ingestion completed. {result} orders committed.", ct);
+            ObservabilityTelemetry.PipelineOutcomes.Add(1,
+                new KeyValuePair<string, object?>("pipeline", "order_ingestion"),
+                new KeyValuePair<string, object?>("outcome", "succeeded"));
+            ObservabilityTelemetry.PipelineDuration.Record(
+                Stopwatch.GetElapsedTime(startedAt).TotalSeconds,
+                new KeyValuePair<string, object?>("pipeline", "order_ingestion"));
             
             return result;
         }
@@ -51,8 +122,36 @@ public class OrderIngestionService(
         {
             var step = ex.Data.Contains("Step") ? ex.Data["Step"]?.ToString() : "Executing Ingestion Core";
             var detailedErrorMessage = $"Failed during step '{step}': {ex.Message}";
-            
-            await eventService.LogErrorAsync(nameof(OrderIngestionService), $"Ingestion failed: {detailedErrorMessage}", ex, tenantId);
+            var outcomeCode = ex is ConfigurationException ? "configuration.missing" : "provider.failure";
+            var safeMessage = ex is ConfigurationException
+                ? "Order ingestion is not configured for this tenant."
+                : "The order provider failed while ingestion was running.";
+
+            logger.LogError(ex,
+                "Order ingestion failed for organization {OrganizationId}, tenant {TenantId}, run {RunId}.",
+                organizationId, tenantId, run?.Id);
+            await eventService.LogErrorAsync(
+                nameof(OrderIngestionService),
+                safeMessage,
+                ex,
+                tenantId: tenantId,
+                organizationId: organizationId,
+                code: outcomeCode,
+                audience: SystemEventAudience.Organization,
+                pipelineRunId: run?.Id,
+                traceId: Activity.Current?.TraceId.ToHexString(),
+                suggestedAction: ex is ConfigurationException
+                    ? "Configure the order provider before retrying."
+                    : "Review the provider configuration and retry the ingestion.");
+            if (run is not null)
+                await pipelineRunService!.FailAsync(run.Id, outcomeCode, safeMessage, CancellationToken.None);
+            ObservabilityTelemetry.PipelineOutcomes.Add(1,
+                new KeyValuePair<string, object?>("pipeline", "order_ingestion"),
+                new KeyValuePair<string, object?>("outcome", "failed"),
+                new KeyValuePair<string, object?>("error_code", outcomeCode));
+            ObservabilityTelemetry.PipelineDuration.Record(
+                Stopwatch.GetElapsedTime(startedAt).TotalSeconds,
+                new KeyValuePair<string, object?>("pipeline", "order_ingestion"));
             
             try
             {
@@ -85,10 +184,27 @@ public class OrderIngestionService(
         }
     }
 
+    private async Task<PipelineRun?> LoadRunAsync(Guid runId, Tenant tenant, CancellationToken ct)
+    {
+        // The run id is created by an authorized API or dispatcher. If it is
+        // missing (for example after a partial enqueue), start a replacement
+        // record so execution still has an observable owner.
+        await using var db = await contextFactory.CreateDbContextAsync(ct);
+        var existing = await db.PipelineRuns.SingleOrDefaultAsync(run => run.Id == runId, ct);
+        return existing ?? await pipelineRunService!.StartAsync(
+            tenant.OrganizationId,
+            tenant.Id,
+            PipelineKind.OrderIngestion,
+            PipelineTriggerKind.System,
+            resourceKey: tenant.Id.ToString("D"),
+            resourceName: tenant.Name,
+            ct: ct);
+    }
+
     private async Task<int> ExecuteIngestionCoreAsync(Tenant tenant, IOrderSource orderSource, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct)
     {
         if (!orderSource.IsConfigured(tenant.OrderProviderSettings))
-            throw new InvalidOperationException("Order provider settings are missing or invalid.");
+            throw new ConfigurationException("Order provider settings are missing or invalid.");
         var totalIngested = 0;
         var currentStart = startDate;
 
@@ -109,9 +225,15 @@ public class OrderIngestionService(
                 try
                 {
                     orders = await orderSource.FetchOrdersAsync(tenant.OrderProviderSettings!, currentStart, currentEnd, take, ct);
+                    ObservabilityTelemetry.ProviderOutcomes.Add(1,
+                        new KeyValuePair<string, object?>("provider", orderSource.Provider),
+                        new KeyValuePair<string, object?>("outcome", "succeeded"));
                 }
                 catch (HttpRequestException ex)
                 {
+                    ObservabilityTelemetry.ProviderOutcomes.Add(1,
+                        new KeyValuePair<string, object?>("provider", orderSource.Provider),
+                        new KeyValuePair<string, object?>("outcome", "failed"));
                     logger.LogError(ex, "Failed to fetch chunk {Start} to {End} for Tenant {TenantId}.", currentStart, currentEnd, tenant.Id);
                     throw;
                 }
@@ -167,16 +289,23 @@ public class OrderIngestionService(
         return totalIngested;
     }
 
-    public async Task IngestSingleOrderAsync(Guid tenantId, string provider, OrderSourceOrder order, CancellationToken ct = default)
+    public async Task IngestSingleOrderAsync(Guid organizationId, Guid tenantId, string provider, OrderSourceOrder order, CancellationToken ct = default)
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync(ct);
-        var tenantProvider = await dbContext.Tenants
-            .Where(tenant => tenant.Id == tenantId)
-            .Select(tenant => tenant.OrderProvider)
-            .SingleAsync(ct);
+        var tenant = await dbContext.Tenants
+            .Where(t => t.Id == tenantId)
+            .Select(t => new { t.OrderProvider, t.IsSystem, t.OrganizationId })
+            .SingleOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Tenant {tenantId} not found.");
+        if (tenant.IsSystem)
+        {
+            throw new KeyNotFoundException($"Tenant {tenantId} is not an order target.");
+        }
+        if (tenant.OrganizationId != organizationId)
+            throw new InvalidOperationException($"Tenant {tenantId} does not belong to organization {organizationId}.");
         var orderSource = orderSources.ForProvider(provider);
-        if (!tenantProvider.Equals(orderSource.Provider, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Tenant is configured for order provider '{tenantProvider}', not '{orderSource.Provider}'.");
+        if (!tenant.OrderProvider.Equals(orderSource.Provider, StringComparison.OrdinalIgnoreCase))
+            throw new ConfigurationException($"Tenant is configured for order provider '{tenant.OrderProvider}', not '{orderSource.Provider}'.");
 
         var pIds = new[] { Guid.NewGuid() };
         var pTenantIds = new[] { tenantId };
@@ -190,6 +319,7 @@ public class OrderIngestionService(
         var pCurrencies = new[] { order.Currency };
 
         await UpsertOrdersAsync(dbContext, pIds, pTenantIds, pProviders, pExternalIds, pOrderStatus, pOrderIds, pDatesCreated, pIncVat, pExcVat, pCurrencies);
+        await viewRefreshTracker.MarkDirtyAsync(tenant.OrganizationId, ct);
     }
 
     private static async Task UpsertOrdersAsync(

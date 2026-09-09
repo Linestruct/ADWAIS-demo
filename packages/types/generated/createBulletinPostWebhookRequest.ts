@@ -10,4 +10,6 @@ export interface CreateBulletinPostWebhookRequest {
   title: string | null;
   /** @nullable */
   body: string | null;
+  /** @nullable */
+  organizationId?: string | null;
 }

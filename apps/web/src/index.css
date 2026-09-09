@@ -495,3 +495,26 @@
 .delay-500 { animation-delay: 500ms; }
 .delay-600 { animation-delay: 600ms; }
 
+/* Sonner unstyled toasts: mirror the stock rule that fades the content of
+   stacked toasts behind the front one. Sonner gates its own rule on
+   data-styled='true', so without this the clamped rows bleed their text
+   over the stack. See node_modules/sonner/dist/styles.css. */
+[data-sonner-toast][data-expanded='false'][data-front='false']:not([data-styled='true']) > * {
+  opacity: 0;
+}
+
+/* Custom toasts (toast.custom) render their own card. Sonner always leaves
+   their wrapper unstyled, so reset the global toast classes here to restore
+   the bare-wrapper behavior. Higher specificity beats the Tailwind
+   utilities deterministically. */
+[data-sonner-toast].order-toast-reset {
+  display: block;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  line-height: inherit;
+  box-shadow: none;
+}
+

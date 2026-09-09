@@ -7,6 +7,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { isStaffRole } from '../../utils/roles';
 import {
   useDeleteApiIntranetBulletinPostsId,
   useGetApiIntranetBulletinPosts,
@@ -16,6 +17,7 @@ import {
 } from '../../api/generated/endpoints';
 import type { BulletinPostResponseDto } from '@types';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { useOrgSelection } from '../../hooks/useOrgSelection';
 import { CollectionPanel } from '../common/dashboard/CollectionPanel';
 import { Button } from '../common/ui/Button';
 import { ErrorAlert } from '../common/ui/ErrorAlert';
@@ -39,7 +41,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 export function BulletinBoard() {
   const queryClient = useQueryClient();
   const { user, role } = useCurrentUser();
-  const postsQuery = useGetApiIntranetBulletinPosts();
+  const { selectedOrgId } = useOrgSelection();
+  const postsQuery = useGetApiIntranetBulletinPosts({
+    query: { queryKey: ['bulletin-posts', selectedOrgId] },
+  });
   const createMutation = usePostApiIntranetBulletinPosts();
   const updateMutation = usePatchApiIntranetBulletinPostsId();
   const deleteMutation = useDeleteApiIntranetBulletinPostsId();
@@ -52,7 +57,7 @@ export function BulletinBoard() {
   const [mutationError, setMutationError] = useState<string | null>(null);
 
   const posts = postsQuery.data?.data ?? [];
-  const canCreate = role === 'Admin' || role === 'Employee';
+  const canCreate = isStaffRole(role);
   const canManage = (post: BulletinPostResponseDto) =>
     role === 'Admin' || (!!user?.id && user.id === post.author?.id);
 

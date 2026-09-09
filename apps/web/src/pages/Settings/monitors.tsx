@@ -16,6 +16,7 @@ import { useTenantsViewModel } from '../../hooks/useTenantsViewModel';
 import { CreateMonitorModal } from '../../components/settings/tenants/CreateMonitorModal';
 import { MonitorRow } from '../../components/settings/tenants/MonitorRow';
 import { MonitorSettingsFilterMenu } from '../../components/settings/tenants/SettingsFilterMenu';
+import { DataTable } from '../../components/common/ui/DataTable';
 
 export function MonitorsView() {
     const navigate = useNavigate();
@@ -121,8 +122,10 @@ export function MonitorsView() {
                             </Button>
                 </SettingsPanelHeader>
 
-                <div className="border border-outline-variant bg-surface custom-scrollbar flex-1 overflow-auto">
-                        <table className="w-full whitespace-nowrap text-left text-sm">
+                <DataTable
+                    viewportClassName="border border-outline-variant bg-surface"
+                    tableClassName="whitespace-nowrap"
+                >
                             <thead className="sticky top-0 z-10 border-b border-outline-variant bg-surface-container-high text-on-surface-variant">
                                 <tr>
                                     <th className="w-12 px-4 py-4 sm:px-5"></th>
@@ -157,8 +160,7 @@ export function MonitorsView() {
                                     <EmptyState message="No monitors found" isTableRow colSpan={6} />
                                 )}
                             </tbody>
-                        </table>
-                </div>
+                </DataTable>
             </SettingsPanel>
 
             {isAdmin && (

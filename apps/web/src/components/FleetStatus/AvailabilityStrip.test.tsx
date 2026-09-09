@@ -43,7 +43,7 @@ describe('AvailabilityStrip', () => {
     expect(screen.getByText('98.500%')).toBeInTheDocument();
     expect(screen.getByText(/2 monitors · Worst 97.250%/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /20 Jul: 100.000%/i }));
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /20 Jul: 100.000%/i }));
     expect(screen.getByText('100.000%')).toBeInTheDocument();
     expect(screen.getByText(/Worst 99.900%/i)).toBeInTheDocument();
 

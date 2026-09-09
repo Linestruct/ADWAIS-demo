@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { isDemoMode, userManager } from './utils/oidcConfig';
-import { removeKioskToken } from './utils/auth';
+import { removeKioskToken, tryRefreshKioskToken } from './utils/auth';
+import { readStoredOrgId, setSelectedOrgId, notifyOrgSelectionCheck } from './utils/orgSelection';
 
 export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Headers> {
   const headers = new Headers(customHeaders);
@@ -23,17 +24,40 @@ export async function getAuthHeaders(customHeaders?: HeadersInit): Promise<Heade
   return headers;
 }
 
+function withOrgSelectionHeader(headers: Headers, url: string): Headers {
+  if (headers.has('X-ADWAIS-ORG-ID')) return headers;
+  if (url.includes('/api/organizations')) return headers;
+  if (localStorage.getItem('kiosk_token')) return headers;
+
+  const orgId = readStoredOrgId();
+  if (orgId) {
+    headers.set('X-ADWAIS-ORG-ID', orgId);
+  }
+  return headers;
+}
+
+function handleOrgSelectionRevocation(status: number): void {
+  if (status === 403 && readStoredOrgId()) {
+    notifyOrgSelectionCheck();
+  }
+}
+
 export async function handleSessionInvalidation() {
   if (window.location.pathname === '/kiosk' || window.location.pathname === '/login') {
     return;
   }
-  const user = await userManager?.getUser();
+const user = await userManager?.getUser();
   if (user) {
     await userManager?.removeUser();
     removeKioskToken();
+    setSelectedOrgId(null);
     sessionStorage.clear();
     window.location.href = '/login';
   } else {
+    if (await tryRefreshKioskToken()) {
+      window.location.reload();
+      return;
+    }
     localStorage.removeItem('kiosk_token');
     if (isDemoMode) {
       window.location.reload();
@@ -51,7 +75,7 @@ export async function checkSessionValidity() {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch('/api/users/me', { headers });
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       await handleSessionInvalidation();
     }
   } catch (e) {
@@ -64,6 +88,7 @@ export async function checkSessionValidity() {
 export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const isBodyRequest = options?.method && ['POST', 'PUT', 'PATCH'].includes(options.method.toUpperCase());
   const headers = await getAuthHeaders(options?.headers);
+  withOrgSelectionHeader(headers, url);
 
   if (isBodyRequest && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -76,7 +101,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
 
   if (!response.ok) {
     const isProfileUrl = url.includes('/api/users/me');
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       if (isProfileUrl) {
         const bypass = headers.get('X-Bypass-Global-401');
         if (bypass !== 'true') {
@@ -88,6 +113,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
         });
       }
     }
+    handleOrgSelectionRevocation(response.status);
 
     const errorBody = await response.text().catch(() => 'Unknown error');
     console.error(`API Fetch Error [${response.status}] ${url}:`, errorBody);
@@ -99,7 +125,11 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
     } catch {
       // Not JSON
     }
-    throw new Error(errorMessage || `Request failed with status ${response.status}`);
+    const fetchError = new Error(errorMessage || `Request failed with status ${response.status}`) as Error & {
+      status?: number;
+    };
+    fetchError.status = response.status;
+    throw fetchError;
   }
 
   const text = await response.text();
@@ -124,11 +154,12 @@ export async function customClient<T>(
   first: string | MutatorConfig,
   second?: RequestInit
 ): Promise<T> {
-  if (typeof first === 'string') {
+if (typeof first === 'string') {
     const url = first;
     const options = second;
     const isBodyRequest = options?.method && ['POST', 'PUT', 'PATCH'].includes(options.method.toUpperCase());
     const headers = await getAuthHeaders(options?.headers);
+    withOrgSelectionHeader(headers, url);
 
     if (isBodyRequest && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
@@ -141,7 +172,7 @@ export async function customClient<T>(
 
     if (!response.ok) {
       const isProfileUrl = url.includes('/api/users/me');
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         if (isProfileUrl) {
           const bypass = headers.get('X-Bypass-Global-401');
           if (bypass !== 'true') {
@@ -153,6 +184,7 @@ export async function customClient<T>(
           });
         }
       }
+      handleOrgSelectionRevocation(response.status);
 
       const errorBody = await response.text().catch(() => 'Unknown error');
       console.error(`API Fetch Error [${response.status}] ${url}:`, errorBody);
@@ -164,7 +196,11 @@ export async function customClient<T>(
       } catch {
         // Not JSON
       }
-      throw new Error(errorMessage || `Request failed with status ${response.status}`);
+      const fetchError = new Error(errorMessage || `Request failed with status ${response.status}`) as Error & {
+        status?: number;
+      };
+      fetchError.status = response.status;
+      throw fetchError;
     }
 
     const text = await response.text();

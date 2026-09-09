@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Domain.Entities;
 using Adwais.Domain.Enums;
+using FluentResults;
 
 namespace Adwais.Application.Interfaces;
 
@@ -45,9 +46,10 @@ public interface IUserService
     /// </summary>
     /// <param name="email">The email of the user.</param>
     /// <param name="role">The access role assigned to the user.</param>
+    /// <param name="organizationId">The target organization. Defaults to the caller's organization.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The newly created user record.</returns>
-    Task<User> CreateUserAsync(string email, UserRole role, CancellationToken ct);
+    Task<Result<User>> CreateUserAsync(string email, UserRole role, Guid? organizationId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Updates an existing user record.
@@ -57,7 +59,7 @@ public interface IUserService
     /// <param name="role">The new role (optional).</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The updated user record, or null if the user was not found.</returns>
-    Task<User?> UpdateUserAsync(Guid id, string? name, UserRole? role, CancellationToken ct);
+    Task<Result<User>> UpdateUserAsync(Guid id, string? name, UserRole? role, CancellationToken ct);
 
     /// <summary>
     /// Deletes a user record by its unique identifier.
@@ -65,5 +67,25 @@ public interface IUserService
     /// <param name="id">The unique identifier of the user to delete.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>True if the user was deleted successfully, otherwise false.</returns>
-    Task<bool> DeleteUserAsync(Guid id, CancellationToken ct);
+    Task<Result> DeleteUserAsync(Guid id, CancellationToken ct);
+
+    /// <summary>
+    /// Lists the membership rows of a user. Scoped: organization callers see
+    /// only their own organization's rows; platform admins see everything.
+    /// </summary>
+    Task<IReadOnlyList<UserAccess>> GetUserMembershipsAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// Adds a membership row for a user. Organization callers may only add
+    /// rows inside their own organization. Platform admins may add rows in any
+    /// organization and may create platform-admin rows (null organization).
+    /// </summary>
+    Task<Result<UserAccess>> AddUserMembershipAsync(Guid userId, Guid? organizationId, UserRole role, CancellationToken ct);
+
+    /// <summary>
+    /// Removes a membership row. Organization callers may only remove rows in
+    /// their own organization. A caller cannot remove their own platform-admin
+    /// row.
+    /// </summary>
+    Task<Result> RemoveUserMembershipAsync(Guid targetUserId, Guid membershipId, Guid callerUserId, CancellationToken ct);
 }

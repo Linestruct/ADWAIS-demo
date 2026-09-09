@@ -6,8 +6,16 @@
  */
 import type { UserRole } from './userRole';
 
+/**
+ * Request data for pre-provisioning an application user.
+ */
 export interface CreateUserRequestDto {
-  /** @nullable */
+  /**
+     * The user's email address used to match the external identity.
+     * @nullable
+     */
   email?: string | null;
   role?: UserRole;
+  /** @nullable */
+  organizationId?: string | null;
 }

@@ -7,9 +7,10 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
 using Adwais.Domain.Entities;
-using Adwais.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Adwais.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
@@ -21,9 +22,11 @@ namespace Adwais.Infrastructure.Security;
 /// </summary>
 public class LocalUserClaimsTransformation(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
-    IConfiguration configuration) : IClaimsTransformation
+    IConfiguration configuration,
+    IHttpContextAccessor httpContextAccessor) : IClaimsTransformation
 {
     private readonly IDbContextFactory<AnalyticsDbContext> _dbContextFactory = dbContextFactory;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly string _kioskIssuer = configuration["Authentication:KioskJwtIssuer"] ?? "ADWAIS";
 
     /// <inheritdoc />
@@ -39,10 +42,18 @@ public class LocalUserClaimsTransformation(
             return principal;
         }
 
+        // Principals built by the local claims builder (dev mock, dashboards)
+        // are authoritative by construction. Upstream OIDC principals never
+        // carry this identity type.
+        if (principal.Identities.Any(identity => identity.AuthenticationType == AccessClaimsBuilder.LocalDatabaseIdentity))
+        {
+            return principal;
+        }
+
         var subjectId = principal.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(subjectId))
         {
-            return principal;
+            return WithoutAuthorityClaims(principal);
         }
 
         await using var db = await _dbContextFactory.CreateDbContextAsync();
@@ -51,7 +62,7 @@ public class LocalUserClaimsTransformation(
         var name = principal.FindFirst("name")?.Value 
                    ?? "New User";
         var email = principal.FindFirst("email")?.Value
-                    ?? principal.FindFirst("preferred_username")?.Value;
+                     ?? principal.FindFirst("preferred_username")?.Value;
 
         if (user != null)
         {
@@ -76,7 +87,7 @@ public class LocalUserClaimsTransformation(
             if (!string.IsNullOrEmpty(email))
             {
                 var lowerEmail = email.ToLowerInvariant();
-                // Reconcile accounts provisioned by a previous identity format/provider by email.
+                // Link accounts provisioned ahead of time by email.
                 user = await db.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == lowerEmail);
 
                 if (user != null)
@@ -89,38 +100,67 @@ public class LocalUserClaimsTransformation(
 
             if (user == null)
             {
-                // Auto-provision user with default Employee role
-                user = new User
-                {
-                    Id = Guid.NewGuid(),
-                    ExternalSubjectId = subjectId,
-                    Name = name,
-                    Email = email,
-                    Role = UserRole.Employee
-                };
-
-                db.Users.Add(user);
-                await db.SaveChangesAsync();
+                // Users are provisioned by an admin. Unknown subjects get no authority claims.
+                return WithoutAuthorityClaims(principal);
             }
         }
 
-        // Append role claim using a cloned principal to ensure thread-safety/immutability
-        var clone = principal.Clone();
-        
-        if (clone.Identity is ClaimsIdentity primaryIdentity)
+        var memberships = await db.UserAccesses
+            .AsNoTracking()
+            .Where(access => access.UserId == user.Id)
+            .ToListAsync();
+
+        var resolution = AccessScopeResolver.ResolveAllowed(memberships);
+        var requestedOrganizationId = TryParseGuid(
+            _httpContextAccessor.HttpContext?.Request.Headers[AccessRequestHeaders.OrganizationId]);
+        var requestedTenantId = TryParseGuid(
+            _httpContextAccessor.HttpContext?.Request.Headers[AccessRequestHeaders.TenantId]);
+
+        var scope = AccessScopeResolver.SelectEffective(resolution, requestedOrganizationId, requestedTenantId);
+        if (scope is null)
         {
-            var existingNameIds = primaryIdentity.FindAll(ClaimTypes.NameIdentifier).ToList();
-            foreach (var claim in existingNameIds)
-            {
-                primaryIdentity.RemoveClaim(claim);
-            }
+            // A provisioned user without a valid scope gets no authority claims.
+            return WithoutAuthorityClaims(principal);
         }
 
-        var localIdentity = new ClaimsIdentity("LocalDatabaseRoles");
-        localIdentity.AddClaim(new Claim(ClaimTypes.Role, user.Role.ToString()));
-        localIdentity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
-        clone.AddIdentity(localIdentity);
+        // Upstream identities never decide roles or scope. Scrub their authority
+        // claims so the local identity is the only source, then attach it.
+        var clone = WithoutAuthorityClaims(principal);
+        clone.AddIdentity(AccessClaimsBuilder.Build(user.Id, scope));
 
         return clone;
     }
+
+    /// <summary>
+    /// Removes role, scope, and name identifier claims from every upstream
+    /// identity. Identity claims such as name and email are kept. Used so a
+    /// federated principal can never carry authority that membership did not grant.
+    /// </summary>
+    private static ClaimsPrincipal WithoutAuthorityClaims(ClaimsPrincipal principal)
+    {
+        var clone = principal.Clone();
+        foreach (var identity in clone.Identities)
+        {
+            var roleClaimType = identity.RoleClaimType;
+            var authorityClaims = identity.FindAll(claim =>
+                    claim.Type is ClaimTypes.Role
+                        or "role"
+                        or "roles"
+                        or ClaimTypes.NameIdentifier
+                        or AccessClaimTypes.OrganizationId
+                        or AccessClaimTypes.TenantId
+                        or AccessClaimTypes.IsPlatformAdmin
+                        || (!string.IsNullOrEmpty(roleClaimType) && claim.Type == roleClaimType))
+                .ToList();
+            foreach (var claim in authorityClaims)
+            {
+                identity.RemoveClaim(claim);
+            }
+        }
+
+        return clone;
+    }
+
+    private static Guid? TryParseGuid(string? value)
+        => Guid.TryParse(value, out var parsed) ? parsed : null;
 }

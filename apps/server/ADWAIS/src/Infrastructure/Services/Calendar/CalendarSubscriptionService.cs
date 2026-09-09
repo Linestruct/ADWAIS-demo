@@ -9,6 +9,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
@@ -17,6 +19,7 @@ using Adwais.Domain.Enums;
 using Ical.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -24,32 +27,55 @@ public class CalendarSubscriptionService(
     IApplicationDbContext dbContext,
     HttpClient httpClient,
     ILogger<CalendarSubscriptionService> logger,
-    ISystemEventService eventService)
+    ISystemEventService eventService,
+    ICurrentAccess currentAccess)
     : ICalendarSubscriptionService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly HttpClient _httpClient = httpClient;
     private readonly ILogger<CalendarSubscriptionService> _logger = logger;
     private readonly ISystemEventService _eventService = eventService;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+
+    private OrganizationFilter OrganizationFilter => OrganizationFilter.From(_currentAccess.Scope);
+
+    private ScopeDeniedError ScopeDenied()
+        => new("an organization scope", _currentAccess.Scope?.OrganizationId?.ToString() ?? "none");
 
     public async Task<CalendarSubscriptionDto?> GetSubscriptionByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var sub = await _dbContext.CalendarSubscriptions.FindAsync(new object[] { id }, ct);
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
+        if (filter.Denied) return null;
+        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
+
+        var sub = await query.SingleOrDefaultAsync(ct);
         if (sub == null) return null;
         return MapToDto(sub);
     }
 
     public async Task<IEnumerable<CalendarSubscriptionDto>> GetSubscriptionsAsync(CancellationToken ct = default)
     {
-        var subs = await _dbContext.CalendarSubscriptions.OrderBy(s => s.Name).ToListAsync(ct);
+        var filter = OrganizationFilter;
+        if (filter.Denied) return [];
+
+        var query = _dbContext.CalendarSubscriptions.OrderBy(s => s.Name).AsQueryable();
+        if (filter.OrganizationId is { } orgId) query = query.Where(s => s.OrganizationId == orgId);
+
+        var subs = await query.ToListAsync(ct);
         return subs.Select(MapToDto);
     }
 
-    public async Task<CalendarSubscriptionDto> CreateSubscriptionAsync(CreateCalendarSubscriptionDto dto, CancellationToken ct = default)
+    public async Task<Result<CalendarSubscriptionDto>> CreateSubscriptionAsync(CreateCalendarSubscriptionDto dto, CancellationToken ct = default)
     {
+        var filter = OrganizationFilter;
+        if (filter.Denied || filter.OrganizationId is null)
+            return Result.Fail<CalendarSubscriptionDto>(ScopeDenied());
+
         var sub = new CalendarSubscription
         {
             Id = Guid.NewGuid(),
+            OrganizationId = filter.OrganizationId.Value,
             Name = dto.Name,
             Url = dto.Url,
             IsActive = dto.IsActive
@@ -57,30 +83,38 @@ public class CalendarSubscriptionService(
 
         _dbContext.CalendarSubscriptions.Add(sub);
         await _dbContext.SaveChangesAsync(ct);
-        return MapToDto(sub);
+        return Result.Ok(MapToDto(sub));
     }
 
-    public async Task<CalendarSubscriptionDto?> UpdateSubscriptionAsync(Guid id, UpdateCalendarSubscriptionDto dto, CancellationToken ct = default)
+    public async Task<Result<CalendarSubscriptionDto>> UpdateSubscriptionAsync(Guid id, UpdateCalendarSubscriptionDto dto, CancellationToken ct = default)
     {
-        var sub = await _dbContext.CalendarSubscriptions.FindAsync(new object[] { id }, ct);
-        if (sub == null) return null;
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
+        var sub = await query.SingleOrDefaultAsync(ct);
+        if (sub is null) return Result.Fail<CalendarSubscriptionDto>(new NotFoundError("calendar subscription", id));
+        if (filter.Denied || (filter.OrganizationId is { } orgId && sub.OrganizationId != orgId))
+            return Result.Fail<CalendarSubscriptionDto>(ScopeDenied());
 
         if (dto.Name != null) sub.Name = dto.Name;
         if (dto.Url != null) sub.Url = dto.Url;
         if (dto.IsActive.HasValue) sub.IsActive = dto.IsActive.Value;
 
         await _dbContext.SaveChangesAsync(ct);
-        return MapToDto(sub);
+        return Result.Ok(MapToDto(sub));
     }
 
-    public async Task<bool> DeleteSubscriptionAsync(Guid id, CancellationToken ct = default)
+    public async Task<Result> DeleteSubscriptionAsync(Guid id, CancellationToken ct = default)
     {
-        var sub = await _dbContext.CalendarSubscriptions.FindAsync(new object[] { id }, ct);
-        if (sub == null) return false;
+        var filter = OrganizationFilter;
+        var query = _dbContext.CalendarSubscriptions.Where(s => s.Id == id);
+        var sub = await query.SingleOrDefaultAsync(ct);
+        if (sub is null) return Result.Fail(new NotFoundError("calendar subscription", id));
+        if (filter.Denied || (filter.OrganizationId is { } orgId && sub.OrganizationId != orgId))
+            return Result.Fail(ScopeDenied());
 
         _dbContext.CalendarSubscriptions.Remove(sub);
         await _dbContext.SaveChangesAsync(ct);
-        return true;
+        return Result.Ok();
     }
 
     public async Task TriggerSyncAsync(Guid id, CancellationToken ct = default)
@@ -142,6 +176,7 @@ public class CalendarSubscriptionService(
                     var newEvent = new CalendarEvent
                     {
                         Id = Guid.NewGuid(),
+                        OrganizationId = sub.OrganizationId,
                         Title = calendarEvent.Summary ?? "Untitled Event",
                         Description = calendarEvent.Description,
                         Location = calendarEvent.Location,

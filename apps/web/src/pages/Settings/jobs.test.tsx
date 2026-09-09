@@ -10,11 +10,20 @@ import { BackgroundJobsView } from './jobs';
 
 const testState = vi.hoisted(() => ({
     role: null as UserProfile['role'] | null,
+    isPlatformAdmin: false,
+    selectedOrgId: null as string | null,
     triggerJob: vi.fn(),
 }));
 
 vi.mock('../../hooks/useCurrentUser', () => ({
-    useCurrentUser: () => ({ role: testState.role }),
+    useCurrentUser: () => ({
+        role: testState.role,
+        user: testState.isPlatformAdmin ? { isPlatformAdmin: true } : null,
+    }),
+}));
+
+vi.mock('../../hooks/useOrgSelection', () => ({
+    useOrgSelection: () => ({ selectedOrgId: testState.selectedOrgId }),
 }));
 
 vi.mock('../../hooks/useJobSettingsQueries', () => ({
@@ -40,33 +49,52 @@ function getJobButton(name: string) {
     return screen.getByRole('button', { name: new RegExp(name) });
 }
 
+function expectRefreshRowsHidden() {
+    expect(screen.queryByRole('button', { name: /Refresh Historic Orders/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Refresh Monitoring/ })).toBeNull();
+}
+
 describe('background job access', () => {
     beforeEach(() => {
         testState.triggerJob.mockReset();
+        testState.isPlatformAdmin = false;
+        testState.selectedOrgId = null;
     });
 
     it.each([
         ['kiosk', 'Viewer' as const],
         ['demo', 'Viewer' as const],
         ['unauthenticated', null],
-    ])('disables materialized refreshes for %s users', (_userType, role) => {
+    ])('hides materialized refreshes for %s users', (_userType, role) => {
         testState.role = role;
         render(<BackgroundJobsView />);
 
-        const historicRefresh = getJobButton('Refresh Historic Orders');
-        expect(historicRefresh).toBeDisabled();
-        expect(getJobButton('Refresh Monitoring')).toBeDisabled();
-        expect(historicRefresh).toHaveTextContent('Staff');
-
-        fireEvent.click(historicRefresh);
-        expect(testState.triggerJob).not.toHaveBeenCalled();
+        expectRefreshRowsHidden();
+        expect(getJobButton('Monitor Sync')).toBeDisabled();
     });
 
-    it('allows staff to refresh materialized views but not run admin jobs', () => {
+    it('hides materialized refreshes for staff and disables admin jobs', () => {
         testState.role = 'Employee';
         render(<BackgroundJobsView />);
 
+        expectRefreshRowsHidden();
         expect(getJobButton('Monitor Sync')).toBeDisabled();
+    });
+
+    it('hides materialized refreshes for org admins', () => {
+        testState.role = 'Admin';
+        render(<BackgroundJobsView />);
+
+        expectRefreshRowsHidden();
+        expect(getJobButton('Monitor Sync')).toBeEnabled();
+        expect(getJobButton('Order Sync')).toBeEnabled();
+    });
+
+    it('shows materialized refreshes for platform admins in platform view', () => {
+        testState.role = 'PlatformAdmin';
+        testState.isPlatformAdmin = true;
+        render(<BackgroundJobsView />);
+
         const historicRefresh = getJobButton('Refresh Historic Orders');
         expect(historicRefresh).toBeEnabled();
         expect(getJobButton('Refresh Monitoring')).toBeEnabled();
@@ -75,17 +103,13 @@ describe('background job access', () => {
         expect(testState.triggerJob).toHaveBeenCalledWith('/api/job/trigger/refresh-historic-order-data');
     });
 
-    it('allows admins to run every manual job', () => {
-        testState.role = 'Admin';
+    it('hides materialized refreshes for platform admins viewing an org', () => {
+        testState.role = 'PlatformAdmin';
+        testState.isPlatformAdmin = true;
+        testState.selectedOrgId = 'org-1';
         render(<BackgroundJobsView />);
 
+        expectRefreshRowsHidden();
         expect(getJobButton('Monitor Sync')).toBeEnabled();
-        const orderSync = getJobButton('Order Sync');
-        expect(orderSync).toBeEnabled();
-        expect(getJobButton('Refresh Historic Orders')).toBeEnabled();
-        expect(getJobButton('Refresh Monitoring')).toBeEnabled();
-
-        fireEvent.click(orderSync);
-        expect(testState.triggerJob).toHaveBeenCalledWith('/api/job/trigger/order-sync');
     });
 });

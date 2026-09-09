@@ -5,6 +5,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customClient } from '../apiClient';
+import { useDeleteApiKioskDevicesDeviceId, useGetApiKioskDevices } from '../api/generated/endpoints';
+import { useOrgSelection } from './useOrgSelection';
+import type { KioskDeviceDto } from '@types';
+import { toast } from 'sonner';
 
 export interface RegisterKioskRequest {
   deviceId: string;
@@ -20,7 +24,7 @@ export interface ActivateKioskRequest {
 
 export interface TokenResponse {
   token: string;
-  expiresInDays: number;
+  expiresInHours: number;
 }
 
 export const kioskKeys = {
@@ -68,5 +72,33 @@ export function useKioskTokenQuery(deviceId: string, isRegistered: boolean) {
     },
     retry: Infinity,
     retryDelay: 5000,
+  });
+}
+
+export function useKioskDevicesQuery() {
+  const { selectedOrgId } = useOrgSelection();
+  return useGetApiKioskDevices<KioskDeviceDto[], Error>({
+    query: {
+      queryKey: ['kiosk-devices', selectedOrgId],
+      select: (res) => res.data as KioskDeviceDto[],
+    },
+  });
+}
+
+export function useDeleteKioskDeviceMutation() {
+  const queryClient = useQueryClient();
+  return useDeleteApiKioskDevicesDeviceId<Error>({
+    mutation: {
+      onSuccess: () => {
+        toast.success('Kiosk display removed.');
+        queryClient.invalidateQueries({ queryKey: ['kiosk-devices'] });
+      },
+      onError: (err: Error) => {
+        toast.error('Failed to remove kiosk display', {
+          description: err.message || String(err),
+          duration: Infinity,
+        });
+      },
+    },
   });
 }

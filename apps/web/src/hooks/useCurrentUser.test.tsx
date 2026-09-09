@@ -9,7 +9,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { useCurrentUser, type UserProfile } from './useCurrentUser';
 
-const mockAuthState = vi.hoisted(() => ({ isAuthenticated: true }));
+const mockAuthState = vi.hoisted(() => ({ isAuthenticated: true, isLoading: false }));
 
 vi.mock('react-oidc-context', async () => {
   const { createContext } = await vi.importActual<typeof import('react')>('react');
@@ -55,6 +55,7 @@ describe('useCurrentUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthState.isAuthenticated = true;
+    mockAuthState.isLoading = false;
     mockKioskToken.mockReturnValue(null);
     selectionState.selectedOrgId = null;
   });
@@ -182,6 +183,16 @@ describe('useCurrentUser', () => {
       organizationName: null,
       tenantId: null,
     });
+  });
+
+  it('stays loading while OIDC is restoring the session', () => {
+    mockAuthState.isAuthenticated = false;
+    mockAuthState.isLoading = true;
+
+    const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.user).toBeNull();
   });
 
   it('flags an authenticated user the identity endpoint rejects as unprovisioned', async () => {

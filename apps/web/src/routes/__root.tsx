@@ -14,7 +14,11 @@ import {useConnectivityStatus} from '../hooks/useConnectivityStatus';
 import {useMobileMenu} from '../hooks/useMobileMenu';
 import {RootProviders} from '../components/common/layout/RootProviders';
 import {AuthRouteShell} from '../components/common/layout/AuthRouteShell';
-import {AccessPendingPanel} from '../components/common/layout/AccessPendingPanel';
+import {
+  AccessLoadingPanel,
+  AccessPendingPanel,
+  AccessUnavailablePanel,
+} from '../components/common/layout/AccessPendingPanel';
 import {AppShell} from '../components/common/layout/AppShell';
 
 export const Route = createRootRoute({
@@ -39,7 +43,13 @@ function RootComponent() {
   useSearch({strict: false});
 
   const auth = useContext(AuthContext);
-  const {user, isUnprovisioned} = useCurrentUser();
+  const {
+    user,
+    isLoading: isUserLoading,
+    isUnprovisioned,
+    isAccessCheckError,
+    retryAccessCheck,
+  } = useCurrentUser();
   const {isOnline, isBackendOnline} = useConnectivityStatus();
   const location = useRouterState({select: (state) => state.location});
   const mobileMenu = useMobileMenu(location.pathname);
@@ -58,8 +68,12 @@ function RootComponent() {
     <RootProviders>
       {isAuthRoute ? (
         <AuthRouteShell routeKey={location.pathname} />
+      ) : isUserLoading ? (
+        <AccessLoadingPanel />
       ) : isUnprovisioned ? (
-        <AccessPendingPanel />
+        <AccessPendingPanel onRetry={() => void retryAccessCheck()} isRetrying={isUserLoading} />
+      ) : isAccessCheckError ? (
+        <AccessUnavailablePanel onRetry={() => void retryAccessCheck()} isRetrying={isUserLoading} />
       ) : (
         <AppShell
           pathname={location.pathname}

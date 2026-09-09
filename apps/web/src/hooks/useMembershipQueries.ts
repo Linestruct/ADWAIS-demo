@@ -22,10 +22,11 @@ export function useMembershipsQuery(userId: string) {
   });
 }
 
-export function useOrganizationsForPickerQuery() {
+export function useOrganizationsForPickerQuery({ enabled = true }: { enabled?: boolean } = {}) {
   return useGetApiOrganizations<OrganizationSummaryDto[], Error>(undefined, {
     query: {
       queryKey: ['organizations'],
+      enabled,
       select: (res) => res.data as OrganizationSummaryDto[],
       retry: false,
     },

@@ -6,9 +6,9 @@ import { useSyncExternalStore } from 'react';
 import { getSelectedOrgId, setSelectedOrgId, subscribeOrgSelection } from '../utils/orgSelection';
 import { useOrganizationsForPickerQuery } from './useMembershipQueries';
 
-export function useOrgSelection() {
+export function useOrgSelection({ loadOrganizations = true }: { loadOrganizations?: boolean } = {}) {
   const selectedOrgId = useSyncExternalStore(subscribeOrgSelection, getSelectedOrgId);
-  const { data: organizations = [] } = useOrganizationsForPickerQuery();
+  const { data: organizations = [] } = useOrganizationsForPickerQuery({ enabled: loadOrganizations });
 
   return {
     selectedOrgId,

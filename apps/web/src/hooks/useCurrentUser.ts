@@ -52,7 +52,8 @@ export function useCurrentUser() {
   const kioskToken = getKioskToken();
   const auth = useContext(AuthContext);
   const hasOidcUser = auth?.isAuthenticated === true;
-  const { selectedOrgId } = useOrgSelection();
+  const isOidcLoading = auth?.isLoading === true;
+  const { selectedOrgId } = useOrgSelection({ loadOrganizations: false });
 
   const kioskUser = kioskToken ? parseJwt(kioskToken) : null;
   const kioskRole = kioskUser?.role as 'Admin' | 'Employee' | 'Viewer' | 'PlatformAdmin' | undefined;
@@ -82,11 +83,13 @@ export function useCurrentUser() {
     const user = oidcQuery.data || null;
     const oidcError = oidcQuery.error as (Error & { status?: number }) | null;
     return {
-      isLoading: oidcQuery.isLoading,
+      isLoading: isOidcLoading || oidcQuery.isLoading,
       user,
       role: user?.role || null,
       scope: deriveScope(user),
-      isUnprovisioned: !oidcQuery.isLoading && user === null && oidcError?.status === 401,
+      isUnprovisioned: !oidcQuery.isLoading && user === null && (oidcError?.status === 401 || oidcError?.status === 403),
+      isAccessCheckError: !oidcQuery.isLoading && user === null && !!oidcError && oidcError.status !== 401 && oidcError.status !== 403,
+      retryAccessCheck: oidcQuery.refetch,
     };
   }
 
@@ -107,14 +110,18 @@ export function useCurrentUser() {
       role: kioskRole || 'Viewer',
       scope: deriveScope(user),
       isUnprovisioned: false,
+      isAccessCheckError: false,
+      retryAccessCheck: kioskQuery.refetch,
     };
   }
 
   return {
-    isLoading: false,
+    isLoading: isOidcLoading,
     user: null,
     role: null,
     scope: EMPTY_SCOPE,
     isUnprovisioned: false,
+    isAccessCheckError: false,
+    retryAccessCheck: oidcQuery.refetch,
   };
 }

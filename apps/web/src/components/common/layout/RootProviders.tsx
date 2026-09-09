@@ -11,11 +11,8 @@ import { toast } from 'sonner';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { useRouterState } from '@tanstack/react-router';
 import {KioskProvider} from '../dashboard/KioskProvider';
-import {useOrgSelectionWatcher} from '../../../hooks/useOrgSelectionWatcher';
 
 export function RootProviders({children}: { children: ReactNode }) {
-  useOrgSelectionWatcher();
-
   const pathname = useRouterState({select: (state) => state.location.pathname});
   const previousPathname = useRef(pathname);
 
@@ -32,6 +29,9 @@ export function RootProviders({children}: { children: ReactNode }) {
       {/*{import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}*/}
       {/*{import.meta.env.DEV && <ReactQueryDevtools buttonPosition="bottom-left" />}*/}
       <Toaster
+        position="top-center"
+        offset={{ top: '4.5rem' }}
+        mobileOffset={{ top: '4.5rem' }}
         closeButton
         theme="light"
         toastOptions={{

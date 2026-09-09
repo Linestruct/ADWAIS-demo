@@ -11,6 +11,7 @@ using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.Monitoring.Upstream;
 using Adwais.Application.DTOs.Integrations;
 using Adwais.Application.Interfaces;
+using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -98,8 +99,18 @@ public class UptimeRobotService(
             var msg = $"UptimeRobot request failed with HTTP {(int)response.StatusCode}";
             if (!string.IsNullOrEmpty(context)) msg += $" ({context})";
             
-            await eventService.LogErrorAsync(nameof(UptimeRobotService), msg, new Exception(responseContent));
-            throw new HttpRequestException($"{msg}: {responseContent}");
+            // Provider bodies may contain account or credential-adjacent data;
+            // keep the durable event to a safe classification and leave the
+            // response body out of the event store.
+            var safeException = new HttpRequestException(msg, null, response.StatusCode);
+            await eventService.LogErrorAsync(
+                nameof(UptimeRobotService),
+                msg,
+                safeException,
+                organizationId: organizationId,
+                code: "provider.failure",
+                audience: SystemEventAudience.Platform);
+            throw safeException;
         }
         return JsonDocument.Parse(responseContent);
     }

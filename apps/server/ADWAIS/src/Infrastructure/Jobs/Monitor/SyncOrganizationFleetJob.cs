@@ -5,9 +5,13 @@
 
 using System;
 using System.Linq;
+using System.Diagnostics;
 using Adwais.Application.Interfaces;
 using Adwais.Application.Common.Jobs;
+using Adwais.Application.Common.Observability;
+using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Monitoring;
+using Adwais.Application.DTOs.Monitoring.Upstream;
 using Adwais.Infrastructure.Persistence;
 using Hangfire;
 using Hangfire.Storage;
@@ -27,7 +31,9 @@ public class SyncOrganizationFleetJob(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
     IEnumerable<IMonitoringProvider> monitoringProviders,
     IMemoryCache cache,
-    IRecurringJobManager recurringJobManager) : IOrgScopedJob
+    IRecurringJobManager recurringJobManager,
+    IPipelineRunService? pipelineRunService = null,
+    ISystemEventService? eventService = null) : IOrgScopedJob
 {
     protected virtual string? CurrentSyncCron => JobStorage.Current.GetConnection().GetRecurringJobs()
         .SingleOrDefault(j => j.Id == RecurringJobId.For(RecurringJobKind.FleetSync, OrganizationIdOfLastRun))?.Cron;
@@ -35,6 +41,71 @@ public class SyncOrganizationFleetJob(
     private Guid OrganizationIdOfLastRun { get; set; } = Guid.Empty;
 
     public async Task ExecuteAsync(Guid organizationId)
+    {
+        if (pipelineRunService is null)
+        {
+            await ExecuteCoreAsync(organizationId);
+            return;
+        }
+
+        var startedAt = Stopwatch.GetTimestamp();
+        var run = await pipelineRunService.StartAsync(
+            organizationId,
+            tenantId: null,
+            PipelineKind.MonitorSync,
+            PipelineTriggerKind.Scheduled,
+            resourceKey: "fleet",
+            resourceName: "Monitor fleet");
+        using var activity = ObservabilityTelemetry.ActivitySource.StartActivity(
+            "adwais.pipeline.monitor_fleet_sync", ActivityKind.Internal);
+        activity?.SetTag("adwais.organization_id", organizationId);
+        activity?.SetTag("adwais.pipeline", PipelineKind.MonitorSync.ToString());
+        activity?.SetTag("adwais.pipeline_run_id", run.Id);
+        await pipelineRunService.MarkRunningAsync(run.Id);
+        ObservabilityTelemetry.PipelineAttempts.Add(1,
+            new KeyValuePair<string, object?>("pipeline", "monitor_fleet_sync"));
+
+        var outcome = "succeeded";
+        try
+        {
+            await ExecuteCoreAsync(organizationId);
+            await pipelineRunService.CompleteAsync(run.Id, null, "Monitor fleet synchronization completed.");
+        }
+        catch (Exception ex)
+        {
+            outcome = "failed";
+            await pipelineRunService.FailAsync(
+                run.Id,
+                "pipeline.failed",
+                "Monitor fleet synchronization failed.",
+                CancellationToken.None);
+            if (eventService is not null)
+            {
+                await eventService.LogErrorAsync(
+                    nameof(SyncOrganizationFleetJob),
+                    "Monitor fleet synchronization failed for this organization.",
+                    ex,
+                    organizationId: organizationId,
+                    code: "pipeline.failed",
+                    audience: SystemEventAudience.Organization,
+                    pipelineRunId: run.Id,
+                    traceId: Activity.Current?.TraceId.ToHexString(),
+                    suggestedAction: "Review the monitoring configuration and retry synchronization.");
+            }
+            throw;
+        }
+        finally
+        {
+            ObservabilityTelemetry.PipelineOutcomes.Add(1,
+                new KeyValuePair<string, object?>("pipeline", "monitor_fleet_sync"),
+                new KeyValuePair<string, object?>("outcome", outcome));
+            ObservabilityTelemetry.PipelineDuration.Record(
+                Stopwatch.GetElapsedTime(startedAt).TotalSeconds,
+                new KeyValuePair<string, object?>("pipeline", "monitor_fleet_sync"));
+        }
+    }
+
+    private async Task ExecuteCoreAsync(Guid organizationId)
     {
         OrganizationIdOfLastRun = organizationId;
         await using var dbContext = await dbContextFactory.CreateDbContextAsync();
@@ -46,7 +117,21 @@ public class SyncOrganizationFleetJob(
         if (orgConfig is null) return;
 
         var monitoringProvider = monitoringProviders.ForProvider(orgConfig.MonitoringProvider);
-        var upStreamMonitors = await monitoringProvider.GetMonitorsAsync(organizationId);
+        List<MonitoringProviderMonitor> upStreamMonitors;
+        try
+        {
+            upStreamMonitors = await monitoringProvider.GetMonitorsAsync(organizationId);
+            ObservabilityTelemetry.ProviderOutcomes.Add(1,
+                new KeyValuePair<string, object?>("provider", monitoringProvider.Provider),
+                new KeyValuePair<string, object?>("outcome", "succeeded"));
+        }
+        catch
+        {
+            ObservabilityTelemetry.ProviderOutcomes.Add(1,
+                new KeyValuePair<string, object?>("provider", monitoringProvider.Provider),
+                new KeyValuePair<string, object?>("outcome", "failed"));
+            throw;
+        }
 
         var bucketId = await dbContext.Tenants
             .Where(t => t.OrganizationId == organizationId && t.IsSystem)

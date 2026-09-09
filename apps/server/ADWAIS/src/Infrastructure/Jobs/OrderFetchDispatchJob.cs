@@ -5,6 +5,7 @@
 
 using Adwais.Application.Interfaces;
 using Adwais.Infrastructure.Persistence;
+using Adwais.Domain.Entities;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,8 @@ public class OrderFetchDispatchJob(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
     IBackgroundJobClient backgroundJobClient,
     ILogger<OrderFetchDispatchJob> logger,
-    ISystemEventService eventService) : IOrgScopedJob
+    ISystemEventService eventService,
+    IPipelineRunService? pipelineRunService = null) : IOrgScopedJob
 {
     private static readonly TimeSpan StaleThreshold = TimeSpan.FromMinutes(60);
     private static readonly TimeSpan MaxAutomatedGap = TimeSpan.FromDays(31);
@@ -48,8 +50,15 @@ public class OrderFetchDispatchJob(
             if (tenant.CurrentlyFetching && tenant.LastPolled.HasValue
                 && now - tenant.LastPolled.Value > StaleThreshold)
             {
-                var msg = $"Tenant {tenant.Id} has stale CurrentlyFetching flag. Resetting.";
-                await eventService.LogWarningAsync(nameof(OrderFetchDispatchJob), msg, $"Last polled: {tenant.LastPolled}", tenant.Id);
+                await eventService.LogWarningAsync(
+                    nameof(OrderFetchDispatchJob),
+                    "A stale order-ingestion state was reset for this tenant.",
+                    details: null,
+                    tenantId: tenant.Id,
+                    organizationId: organizationId,
+                    code: "pipeline.stale-state-reset",
+                    audience: SystemEventAudience.Organization,
+                    suggestedAction: "Review the latest ingestion run if the tenant remains stale.");
                 tenant.CurrentlyFetching = false;
             }
 
@@ -59,13 +68,48 @@ public class OrderFetchDispatchJob(
 
             if (now - start > MaxAutomatedGap)
             {
-                var msg = $"Fetch gap too large ({Math.Floor((now - start).TotalDays)} days). Skipping automated sync.";
-                await eventService.LogWarningAsync(nameof(OrderFetchDispatchJob), msg, "Automated sync only handles gaps up to 31 days. Use the manual backfill endpoint to recover this tenant.", tenant.Id);
+                await eventService.LogWarningAsync(
+                    nameof(OrderFetchDispatchJob),
+                    "Automated order ingestion was skipped because the data gap is too large.",
+                    details: null,
+                    tenantId: tenant.Id,
+                    organizationId: organizationId,
+                    code: "pipeline.gap-too-large",
+                    audience: SystemEventAudience.Organization,
+                    suggestedAction: "Use the manual backfill action to recover this tenant.");
                 continue;
             }
 
-            backgroundJobClient.Enqueue<IOrderIngestionService>(
-                ingestion => ingestion.ExecuteIngestionAsync(organizationId, tenant.Id, start, now, CancellationToken.None));
+            var pipelineRun = pipelineRunService is null
+                ? null
+                : await pipelineRunService.StartAsync(
+                    organizationId,
+                    tenant.Id,
+                    PipelineKind.OrderIngestion,
+                    PipelineTriggerKind.Scheduled,
+                    resourceKey: tenant.Id.ToString("D"),
+                    resourceName: tenant.Name);
+
+            try
+            {
+                if (pipelineRun is null)
+                {
+                    backgroundJobClient.Enqueue<IOrderIngestionService>(
+                        ingestion => ingestion.ExecuteIngestionAsync(organizationId, tenant.Id, start, now, CancellationToken.None));
+                }
+                else
+                {
+                    var jobId = backgroundJobClient.Enqueue<IOrderIngestionService>(
+                        ingestion => ingestion.ExecuteIngestionTrackedAsync(organizationId, tenant.Id, start, now, pipelineRun.Id, CancellationToken.None));
+                    await pipelineRunService!.AttachHangfireJobAsync(pipelineRun.Id, jobId, CancellationToken.None);
+                }
+            }
+            catch
+            {
+                if (pipelineRun is not null)
+                    await pipelineRunService!.FailAsync(pipelineRun.Id, "dispatch.failed", "The ingestion job could not be queued.", CancellationToken.None);
+                throw;
+            }
 
             tenant.CurrentlyFetching = true;
             tenant.LastPolled = now;

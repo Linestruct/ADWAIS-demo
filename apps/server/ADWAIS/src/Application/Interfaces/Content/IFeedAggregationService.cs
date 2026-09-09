@@ -13,5 +13,5 @@ public interface IFeedAggregationService
 {
     Task AggregateAllFeedsAsync(CancellationToken ct = default);
     Task AggregateOrgFeedsAsync(Guid organizationId, CancellationToken ct = default);
-    Task AggregateSourceAsync(Guid sourceId, CancellationToken ct = default);
+    Task AggregateSourceAsync(Guid sourceId, CancellationToken ct = default, Guid? pipelineRunId = null);
 }

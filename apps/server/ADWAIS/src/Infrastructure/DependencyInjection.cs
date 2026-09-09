@@ -36,6 +36,8 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContextFactory, ApplicationDbContextFactory>();
 
         services.AddScoped<ISystemEventService, SystemEventService>();
+        services.AddScoped<IPipelineRunService, PipelineRunService>();
+        services.AddScoped<IDiagnosticsService, DiagnosticsService>();
         services.AddScoped<ICacheService, MemoryCacheService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IKioskService, KioskService>();

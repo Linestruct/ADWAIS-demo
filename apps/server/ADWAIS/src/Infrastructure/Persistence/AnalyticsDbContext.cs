@@ -46,6 +46,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     public DbSet<DailyAvailabilityGlobalRollup> DailyAvailabilityGlobalRollups => Set<DailyAvailabilityGlobalRollup>();
 
     public DbSet<SystemEvent> SystemEvents => Set<SystemEvent>();
+    public DbSet<PipelineRun> PipelineRuns => Set<PipelineRun>();
     public DbSet<MaterializedViewDirty> MaterializedViewDirty => Set<MaterializedViewDirty>();
     public DbSet<BulletinPost> BulletinPosts => Set<BulletinPost>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
@@ -101,6 +102,13 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(e => e.Source).HasMaxLength(100);
+            entity.Property(e => e.Code).HasMaxLength(100).IsRequired()
+                .HasDefaultValue("legacy");
+            entity.Property(e => e.Audience).StoreAsString().HasMaxLength(50)
+                .HasDefaultValue(SystemEventAudience.Platform);
+            entity.Property(e => e.TraceId).HasMaxLength(64);
+            entity.Property(e => e.RequestId).HasMaxLength(200);
+            entity.Property(e => e.SuggestedAction).HasMaxLength(500);
             entity.Property(e => e.Level).StoreAsString().HasMaxLength(50);
             entity.HasOne(e => e.Tenant)
                 .WithMany()
@@ -111,6 +119,36 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
                 .HasForeignKey(e => e.OrganizationId)
                 .OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.OrganizationId, e.Timestamp, e.Id });
+            entity.HasIndex(e => new { e.TenantId, e.Timestamp, e.Id });
+        });
+
+        // PipelineRun
+        modelBuilder.Entity<PipelineRun>(entity =>
+        {
+            entity.ToTable("pipeline_run");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
+            entity.Property(e => e.Kind).StoreAsString().HasMaxLength(50);
+            entity.Property(e => e.Trigger).StoreAsString().HasMaxLength(50);
+            entity.Property(e => e.State).StoreAsString().HasMaxLength(50);
+            entity.Property(e => e.ResourceKey).HasMaxLength(200);
+            entity.Property(e => e.ResourceName).HasMaxLength(255);
+            entity.Property(e => e.HangfireJobId).HasMaxLength(100);
+            entity.Property(e => e.RequestId).HasMaxLength(200);
+            entity.Property(e => e.TraceId).HasMaxLength(64);
+            entity.Property(e => e.OutcomeCode).HasMaxLength(100);
+            entity.Property(e => e.SafeSummary).HasMaxLength(500);
+            entity.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(e => new { e.OrganizationId, e.RequestedAt, e.Id });
+            entity.HasIndex(e => new { e.OrganizationId, e.TenantId, e.Kind, e.State });
         });
 
         // Tenant

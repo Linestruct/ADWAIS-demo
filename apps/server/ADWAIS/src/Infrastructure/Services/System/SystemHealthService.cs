@@ -43,10 +43,13 @@ public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess
         {
             var config = await db.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
             lastLitiumSync = config?.LastPolled;
-            globalSyncError = await db.OrganizationConfigs
+            var hasGlobalSyncError = await db.OrganizationConfigs
                 .Where(c => c.LastSyncError != null)
-                .Select(c => c.LastSyncError)
+                .Select(_ => true)
                 .FirstOrDefaultAsync(ct);
+            globalSyncError = hasGlobalSyncError
+                ? "One or more organization pipelines have a recorded failure."
+                : null;
 
             // Safe checks in case of empty sequences
             if (await db.Monitors.AnyAsync(ct))
@@ -185,6 +188,7 @@ public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess
     {
         var monitorApi = JobStorage.Current.GetMonitoringApi();
         var scopeOrgId = _currentAccess.Scope?.OrganizationId;
+        var scopeTenantId = _currentAccess.Scope?.TenantId;
         
         var succeeded = await Task.Run(() => monitorApi.SucceededJobs(0, 15), ct);
         var failed = await Task.Run(() => monitorApi.FailedJobs(0, 15), ct);
@@ -194,11 +198,11 @@ public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess
 
         foreach (var job in processing)
         {
-            var (jobName, jobArgs) = ParseJobDetails(job.Value.Job);
+            var (jobName, _) = ParseJobDetails(job.Value.Job);
             tempJobs.Add((
                 Key: job.Key,
                 JobName: jobName,
-                JobArgs: jobArgs,
+                JobArgs: null,
                 State: "Processing",
                 CreatedAt: job.Value.StartedAt,
                 Duration: job.Value.StartedAt.HasValue ? (DateTime.UtcNow - job.Value.StartedAt.Value).TotalSeconds : 0.0,
@@ -209,11 +213,11 @@ public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess
 
         foreach (var job in succeeded)
         {
-            var (jobName, jobArgs) = ParseJobDetails(job.Value.Job);
+            var (jobName, _) = ParseJobDetails(job.Value.Job);
             tempJobs.Add((
                 Key: job.Key,
                 JobName: jobName,
-                JobArgs: jobArgs,
+                JobArgs: null,
                 State: "Succeeded",
                 CreatedAt: job.Value.SucceededAt,
                 Duration: (double?)job.Value.TotalDuration / 1000.0,
@@ -224,15 +228,15 @@ public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess
 
         foreach (var job in failed)
         {
-            var (jobName, jobArgs) = ParseJobDetails(job.Value.Job);
+            var (jobName, _) = ParseJobDetails(job.Value.Job);
             tempJobs.Add((
                 Key: job.Key,
                 JobName: jobName,
-                JobArgs: jobArgs,
+                JobArgs: null,
                 State: "Failed",
                 CreatedAt: job.Value.FailedAt,
                 Duration: null,
-                Exception: job.Value.ExceptionMessage,
+                Exception: "The job failed. Inspect the platform diagnostics for the correlated failure.",
                 RawJob: job.Value.Job
             ));
         }
@@ -275,6 +279,7 @@ public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess
         foreach (var job in top20)
         {
             if (scopeOrgId is not null && GetOrgId(job.RawJob) != scopeOrgId) continue;
+            if (scopeTenantId is not null && GetTenantId(job.RawJob) != scopeTenantId) continue;
 
             string? mName = null;
             string? tName = null;

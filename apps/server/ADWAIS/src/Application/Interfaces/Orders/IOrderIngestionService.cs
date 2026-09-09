@@ -10,5 +10,6 @@ namespace Adwais.Application.Interfaces;
 public interface IOrderIngestionService : IOrgScopedJob
 {
     Task<int> ExecuteIngestionAsync(Guid organizationId, Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, CancellationToken ct = default);
+    Task<int> ExecuteIngestionTrackedAsync(Guid organizationId, Guid tenantId, DateTimeOffset startDate, DateTimeOffset endDate, Guid pipelineRunId, CancellationToken ct = default);
     Task IngestSingleOrderAsync(Guid organizationId, Guid tenantId, string provider, OrderSourceOrder order, CancellationToken ct = default);
 }

@@ -55,7 +55,7 @@ export function AboutDemoModal({ isOpen, onClose }: AboutDemoModalProps) {
             </p>
             <p>Today the schema supports multiple organizations within one deployment and has OpenTelemetry implemented with support for Grafana, .NET Aspire, and more.</p>
             <p>
-              As I approach the conclusion of my degree I&apos;m looking into transition into Software/Systems engineering. I&apos;m also currently looking for a company to host my graduate thesis anytime between January-May 2027. Know a person or company who&apos;d be willing to do so? Don&apos;t hesitate to reach out!
+              As I approach the conclusion of my degree I'll be transitioning into Software/Systems engineering. I&apos;m currently also looking for a company to host my graduate thesis anytime between January-May 2027. Know a person or company who&apos;d be willing to do so? Don&apos;t hesitate to reach out!
             </p>
             <ul className="flex list-disc flex-col gap-2 pl-5">
               <li>Learn more: <a className="text-brand-btn-primary underline" href="https://marmenlind.com/projects/adwais" target="_blank" rel="noreferrer">marmenlind.com/projects/adwais</a></li>

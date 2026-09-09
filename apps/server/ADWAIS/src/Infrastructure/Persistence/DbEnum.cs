@@ -4,7 +4,6 @@
 
 using System;
 using System.Linq;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Adwais.Infrastructure.Persistence;
 
@@ -16,17 +15,6 @@ namespace Adwais.Infrastructure.Persistence;
 /// </summary>
 public static class DbEnum
 {
-    /// <summary>
-    /// Stores the enum as its name string. Callers keep chainable
-    /// configuration such as max length and required flags.
-    /// </summary>
-    public static PropertyBuilder<TEnum> StoreAsString<TEnum>(this PropertyBuilder<TEnum> builder)
-        where TEnum : struct, Enum
-    {
-        builder.HasConversion<string>();
-        return builder;
-    }
-
     /// <summary>
     /// The length of the longest enum value name.
     /// </summary>

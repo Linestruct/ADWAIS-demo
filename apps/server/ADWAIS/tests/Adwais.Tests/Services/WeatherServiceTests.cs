@@ -44,7 +44,7 @@ public class WeatherServiceTests
     private static ICurrentAccess PlatformAccess()
     {
         var mock = new Mock<ICurrentAccess>();
-        mock.Setup(access => access.Scope).Returns(new AccessScope(null, null, [UserRole.Admin]));
+        mock.Setup(access => access.Scope).Returns(new AccessScope(null, null, [UserRole.PlatformAdmin]));
         return mock.Object;
     }
 
@@ -81,13 +81,54 @@ public class WeatherServiceTests
     }
 
     [Fact]
-    public async Task GetCurrentWeatherAsync_WithPlatformScope_ReturnsScopeDenied()
+    public async Task GetCurrentWeatherAsync_WithPlatformScope_UsesStockholmFallback()
     {
-        var service = new WeatherService(new HttpClient(), _configServiceMock.Object, _cacheMock.Object, PlatformAccess());
+        object? cacheEntry = null;
+        _cacheMock.Setup(c => c.TryGetValue(It.IsAny<object>(), out cacheEntry)).Returns(false);
+        _cacheMock.Setup(c => c.CreateEntry(It.IsAny<object>())).Returns(Mock.Of<ICacheEntry>());
+
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains("geocoding-api")
+                    && req.RequestUri.ToString().Contains("name=Stockholm")),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    results = new[] { new { name = "Stockholm", latitude = 59.33, longitude = 18.07 } }
+                }))
+            });
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains("api.open-meteo.com/v1/forecast")),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    current = new
+                    {
+                        temperature_2m = 18.5,
+                        apparent_temperature = 17.2,
+                        precipitation_probability = 10,
+                        precipitation = 0.0,
+                        weather_code = 0
+                    }
+                }))
+            });
+
+        var service = new WeatherService(new HttpClient(handlerMock.Object), _configServiceMock.Object, _cacheMock.Object, PlatformAccess());
 
         var result = await service.GetCurrentWeatherAsync();
-        Assert.True(result.IsFailed);
-        Assert.IsType<ScopeDeniedError>(Assert.Single(result.Errors));
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Stockholm", result.Value.Location);
+        _configServiceMock.Verify(c => c.GetConfigAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

@@ -29,6 +29,20 @@ export interface AccessScope {
   tenantId: string | null;
 }
 
+function isBackendUnavailableError(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status;
+  if (status === 502 || status === 503 || status === 504) return true;
+
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return message.includes('failed to fetch')
+    || message.includes('network error')
+    || message.includes('connection refused')
+    || message.includes('load failed')
+    || message.includes('bad gateway')
+    || message.includes('service unavailable')
+    || message.includes('gateway timeout');
+}
+
 const EMPTY_SCOPE: AccessScope = {
   isAdmin: false,
   isPlatformAdmin: false,
@@ -97,7 +111,11 @@ export function useCurrentUser() {
       role: user?.role || null,
       scope: deriveScope(user),
       isUnprovisioned: !oidcQuery.isLoading && user === null && (oidcError?.status === 401 || oidcError?.status === 403),
-      isAccessCheckError: !oidcQuery.isLoading && user === null && !!oidcError && oidcError.status !== 401 && oidcError.status !== 403,
+      isBackendUnavailable: !oidcQuery.isLoading && user === null && !!oidcError && isBackendUnavailableError(oidcError),
+      isAccessCheckError: !oidcQuery.isLoading && user === null && !!oidcError
+        && oidcError.status !== 401
+        && oidcError.status !== 403
+        && !isBackendUnavailableError(oidcError),
       retryAccessCheck: oidcQuery.refetch,
     };
   }
@@ -119,6 +137,7 @@ export function useCurrentUser() {
       role: kioskRole || 'Viewer',
       scope: deriveScope(user),
       isUnprovisioned: false,
+      isBackendUnavailable: false,
       isAccessCheckError: false,
       retryAccessCheck: kioskQuery.refetch,
     };
@@ -130,6 +149,7 @@ export function useCurrentUser() {
     role: null,
     scope: EMPTY_SCOPE,
     isUnprovisioned: false,
+    isBackendUnavailable: false,
     isAccessCheckError: false,
     retryAccessCheck: oidcQuery.refetch,
   };

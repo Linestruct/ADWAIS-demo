@@ -65,20 +65,23 @@ export function AccessPendingPanel({ onRetry, isRetrying = false }: {
 
 export function AccessLoadingPanel() {
   return (
-    <AccessPanel title="Checking account access" message="Please wait while we check your account.">
+    <AccessPanel title="Loading application" message="Please wait while ADWAIS starts.">
       <Loader2 size={32} className="animate-spin text-secondary" aria-hidden="true" />
     </AccessPanel>
   );
 }
 
-export function AccessUnavailablePanel({ onRetry, isRetrying = false }: {
+export function AccessUnavailablePanel({ onRetry, isRetrying = false, backendUnavailable = false }: {
   onRetry: () => void;
   isRetrying?: boolean;
+  backendUnavailable?: boolean;
 }) {
   return (
     <AccessPanel
-      title="Unable to check account access"
-      message="The application could not verify your account right now. Try again, or sign out and return later."
+      title={backendUnavailable ? 'Backend unavailable' : 'Unable to verify account access'}
+      message={backendUnavailable
+        ? 'The application server is not reachable right now. Try again when it is available.'
+        : 'The application could not verify your account right now. Try again, or sign out and return later.'}
     >
       <div className="flex flex-wrap justify-center gap-3">
         <Button

@@ -47,6 +47,7 @@ function RootComponent() {
     user,
     isLoading: isUserLoading,
     isUnprovisioned,
+    isBackendUnavailable,
     isAccessCheckError,
     retryAccessCheck,
   } = useCurrentUser();
@@ -72,6 +73,8 @@ function RootComponent() {
         <AccessLoadingPanel />
       ) : isUnprovisioned ? (
         <AccessPendingPanel onRetry={() => void retryAccessCheck()} isRetrying={isUserLoading} />
+      ) : isBackendUnavailable ? (
+        <AccessUnavailablePanel onRetry={() => void retryAccessCheck()} isRetrying={isUserLoading} backendUnavailable />
       ) : isAccessCheckError ? (
         <AccessUnavailablePanel onRetry={() => void retryAccessCheck()} isRetrying={isUserLoading} />
       ) : (

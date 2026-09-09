@@ -227,12 +227,23 @@ describe('useCurrentUser', () => {
 
     const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
 
-    await waitFor(() => expect(result.current.isUnprovisioned).toBe(false));
+    await waitFor(() => expect(result.current.isAccessCheckError).toBe(true));
     expect(result.current.user).toBeNull();
+    expect(result.current.isBackendUnavailable).toBe(false);
+    expect(result.current.isAccessCheckError).toBe(true);
+  });
+
+  it('flags connectivity failures separately from access-check failures', async () => {
+    mockApiFetch.mockRejectedValue(Object.assign(new Error('Bad gateway.'), { status: 502 }));
+
+    const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isBackendUnavailable).toBe(true));
+    expect(result.current.isAccessCheckError).toBe(false);
   });
 
   it('does not refetch a failed access check when the gate remounts', async () => {
-    mockApiFetch.mockRejectedValue(Object.assign(new Error('Bad gateway.'), { status: 502 }));
+    mockApiFetch.mockRejectedValue(Object.assign(new Error('Server error.'), { status: 500 }));
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -244,6 +255,23 @@ describe('useCurrentUser', () => {
 
     const second = renderHook(() => useCurrentUser(), { wrapper });
     await waitFor(() => expect(second.result.current.isAccessCheckError).toBe(true));
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    queryClient.clear();
+  });
+
+  it('does not refetch a connectivity failure when the gate remounts', async () => {
+    mockApiFetch.mockRejectedValue(Object.assign(new Error('Bad gateway.'), { status: 502 }));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = createWrapper(queryClient);
+
+    const first = renderHook(() => useCurrentUser(), { wrapper });
+    await waitFor(() => expect(first.result.current.isBackendUnavailable).toBe(true));
+    first.unmount();
+
+    const second = renderHook(() => useCurrentUser(), { wrapper });
+    await waitFor(() => expect(second.result.current.isBackendUnavailable).toBe(true));
     expect(mockApiFetch).toHaveBeenCalledTimes(1);
     queryClient.clear();
   });

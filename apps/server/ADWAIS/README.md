@@ -30,8 +30,12 @@ cp src/.env.example src/.env
 | `Authentication__OidcAuthority` | OIDC authority URL |
 | `Authentication__OidcAudience` | API audience in access tokens |
 | `Authentication__EnableDemoAccess` | Set `true` to expose the demo token endpoint |
+| `OpenTelemetry__OtlpEndpoint` | Optional OTLP receiver URL for traces, metrics, and logs |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Portable fallback for the OTLP receiver URL |
 
 `EnableRuntimeDataSeeding` creates demo data at startup and registers a seeder job. Set `RESEED=true` for one startup to replace demo data. See `src/.env.example`.
+
+When an OTLP endpoint is configured, the API can be inspected in real time in Aspire Dashboard. The endpoint is optional; product diagnostics remain available without it. See the [observability overview](../../../docs/observability-overview.md) for the signal boundaries and data-safety rules.
 
 ## Commands
 

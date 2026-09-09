@@ -94,7 +94,7 @@ export function Diagnostics() {
         title="Diagnostic events"
         subtitle="Recorded failures, warnings and recovery information."
         icon={<TerminalSquare size={18} />}
-        className="min-h-[220px] max-h-[280px] flex-none landscape-contained:col-start-2 landscape-contained:row-start-2 landscape-contained:self-start landscape-contained:h-auto"
+        className="min-h-[220px] max-h-[280px] flex-none landscape-contained:col-start-2 landscape-contained:row-start-2 landscape-contained:min-h-0 landscape-contained:max-h-none landscape-contained:h-full"
       >
         {eventsQuery.isLoading ? (
           <ConsoleLoadingRows label="Loading diagnostic events" />

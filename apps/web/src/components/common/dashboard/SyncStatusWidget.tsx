@@ -9,6 +9,8 @@ import { useSearch, useParams, useRouterState } from '@tanstack/react-router';
 import { apiFetch } from '../../../apiClient';
 import type { SystemHealthDto, TenantResponseDto } from '@types';
 import { RefreshCw, AlertCircle } from 'lucide-react';
+import { useCurrentUser } from '../../../hooks/useCurrentUser';
+import { getKioskToken } from '../../../utils/auth';
 
 function timeAgo(date: string | number | null | undefined): string {
  if (!date) return 'Never';
@@ -82,14 +84,16 @@ export function SyncStatusWidget({ embedded = false }: { embedded?: boolean }) {
 
  const isFinancial = matches.some((m) => m.routeId === '/financial' || m.pathname.includes('/financial'));
  const isFleet = matches.some((m) => m.routeId === '/fleet-status' || m.pathname.includes('/fleet-status'));
+ const { user } = useCurrentUser();
+ const canReadSystemHealth = !getKioskToken() && user?.isPlatformAdmin === true;
 
  const tenantId = search?.tenantId || params?.tenantId;
 
  const { data: health, isLoading: isHealthLoading } = useQuery<SystemHealthDto>({
-    queryKey: ['system-health'],
+    queryKey: ['system-health', user?.id ?? 'unprivileged'],
     queryFn: () => apiFetch<SystemHealthDto>('/api/system/health'),
     refetchInterval: 60000,
-    enabled: isFinancial || isFleet,
+    enabled: canReadSystemHealth && (isFinancial || isFleet),
  });
 
  const { data: tenants, isLoading: isTenantsLoading } = useQuery<TenantResponseDto[]>({

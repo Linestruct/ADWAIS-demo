@@ -20,44 +20,46 @@ export function OrderToast({ order, t, faviconUrl, displayValue }: OrderToastPro
   const [imgError, setImgError] = useState(false);
 
   return (
-    <div 
-      className="w-[356px] max-w-[calc(100vw-2rem)] lg:w-[480px] bg-primary-container rounded-xl lg:rounded-2xl p-3.5 lg:p-6 m3-elevation-2 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300"
+    <div
+      className="relative flex w-[356px] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl bg-primary-container p-4 pr-11 m3-elevation-2 animate-in fade-in slide-in-from-bottom-4 duration-300"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="w-11 h-11 lg:w-16 lg:h-16 rounded-lg lg:rounded-xl bg-surface flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface shadow-sm">
         {faviconUrl && !imgError ? (
           <img 
             src={faviconUrl} 
             alt="Tenant favicon" 
-            className="w-6 h-6 lg:w-8 lg:h-8 object-contain" 
+            className="h-6 w-6 object-contain"
             onError={() => setImgError(true)}
           />
         ) : (
-          <ShoppingBag className="w-6 h-6 lg:w-8 lg:h-8 text-on-surface-variant" />
+          <ShoppingBag className="h-6 w-6 text-on-surface-variant" />
         )}
       </div>
       {/* Order Info */}
       <div className="flex-grow min-w-0 text-left">
-        <div className="text-sm uppercase font-black tracking-wide font-mono">
+        <div className="font-mono text-sm font-black uppercase tracking-wide">
           New Order Placed
         </div>
-        <div className="lg:text-xl font-black truncate mt-0.5 lg:mt-1">
+        <div className="mt-0.5 truncate font-black">
           {order.tenantName || 'Unknown Tenant'}
         </div>
-        <div className="text-sm mt-1 lg:mt-2 font-mono">
+        <div className="mt-1 font-mono text-sm">
           {formatDateTime(order.createdDate, {
             day: 'numeric', month: 'long', year: 'numeric',
             hour: 'numeric', minute: 'numeric', hour12: false,
           }, 'en-SE')}
         </div>
-        <div className="text-sm font-bold ">{displayValue}</div>
+        <div className="text-sm font-bold">{displayValue}</div>
       </div>
       {/* Close Button */}
-      <button 
-        onClick={() => toast.dismiss(t)} 
-        className="p-1.5 lg:p-2 hover:bg-surface/5 rounded-lg transition-colors cursor-pointer shrink-0"
+      <button
+        type="button"
+        onClick={() => toast.dismiss(t)}
+        aria-label="Close notification"
+        className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md p-1 opacity-60 transition-opacity hover:bg-surface/5 hover:opacity-100"
       >
-        <X className="w-5 h-5 lg:w-6 lg:h-6" />
+        <X size={12} strokeWidth={1.5} aria-hidden="true" />
       </button>
     </div>
   );

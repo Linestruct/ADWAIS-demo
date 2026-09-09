@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AccessPendingPanel } from './AccessPendingPanel';
+import { AccessPendingPanel, AccessUnavailablePanel } from './AccessPendingPanel';
 
 const mockHandleSessionInvalidation = vi.hoisted(() => vi.fn());
 vi.mock('../../../apiClient', () => ({
@@ -26,5 +26,19 @@ describe('AccessPendingPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
 
     expect(mockHandleSessionInvalidation).toHaveBeenCalledOnce();
+  });
+
+  it('describes a backend outage separately from an account verification failure', () => {
+    render(<AccessUnavailablePanel onRetry={vi.fn()} backendUnavailable />);
+
+    expect(screen.getByText('Backend unavailable')).toBeInTheDocument();
+    expect(screen.getByText(/server is not reachable/i)).toBeInTheDocument();
+  });
+
+  it('keeps a separate message for unexpected access-check failures', () => {
+    render(<AccessUnavailablePanel onRetry={vi.fn()} />);
+
+    expect(screen.getByText('Unable to verify account access')).toBeInTheDocument();
+    expect(screen.getByText(/could not verify your account/i)).toBeInTheDocument();
   });
 });

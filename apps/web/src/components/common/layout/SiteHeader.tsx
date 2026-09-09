@@ -4,15 +4,19 @@
 // SPDX-License-Identifier: MIT
 
 import {Menu, Settings, X} from 'lucide-react';
+import { useState } from 'react';
 import type {Timeframe} from '../../../schemas';
+import { isDemoMode } from '../../../utils/oidcConfig';
 import {KioskControls} from '../dashboard/KioskControls';
 import {NotificationToggleWidget} from '../dashboard/NotificationToggleWidget';
+import {Button} from '../ui/Button';
 import {NavLink} from './NavLink';
 import {ConnectivityStatus} from './ConnectivityStatus';
 import {UserAccountLink} from './UserAccountLink';
 import {BrandLogoLink} from './BrandLogoLink';
 import {OrgPicker} from './OrgPicker';
 import {useMediaQuery} from '../../../hooks/useMediaQuery';
+import {AboutDemoModal} from './AboutDemoModal';
 
 type SiteHeaderProps = {
   financialTimeframe: Timeframe;
@@ -36,15 +40,30 @@ export function SiteHeader({
   isProgressBarVisible,
 }: SiteHeaderProps) {
   const isMobileView = useMediaQuery('(max-width: 1023px)');
+  const [isAboutDemoOpen, setIsAboutDemoOpen] = useState(false);
+  const aboutDemoButton = isDemoMode ? (
+    <Button
+      type="button"
+      variant="filled"
+      color="secondary"
+      onClick={() => setIsAboutDemoOpen(true)}
+      className="hidden min-h-10 px-4 text-xs sm:inline-flex sm:text-sm"
+    >
+      About this demo
+    </Button>
+  ) : null;
 
   return (
     <header className="relative z-10 shrink-0 bg-brand-bg-secondary px-6 py-3">
       {isMobileView ? (
         <div className="flex w-full items-center justify-between" data-header="mobile-bar">
-          <BrandLogoLink
-            timeframe={financialTimeframe}
-            className="text-2xl leading-none text-white"
-          />
+          <div className="flex min-w-0 items-center gap-2">
+            <BrandLogoLink
+              timeframe={financialTimeframe}
+              className="text-2xl leading-none text-white"
+            />
+            {aboutDemoButton}
+          </div>
           <div className="flex items-center gap-4">
             <ConnectivityStatus isOnline={isOnline} isBackendOnline={isBackendOnline} />
             <UserAccountLink label={userLabel} />
@@ -60,11 +79,12 @@ export function SiteHeader({
         </div>
       ) : (
         <div className="flex w-full flex-wrap items-center justify-end gap-x-8 gap-y-4">
-          <div className="flex flex-1 min-w-[100px] shrink-0" data-header="logo">
+          <div className="flex min-w-[100px] flex-1 shrink-0 items-center gap-3" data-header="logo">
             <BrandLogoLink
               timeframe={financialTimeframe}
               className="text-4xl leading-none text-white"
             />
+            {aboutDemoButton}
           </div>
 
           <nav className="flex flex-0 whitespace-nowrap items-center justify-center gap-4" data-header="nav">
@@ -110,6 +130,7 @@ export function SiteHeader({
           </div>
         </div>
       )}
+      {isDemoMode && <AboutDemoModal isOpen={isAboutDemoOpen} onClose={() => setIsAboutDemoOpen(false)} />}
     </header>
   );
 }

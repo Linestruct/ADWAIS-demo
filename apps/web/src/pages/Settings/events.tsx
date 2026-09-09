@@ -8,7 +8,6 @@ import { HeartPulse, TerminalSquare, AlertCircle, CheckCircle2, AlertTriangle, I
 import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { SettingsPanelHeader } from '../../components/common/layout/SettingsPanelHeader';
 import { ConsolePanel } from '../../components/common/layout/ConsolePanel';
-import { SecureButton } from '../../components/common/ui/SecureButton';
 import { Skeleton } from '../../components/common/ui/Skeleton';
 import { ConsoleLoadingRows } from '../../components/common/ui/ConsoleLoadingRows';
 import { useSystemEventsViewModel, type SystemEvent } from '../../hooks/useSystemEventsViewModel';
@@ -70,14 +69,12 @@ function HealthStatusCard({ title, subtitle, status, children }: HealthStatusCar
 
 export function SystemEventsView() {
     const {
-        isAdmin,
         health,
         events,
         isLoadingHealth,
         isHealthError,
         isLoadingEvents,
-        isEventsError,
-        clearErrorsMutation
+        isEventsError
     } = useSystemEventsViewModel();
     const { user } = useCurrentUser();
     const { selectedOrgId } = useOrgSelection();
@@ -149,18 +146,6 @@ export function SystemEventsView() {
                                 </div>
                             </HealthStatusCard>
 
-                            <div className="flex flex-wrap gap-3">
-                                <SecureButton
-                                    onClick={() => clearErrorsMutation.mutate()}
-                                    locked={!isAdmin}
-                                    lockTitle="Requires Admin privileges"
-                                    loading={clearErrorsMutation.isPending}
-                                    loadingText="Clearing Diagnostics..."
-                                    className="flex min-h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-full border border-outline enabled:hover:bg-surface-container px-5 text-sm font-bold text-on-surface transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary"
-                                >
-                                    Clear Sync Errors
-                                </SecureButton>
-                            </div>
                         </div>
                     ) : isLoadingHealth ? (
                         <div className="flex flex-col gap-8 shrink-0">

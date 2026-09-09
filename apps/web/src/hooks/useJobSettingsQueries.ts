@@ -7,16 +7,18 @@ import { useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   useGetApiGlobalConfig,
   useGetApiJobRecurring,
-  useGetApiSystemHealthJobs,
   usePatchApiGlobalConfig,
   useGetApiGlobalConfigIntervals,
   usePatchApiGlobalConfigIntervals,
   usePostApiIngestionBackfill
 } from '../api/generated/endpoints';
 import { customClient } from '../apiClient';
+import { useDiagnosticRunsQuery } from './useDiagnosticsQueries';
 import { useOrgSelection } from './useOrgSelection';
 import type { GlobalConfigDto, RecurringJobDto, BackgroundJobStatusDto, UpdateGlobalConfigRequestDto } from '@types';
 import { toast } from 'sonner';
+import { getKioskToken } from '../utils/auth';
+import { useCurrentUser } from './useCurrentUser';
 
 export function useGlobalConfigQuery() {
   return useGetApiGlobalConfig<GlobalConfigDto, Error>({
@@ -40,13 +42,36 @@ export function useRecurringJobsQuery() {
 
 export function useRecentJobsQuery() {
   const { selectedOrgId } = useOrgSelection();
-  return useGetApiSystemHealthJobs<BackgroundJobStatusDto[], Error>({
-    query: {
-      queryKey: ['system-jobs', selectedOrgId],
-      select: (res) => res.data as BackgroundJobStatusDto[],
-      refetchInterval: 15000
-    }
+  const { user } = useCurrentUser();
+  const organizationId = selectedOrgId ?? user?.organizationId ?? null;
+  const platformScopeActive = user?.isPlatformAdmin === true && selectedOrgId === null;
+
+  const runsQuery = useDiagnosticRunsQuery({
+    organizationId,
+    platformScopeActive,
+    enabled: !getKioskToken() && (platformScopeActive || organizationId !== null),
   });
+
+  return {
+    ...runsQuery,
+    data: runsQuery.data?.map((run): BackgroundJobStatusDto => {
+      const started = run.startedAt ? new Date(run.startedAt).getTime() : null;
+      const isActive = run.state === 'Pending' || run.state === 'Queued' || run.state === 'Running';
+      return {
+        jobId: run.id ?? '',
+        jobName: run.resourceName ?? run.kind ?? 'Pipeline',
+        jobArgs: null,
+        state: isActive ? 'Processing' : run.state ?? 'Unknown',
+        createdAt: run.requestedAt ?? null,
+        durationSeconds: started === null || !run.completedAt
+          ? null
+          : Math.max(0, (new Date(run.completedAt).getTime() - started) / 1000),
+        exceptionMessage: run.state === 'Failed' ? run.safeSummary ?? null : null,
+        tenantName: run.tenantName ?? null,
+        monitorName: run.kind === 'MonitorSync' ? run.resourceName ?? null : null,
+      };
+    }),
+  };
 }
 
 export function useTriggerJobMutation() {

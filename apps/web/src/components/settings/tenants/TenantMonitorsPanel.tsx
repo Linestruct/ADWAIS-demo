@@ -9,6 +9,7 @@ import { Link as LinkIcon, Unlink } from 'lucide-react';
 import { useTenantsViewModel } from '../../../hooks/useTenantsViewModel';
 
 import { SearchInput } from '../../common/ui/SearchInput';
+import { DataTable } from '../../common/ui/DataTable';
 import { MonitorSettingsFilterMenu } from './SettingsFilterMenu';
 import { MonitorRow } from './MonitorRow';
 import { Button } from '../../common/ui/Button';
@@ -145,11 +146,12 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                     </Button>
                 </div>
 
-                <div className="border border-outline-variant bg-surface-container-low rounded-xl overflow-hidden bg-surface">
-                    <div className="custom-scrollbar overflow-x-auto h-[500px] overflow-y-auto">
-                        <table className="w-full whitespace-nowrap text-left text-sm">
+                <DataTable
+                    className="rounded-xl border border-outline-variant bg-surface-container-low"
+                    viewportClassName="h-[500px] flex-none"
+                >
                             {renderThead()}
-                            <tbody className="">
+                            <tbody>
                                 {assignedMonitors.map(m => (
                                     <MonitorRow
                                         key={m.id}
@@ -167,9 +169,7 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                                     </tr>
                                 )}
                             </tbody>
-                        </table>
-                    </div>
-                </div>
+                </DataTable>
             </div>
 
             {/* Available Monitors */}
@@ -192,25 +192,26 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                     </Button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 pb-2">
-                    <SearchInput
-                        value={availableSearch}
-                        onChange={setAvailableSearch}
-                        placeholder="Search monitors..."
-                    />
-                    <MonitorSettingsFilterMenu
-                        filters={monitorFilters}
-                        setFilters={setMonitorFilters}
-                        sort={monitorSort}
-                        setSort={setMonitorSort}
-                        tags={allUniqueTags}
-                        types={allUniqueTypes}
-                    />
-                </div>
-
-                    <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface">
-                        <div className="custom-scrollbar overflow-x-auto h-[500px] overflow-y-auto">
-                            <table className="w-full whitespace-nowrap text-left text-sm">
+                <DataTable
+                    filters={(
+                        <div className="flex flex-wrap items-center gap-3 pb-2">
+                            <SearchInput
+                                value={availableSearch}
+                                onChange={setAvailableSearch}
+                                placeholder="Search monitors..."
+                            />
+                            <MonitorSettingsFilterMenu
+                                filters={monitorFilters}
+                                setFilters={setMonitorFilters}
+                                sort={monitorSort}
+                                setSort={setMonitorSort}
+                                tags={allUniqueTags}
+                                types={allUniqueTypes}
+                            />
+                        </div>
+                    )}
+                    viewportClassName="h-[500px] flex-none rounded-xl border border-outline-variant bg-surface"
+                >
                                 {renderThead()}
                                 <tbody className="divide-y divide-outline-variant">
                                     {availableMonitors.map(m => (
@@ -230,9 +231,7 @@ export const TenantMonitorsPanel = React.memo(function TenantMonitorsPanel({
                                         </tr>
                                     )}
                                 </tbody>
-                            </table>
-                        </div>
-                    </div>
+                </DataTable>
                 </div>
         </>
     );

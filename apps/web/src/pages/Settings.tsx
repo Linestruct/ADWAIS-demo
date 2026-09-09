@@ -19,12 +19,12 @@ export function Settings() {
     const rightSidebar = useContext(RightSidebarSlotContext);
 
     const tabs = [
+        { id: 'diagnostics', label: 'Diagnostics', path: '/settings/diagnostics' },
         { id: 'jobs', label: 'Jobs', path: '/settings/jobs' },
         { id: 'configuration', label: 'Configuration', path: '/settings/configuration' },
         { id: 'platform', label: 'Platform', path: '/settings/platform' },
         { id: 'tenants', label: 'Tenants', path: '/settings/tenants' },
         { id: 'monitors', label: 'Monitors', path: '/settings/monitors' },
-        { id: 'events', label: 'Health & events', path: '/settings/events' },
         { id: 'users', label: 'Users', path: '/settings/users' },
         { id: 'authentication', label: 'Authentication', path: '/settings/authentication' },
     ];

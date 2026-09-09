@@ -46,7 +46,9 @@ Both records are safe projections. Technical exception details stay in structure
 
 OpenTelemetry instrumentation is part of the application boundary. ASP.NET Core, HttpClient, EF Core, and the Hangfire enqueue/execute boundary use W3C context. The application emits a small bounded set of pipeline/provider metrics and correlated structured logs.
 
-OTLP is optional per installation. With OpenTelemetry:OtlpEndpoint or OTEL_EXPORTER_OTLP_ENDPOINT set, telemetry is exported to the Aspire Dashboard (or another OTLP receiver) for live technical investigation. With neither set, no telemetry backend is required and ADWAIS diagnostics still work from the application database. Aspire Dashboard is intentionally not the long-term history store.
+OTLP is optional per installation. With `OpenTelemetry__OtlpEndpoint` or `OTEL_EXPORTER_OTLP_ENDPOINT` set, telemetry is exported to the Aspire Dashboard (or another OTLP receiver) for live technical investigation. With neither set, no telemetry backend is required and ADWAIS diagnostics still work from the application database. Aspire Dashboard is intentionally not the long-term history store.
+
+For local API configuration, set `OpenTelemetry__OtlpEndpoint` in `apps/server/ADWAIS/src/.env` (for example, `http://localhost:18889`). `OTEL_EXPORTER_OTLP_ENDPOINT` is also accepted for deployments that use the standard OpenTelemetry environment variable. Do not add either setting to the frontend `VITE_*` environment; telemetry is exported by the API.
 
 ## Health and safety
 

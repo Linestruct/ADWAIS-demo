@@ -195,11 +195,13 @@ public static class AuthenticationExtensions
                 policy.RequireRole("Admin", "Employee", "Viewer", "PlatformAdmin");
             });
 
-            // Diagnostics are an authenticated human workflow. Kiosk tokens
-            // deliberately cannot read event or pipeline history.
+            // Kiosk devices use the same organization-scoped diagnostics
+            // surface as regular staff. Platform-wide diagnostics remain
+            // restricted to platform administrators below.
             options.AddPolicy("DiagnosticsRead", policy =>
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                policy.AuthenticationSchemes.Add("KioskJwt");
                 if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
                 policy.RequireRole("Admin", "Employee", "Viewer", "PlatformAdmin");
             });

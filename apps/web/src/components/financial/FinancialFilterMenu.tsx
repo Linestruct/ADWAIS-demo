@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useMemo, type CSSProperties } from 'react';
+import { Settings } from 'lucide-react';
 import type { TenantType } from '@types';
 import { countActiveFilterGroups } from '../../utils/filterCounts';
 import {
@@ -28,6 +29,10 @@ export interface FinancialFilterProps {
   onTenantChange: (tenantId: string | null) => void;
   onTypesChange: (types: TenantType[]) => void;
   onClearAll: () => void;
+  settingsAction?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 const TYPE_OPTIONS: Array<{ label: string; value: TenantType }> = [
@@ -51,6 +56,7 @@ export function FinancialFilterPanel({
   isLoading = false,
   onTenantChange,
   onTypesChange,
+  settingsAction,
   embedded = false,
   floatingStyle,
 }: FinancialFilterProps & { embedded?: boolean; floatingStyle?: CSSProperties }) {
@@ -69,7 +75,22 @@ export function FinancialFilterPanel({
   );
 
   return (
-    <FilterPanelFrame title="Filter financials" embedded={embedded} floatingStyle={floatingStyle}>
+    <FilterPanelFrame
+      title="Filter financials"
+      embedded={embedded}
+      floatingStyle={floatingStyle}
+      headerAction={settingsAction && (
+        <button
+          type="button"
+          onClick={settingsAction.onClick}
+          aria-label={settingsAction.label}
+          title={settingsAction.label}
+          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+        >
+          <Settings aria-hidden="true" size={18} strokeWidth={2.5} />
+        </button>
+      )}
+    >
       <div>
         <FilterSectionHeader
           label="Tenant"

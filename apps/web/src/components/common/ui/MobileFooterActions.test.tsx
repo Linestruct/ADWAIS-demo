@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MobileFooterActions } from './MobileFooterActions';
 import { MobileFooterActionsSlotContext } from './MobileFooterActionsContext';
 
-function renderActions(activeCount: number, onClearAll = vi.fn(), onOpenSettings?: () => void) {
+function renderActions(activeCount: number, onClearAll = vi.fn()) {
   const panel = document.createElement('div');
   const indicator = document.createElement('span');
   const quickAction = document.createElement('div');
@@ -20,7 +20,6 @@ function renderActions(activeCount: number, onClearAll = vi.fn(), onOpenSettings
         activeCount={activeCount}
         clearLabel="Clear all fleet filters"
         onClearAll={onClearAll}
-        settingsAction={onOpenSettings ? { label: 'Monitor settings', onClick: onOpenSettings } : undefined}
       >
         <div>Fleet filters</div>
       </MobileFooterActions>
@@ -60,15 +59,4 @@ describe('MobileFooterActions', () => {
     cleanupSlots();
   });
 
-  it('exposes the settings action in the mobile FAB', () => {
-    const onOpenSettings = vi.fn();
-    const { cleanupSlots, unmount } = renderActions(0, vi.fn(), onOpenSettings);
-
-    const settings = screen.getByRole('button', { name: 'Monitor settings' });
-    fireEvent.click(settings);
-    expect(onOpenSettings).toHaveBeenCalledOnce();
-
-    unmount();
-    cleanupSlots();
-  });
 });

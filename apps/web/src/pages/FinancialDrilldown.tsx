@@ -68,7 +68,7 @@ interface Props {
   onClearFilters: () => void;
 }
 
-export function TenantDiagnostics({
+export function FinancialDrilldown({
   tenantId,
   tenantName,
   tenantType,
@@ -234,10 +234,6 @@ export function TenantDiagnostics({
         activeCount={countActiveFilterGroups(Boolean(tenantId), selectedTenantTypes.length > 0)}
         clearLabel="Clear all financial filters"
         onClearAll={onClearFilters}
-        settingsAction={{
-          label: `Edit ${tenantName}`,
-          onClick: () => void navigate({ to: '/settings/tenants/$tenantId', params: { tenantId } }),
-        }}
       >
         <FinancialFilterPanel
           embedded
@@ -248,6 +244,10 @@ export function TenantDiagnostics({
           onTenantChange={onTenantChange}
           onTypesChange={onTypesChange}
           onClearAll={onClearFilters}
+          settingsAction={{
+            label: `Edit ${tenantName}`,
+            onClick: () => void navigate({ to: '/settings/tenants/$tenantId', params: { tenantId } }),
+          }}
         />
       </MobileFooterActions>
     </DashboardLayout>

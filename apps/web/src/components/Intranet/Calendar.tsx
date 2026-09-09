@@ -99,10 +99,18 @@ export function Calendar() {
   useEffect(() => {
     if (viewMode === 'week' && !isLoading && todayRef.current) {
       const timer = setTimeout(() => {
-        todayRef.current?.scrollIntoView({
+        const today = todayRef.current;
+        const scrollContainer = today?.parentElement;
+        if (!today || !scrollContainer) return;
+
+        const todayRect = today.getBoundingClientRect();
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const todayCenter = todayRect.left + todayRect.width / 2;
+        const containerCenter = containerRect.left + containerRect.width / 2;
+
+        scrollContainer.scrollBy({
+          left: todayCenter - containerCenter,
           behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
         });
       }, 100);
       return () => clearTimeout(timer);

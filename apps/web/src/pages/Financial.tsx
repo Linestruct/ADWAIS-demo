@@ -9,7 +9,7 @@ import { PortfolioImpactMatrixChart } from '../components/financial/PortfolioImp
 import { CrossSegmentDistributionChart } from '../components/financial/CrossSegmentDistributionChart';
 import { TransactionDensityChart } from '../components/financial/TransactionDensityChart';
 import { AccumulatedRevenueChart } from '../components/financial/AccumulatedRevenueChart';
-import { TenantDiagnostics } from './TenantDiagnostics';
+import { FinancialDrilldown } from './FinancialDrilldown';
 import { DashboardLayout } from "../components/common/layout/DashboardLayout.tsx";
 import { DashboardTopRow } from "../components/common/layout/DashboardTopRow.tsx";
 import { DashboardFlexRow } from "../components/common/layout/DashboardFlexRow.tsx";
@@ -48,7 +48,7 @@ export function Financial() {
 
   if (vm.tenantId && vm.selectedTenantDetails) {
     return (
-      <TenantDiagnostics
+      <FinancialDrilldown
         tenantId={vm.tenantId}
         tenantName={vm.selectedTenantDetails.tenantName}
         tenantType={vm.selectedTenantDetails.type}
@@ -196,10 +196,6 @@ export function Financial() {
         activeCount={countActiveFilterGroups(Boolean(vm.tenantId), vm.selectedTenantTypes.length > 0)}
         clearLabel="Clear all financial filters"
         onClearAll={vm.clearFinancialFilters}
-        settingsAction={{
-          label: 'Tenant settings',
-          onClick: () => void navigate({ to: '/settings/tenants' }),
-        }}
       >
         <FinancialFilterPanel
           embedded
@@ -210,6 +206,10 @@ export function Financial() {
           onTenantChange={vm.handleTenantChange}
           onTypesChange={vm.setSelectedTenantTypes}
           onClearAll={vm.clearFinancialFilters}
+          settingsAction={{
+            label: 'Open tenant settings',
+            onClick: () => void navigate({ to: '/settings/tenants' }),
+          }}
         />
       </MobileFooterActions>
     </DashboardLayout>

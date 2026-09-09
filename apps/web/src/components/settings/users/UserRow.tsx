@@ -5,6 +5,7 @@
 
 import { Shield, User } from 'lucide-react';
 import { getTagColor, getTagStyle } from '../../../utils/tagHelper';
+import { isAdminRole } from '../../../utils/roles';
 import type { UserResponseDto } from '@types';
 
 interface UserRowProps {
@@ -48,11 +49,11 @@ export function UserRow({ u, selected = false, onSelect, onDoubleClick }: UserRo
       </td>
       <td className="w-44 px-4 py-3 align-middle sm:px-5">
         <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ${
-          u.role === 'Admin' ? 'bg-tertiary-container text-on-tertiary-container' :
+          isAdminRole(u.role) ? 'bg-tertiary-container text-on-tertiary-container' :
           u.role === 'Employee' ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container text-on-surface-variant'
         }`}>
-          {u.role === 'Admin' ? <Shield size={12} /> : <User size={12} />}
-          {u.role}
+          {isAdminRole(u.role) ? <Shield size={12} /> : <User size={12} />}
+          {u.role ?? 'No role'}
         </span>
       </td>
     </tr>

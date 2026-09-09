@@ -87,6 +87,9 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      env: {
+        VITE_DEMO_MODE: 'true',
+      },
     },
   }
 })

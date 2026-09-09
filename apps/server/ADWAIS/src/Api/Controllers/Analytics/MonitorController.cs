@@ -4,11 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 using Adwais.Api.DTOs.Monitoring;
+using Adwais.Api.Extensions;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Monitoring;
 using Adwais.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,28 +25,19 @@ public class MonitorController(
     IApplicationDbContext dbContext,
     IMonitorOrchestrationService monitorService,
     IReportingCalendar reportingCalendar,
-    IEnumerable<IMonitoringProvider> monitoringProviders,
     IEnumerable<IOrderSource> orderSources) : ControllerBase
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly IMonitorOrchestrationService _monitorService = monitorService;
-    private readonly IEnumerable<IMonitoringProvider> _monitoringProviders = monitoringProviders;
     private readonly IEnumerable<IOrderSource> _orderSources = orderSources;
-
-    private async Task<bool> IsMonitoringProviderConfiguredAsync(CancellationToken ct)
-    {
-        var db = _dbContext;
-        var config = await db.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync(ct);
-        return config != null
-            && _monitoringProviders.ForProvider(config.MonitoringProvider).IsConfigured(config.MonitoringProviderSettings);
-    }
-
     /// <summary>
     /// Unified analytics endpoint for monitoring data.
     /// Provides latency time-series and monitoring KPIs for the specified timeframe (defaults to T30).
     /// </summary>
     [HttpGet("analytics")]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(MonitorAnalyticsResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MonitorAnalyticsResponseDto>> GetAnalytics([FromQuery] MonitorRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
@@ -57,11 +50,13 @@ public class MonitorController(
             ct,
             excludedTags: request.ExcludedTags,
             excludedStatuses: request.ExcludedStatuses);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var analytics = result.Value;
 
         return Ok(new MonitorAnalyticsResponseDto
         {
-            GlobalAverageLatency = result.GlobalAverageLatency,
-            LatencyPoints = result.LatencyPoints.Select(p => new LatencyPointResponseDto
+            GlobalAverageLatency = analytics.GlobalAverageLatency,
+            LatencyPoints = analytics.LatencyPoints.Select(p => new LatencyPointResponseDto
             {
                 Timestamp = p.Timestamp,
                 Average = p.Average,
@@ -72,18 +67,18 @@ public class MonitorController(
                 PreviousState = p.PreviousState
             }).ToList(),
             Kpis = new MonitorKpiResponseDto(
-                result.Kpis.AverageUptime,
-                result.Kpis.PreviousAverageUptime,
-                result.Kpis.UptimeGrowthPercentage,
-                result.Kpis.AverageLatency,
-                result.Kpis.PreviousAverageLatency,
-                result.Kpis.LatencyGrowthPercentage,
-                result.Kpis.HighestLatency,
-                result.Kpis.PreviousHighestLatency,
-                result.Kpis.HighestLatencyGrowthPercentage,
-                result.Kpis.LowestLatency,
-                result.Kpis.PreviousLowestLatency,
-                result.Kpis.LowestLatencyGrowthPercentage)
+                analytics.Kpis.AverageUptime,
+                analytics.Kpis.PreviousAverageUptime,
+                analytics.Kpis.UptimeGrowthPercentage,
+                analytics.Kpis.AverageLatency,
+                analytics.Kpis.PreviousAverageLatency,
+                analytics.Kpis.LatencyGrowthPercentage,
+                analytics.Kpis.HighestLatency,
+                analytics.Kpis.PreviousHighestLatency,
+                analytics.Kpis.HighestLatencyGrowthPercentage,
+                analytics.Kpis.LowestLatency,
+                analytics.Kpis.PreviousLowestLatency,
+                analytics.Kpis.LowestLatencyGrowthPercentage)
         });
     }
 
@@ -92,6 +87,8 @@ public class MonitorController(
     /// </summary>
     [HttpGet("availability")]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(MonitorAvailabilitySeriesResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MonitorAvailabilitySeriesResponseDto>> GetAvailability(
         [FromQuery] MonitorRequestDto request,
         CancellationToken ct = default)
@@ -108,14 +105,16 @@ public class MonitorController(
             ct,
             excludedTags: request.ExcludedTags,
             excludedStatuses: request.ExcludedStatuses);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var availability = result.Value;
 
         return Ok(new MonitorAvailabilitySeriesResponseDto
         {
-            PeriodStart = result.PeriodStart,
-            PeriodEnd = result.PeriodEnd,
-            AverageUptimePercentage = result.AverageUptimePercentage,
-            LowestUptimePercentage = result.LowestUptimePercentage,
-            Points = result.Points.Select(point => new MonitorAvailabilityPointResponseDto
+            PeriodStart = availability.PeriodStart,
+            PeriodEnd = availability.PeriodEnd,
+            AverageUptimePercentage = availability.AverageUptimePercentage,
+            LowestUptimePercentage = availability.LowestUptimePercentage,
+            Points = availability.Points.Select(point => new MonitorAvailabilityPointResponseDto
             {
                 Date = point.Date,
                 EndDate = point.EndDate,
@@ -135,6 +134,9 @@ public class MonitorController(
     /// <param name="ct">Cancellation token</param>
     [HttpGet]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(IEnumerable<UptimeMonitorDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<UptimeMonitorDto>>> GetMonitors([FromQuery] MonitorRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
@@ -147,18 +149,21 @@ public class MonitorController(
             var tid = await db.Monitors.Where(m => m.Id == request.MonitorId.Value).Select(m => (Guid?)m.TenantId).SingleOrDefaultAsync(ct);
             if (tid == null) return Ok(Enumerable.Empty<UptimeMonitorDto>());
 
-            var m = await _monitorService.GetMonitorAsync(tid.Value, request.MonitorId.Value, period, ct);
-            resultDtos = new[] { ToDto(m) };
+            var result = await _monitorService.GetMonitorAsync(tid.Value, request.MonitorId.Value, period, ct);
+            if (result.IsFailed) return result.ToProblem(HttpContext);
+            resultDtos = new[] { ToDto(result.Value) };
         }
         else if (request.TenantId.HasValue)
         {
-            var monitors = await _monitorService.GetMonitorsByTenantAsync(request.TenantId.Value, period, ct);
-            resultDtos = monitors.Select(ToDto);
+            var result = await _monitorService.GetMonitorsAsync(period, request.TenantId.Value, ct);
+            if (result.IsFailed) return result.ToProblem(HttpContext);
+            resultDtos = result.Value.Select(ToDto);
         }
         else 
         {
-            var monitors = await _monitorService.GetMonitorsAsync(period, ct: ct);
-            resultDtos = monitors.Select(ToDto);
+            var result = await _monitorService.GetMonitorsAsync(period, ct: ct);
+            if (result.IsFailed) return result.ToProblem(HttpContext);
+            resultDtos = result.Value.Select(ToDto);
         }
 
         if (request.Tags != null && request.Tags.Any())
@@ -198,7 +203,7 @@ public class MonitorController(
     public async Task<ActionResult<IEnumerable<UptimeMonitorDto>>> GetUnassignedMonitors([FromQuery] Timeframe timeframe = Timeframe.T30, [FromQuery] ComparisonType comparison = ComparisonType.Preceding, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(timeframe, comparison, ct);
-        var monitors = await _monitorService.GetMonitorsByTenantAsync(IApplicationDbContext.SystemTenantGuid, period, ct);
+        var monitors = await _monitorService.GetUnassignedMonitorsAsync(period, ct);
         return Ok(monitors.Select(ToDto));
     }
 
@@ -207,13 +212,21 @@ public class MonitorController(
     /// </summary>
     [HttpPost]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(UptimeMonitorDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<UptimeMonitorDto>> CreateMonitor(
-        [FromQuery] Guid tenantId,
+        [FromQuery] Guid? tenantId,
         [FromBody] CreateMonitorRequestDto request,
         CancellationToken ct = default)
     {
-        if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-        var m = await _monitorService.CreateMonitorAsync(tenantId, request.Name, request.Url, request.Type, request.UptimeSla, ct, request.LatencyDegradedFloor);
+        var result = tenantId.HasValue
+            ? await _monitorService.CreateMonitorAsync(tenantId.Value, request.Name, request.Url, request.Type, request.UptimeSla, ct, request.LatencyDegradedFloor)
+            : await _monitorService.CreateUnassignedMonitorAsync(request.Name, request.Url, request.Type, request.UptimeSla, ct, request.LatencyDegradedFloor);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var m = result.Value;
         return CreatedAtAction(nameof(GetMonitors), new { id = m.Id }, ToDto(m));
     }
 
@@ -222,9 +235,13 @@ public class MonitorController(
     /// </summary>
     [HttpPatch("{id:int}/assign/{tenantId:guid}")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AssignMonitor(int id, Guid tenantId, CancellationToken ct = default)
     {
-        await _monitorService.AssignMonitorAsync(id, tenantId, ct);
+        var result = await _monitorService.AssignMonitorAsync(id, tenantId, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return Ok();
     }
 
@@ -233,9 +250,14 @@ public class MonitorController(
     /// </summary>
     [HttpPatch("{id:int}/unassign")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> UnassignMonitor(int id, CancellationToken ct = default)
     {
-        await _monitorService.AssignMonitorAsync(id, IApplicationDbContext.SystemTenantGuid, ct);
+        var result = await _monitorService.UnassignMonitorAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return Ok();
     }
 
@@ -244,10 +266,14 @@ public class MonitorController(
     /// </summary>
     [HttpPost("{id:int}/pause")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> PauseMonitor(int id, CancellationToken ct = default)
     {
-        if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-        await _monitorService.PauseMonitorAsync(id, ct);
+        var result = await _monitorService.PauseMonitorAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return Ok();
     }
 
@@ -256,10 +282,14 @@ public class MonitorController(
     /// </summary>
     [HttpPost("{id:int}/start")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> StartMonitor(int id, CancellationToken ct = default)
     {
-        if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-        await _monitorService.StartMonitorAsync(id, ct);
+        var result = await _monitorService.StartMonitorAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return Ok();
     }
 
@@ -268,19 +298,14 @@ public class MonitorController(
     /// </summary>
     [HttpDelete("{id:int}")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> DeleteMonitor(int id, [FromQuery] Guid? tenantId, CancellationToken ct = default)
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteMonitor(int id, CancellationToken ct = default)
     {
-        if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-
-        if (!tenantId.HasValue)
-        {
-            var db = _dbContext;
-            tenantId = await db.Monitors.Where(m => m.Id == id).Select(m => (Guid?)m.TenantId).SingleOrDefaultAsync(ct);
-        }
-
-        if (tenantId == null) return NotFound();
-
-        await _monitorService.DeleteMonitorAsync(tenantId.Value, id, ct);
+        var result = await _monitorService.DeleteMonitorAsync(id, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
         return NoContent();
     }
 
@@ -289,6 +314,9 @@ public class MonitorController(
     /// </summary>
     [HttpGet("{id:int}/latency")]
     [Authorize(Policy = "KioskOrStaffAccess")]
+    [ProducesResponseType(typeof(IEnumerable<LatencyMetricsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<LatencyMetricsDto>>> GetLatencyMetrics(
         int id,
         [FromQuery] DateTimeOffset from,
@@ -304,8 +332,9 @@ public class MonitorController(
 
         if (tenantId == null) return NotFound();
 
-        var metrics = await _monitorService.GetAggregatedLatencyAsync(tenantId.Value, id, from, to, ct);
-        return Ok(metrics);
+        var result = await _monitorService.GetAggregatedLatencyAsync(tenantId.Value, id, from, to, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value);
     }
 
     /// <summary>
@@ -313,18 +342,15 @@ public class MonitorController(
     /// </summary>
     [HttpPatch("{id:int}")]
     [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(UptimeMonitorDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<UptimeMonitorDto>> UpdateMonitor(int id, [FromBody] UpdateMonitorRequestDto request, CancellationToken ct = default)
     {
-        if (!await IsMonitoringProviderConfiguredAsync(ct)) return BadRequest("Monitoring provider settings are not configured.");
-        await _monitorService.UpdateMonitorAsync(id, request.Name, request.Url, request.Type, request.Sla, request.Tags, ct, request.LatencyDegradedFloor);
-        
-        var db = _dbContext;
-        var tenantId = await db.Monitors.Where(m => m.Id == id).Select(m => (Guid?)m.TenantId).SingleOrDefaultAsync(ct);
-        if (tenantId == null) return NotFound();
-
-        var period = await reportingCalendar.ResolvePeriodAsync(Timeframe.T30, ct: ct);
-        var m = await _monitorService.GetMonitorAsync(tenantId.Value, id, period, ct);
-        return Ok(ToDto(m));
+        var result = await _monitorService.UpdateMonitorAsync(id, request.Name, request.Url, request.Type, request.Sla, request.Tags, ct, request.LatencyDegradedFloor);
+        return result.IsFailed ? result.ToProblem(HttpContext) : Ok(ToDto(result.Value));
     }
 
     private UptimeMonitorDto ToDto(UptimeMonitor m)

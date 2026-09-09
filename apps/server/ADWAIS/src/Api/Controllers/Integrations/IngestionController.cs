@@ -4,12 +4,16 @@
 // SPDX-License-Identifier: MIT
 
 using Adwais.Api.DTOs.Ingestion;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
+using Adwais.Domain.Entities;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using System.Security.Claims;
 
 namespace Adwais.Api.Controllers.Integrations;
 
@@ -22,11 +26,15 @@ namespace Adwais.Api.Controllers.Integrations;
 public class IngestionController(
     IApplicationDbContext dbContext,
     IBackgroundJobClient backgroundJobClient,
-    IEnumerable<IOrderSource> orderSources)
+    IEnumerable<IOrderSource> orderSources,
+    ICurrentAccess currentAccess,
+    IPipelineRunService? pipelineRunService = null)
     : ControllerBase
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
     private readonly IBackgroundJobClient _backgroundJobClient = backgroundJobClient;
+    private readonly ICurrentAccess _currentAccess = currentAccess;
+    private readonly IPipelineRunService? _pipelineRunService = pipelineRunService;
 
     /// <summary>
     /// Manually triggers a historical backfill for a specific tenant within a given date range.
@@ -51,6 +59,8 @@ public class IngestionController(
         var tenant = await context.Tenants.SingleOrDefaultAsync(t => t.Id == request.TenantId, ct);
         
         if (tenant == null) return NotFound("Tenant not found.");
+        var scopeOrgId = _currentAccess.Scope?.OrganizationId;
+        if (scopeOrgId is not null && tenant.OrganizationId != scopeOrgId) return Forbid();
         if (!orderSources.ForProvider(tenant.OrderProvider).IsConfigured(tenant.OrderProviderSettings))
             return BadRequest("Tenant is missing valid order provider settings.");
         if (tenant.CurrentlyFetching) return Conflict(new { message = $"Tenant {request.TenantId} is currently fetching. Wait for the active job to complete." });
@@ -61,9 +71,53 @@ public class IngestionController(
         var startDate = request.StartDate ?? DateTimeOffset.UtcNow.AddYears(request.DefaultLookBackPeriodYears);
         var endDate = request.EndDate ?? DateTimeOffset.UtcNow;
 
-        var jobId = _backgroundJobClient.Enqueue<IOrderIngestionService>(
-            service => service.ExecuteIngestionAsync(tenant.Id, startDate, endDate, CancellationToken.None));
+        var pipelineRun = _pipelineRunService is null
+            ? null
+            : await _pipelineRunService.StartAsync(
+                tenant.OrganizationId,
+                tenant.Id,
+                PipelineKind.OrderIngestion,
+                PipelineTriggerKind.Manual,
+                resourceKey: tenant.Id.ToString("D"),
+                resourceName: tenant.Name,
+                actorUserId: TryGetActorId(User),
+                requestId: HttpContext.TraceIdentifier,
+                traceId: Activity.Current?.TraceId.ToHexString(),
+                ct: ct);
 
-        return Accepted(new { JobId = jobId });
+        string jobId;
+        try
+        {
+            jobId = pipelineRun is null
+                ? _backgroundJobClient.Enqueue<IOrderIngestionService>(
+                    service => service.ExecuteIngestionAsync(tenant.OrganizationId, tenant.Id, startDate, endDate, CancellationToken.None))
+                : _backgroundJobClient.Enqueue<IOrderIngestionService>(
+                    service => service.ExecuteIngestionTrackedAsync(tenant.OrganizationId, tenant.Id, startDate, endDate, pipelineRun.Id, CancellationToken.None));
+            if (pipelineRun is not null)
+                await _pipelineRunService!.AttachHangfireJobAsync(pipelineRun.Id, jobId, CancellationToken.None);
+        }
+        catch
+        {
+            tenant.CurrentlyFetching = false;
+            try
+            {
+                await context.SaveChangesAsync(CancellationToken.None);
+            }
+            catch
+            {
+                // Preserve the enqueue failure; the dispatcher will repair a
+                // stale flag on its next pass.
+            }
+            if (pipelineRun is not null)
+                await _pipelineRunService!.FailAsync(pipelineRun.Id, "dispatch.failed", "The ingestion job could not be queued.", CancellationToken.None);
+            throw;
+        }
+
+        return Accepted(new { JobId = jobId, PipelineRunId = pipelineRun?.Id });
     }
+
+    private static Guid? TryGetActorId(ClaimsPrincipal principal)
+        => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)
+            ? actorId
+            : null;
 }

@@ -5,6 +5,9 @@
 
 using System.Security.Claims;
 using Adwais.Api.Extensions;
+using Adwais.Application.Common.Access;
+using Adwais.Domain.Enums;
+using Adwais.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,18 +30,18 @@ public class DashboardSessionController : ControllerBase
     /// the SPA's Authorization header.
     /// </remarks>
     [HttpPost]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "PlatformAdminOnly")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create()
     {
-        var identity = new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.Name, User.Identity?.Name ?? "Admin"),
-                new Claim(ClaimTypes.Role, "Admin")
-            ],
-            AuthenticationExtensions.DashboardCookieScheme);
+        // Build the cookie identity through the shared claims builder so the
+        // claims transformation recognizes it as locally authoritative.
+        var identity = AccessClaimsBuilder.Build(
+            AnalyticsDbContext.SystemUserGuid,
+            new AccessScope(null, null, [UserRole.PlatformAdmin]));
+        identity.AddClaim(new Claim(ClaimTypes.Name, User.Identity?.Name ?? "PlatformAdmin"));
 
         await HttpContext.SignInAsync(
             AuthenticationExtensions.DashboardCookieScheme,

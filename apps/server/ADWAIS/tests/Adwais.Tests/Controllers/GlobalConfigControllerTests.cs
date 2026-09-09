@@ -8,11 +8,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Api.Controllers;
 using Adwais.Api.Controllers.Administration;
+using Adwais.Api.Extensions;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.DTOs.GlobalConfig;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
+using FluentResults;
+using Microsoft.AspNetCore.Http;
 
 namespace Adwais.Tests.Controllers;
 
@@ -25,6 +29,7 @@ public class GlobalConfigControllerTests
     {
         _configServiceMock = new Mock<IGlobalConfigService>();
         _controller = new GlobalConfigController(_configServiceMock.Object);
+        _controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
     }
 
     [Fact]
@@ -34,22 +39,9 @@ public class GlobalConfigControllerTests
         var responseDto = new GlobalConfigResponseDto(
             Id: 1,
             LastPolled: null,
-            OrderFetchEnabled: true,
-            MonitoringFetchEnabled: true,
-            OrderFetchIntervalMinutes: 60,
-            MonitoringProviderSettings: new Dictionary<string, string?>(),
-            MonitoringProviderConfiguredSecretKeys: [],
-            UptimeFetchIntervalMinutes: 60,
-            LatencyFetchIntervalMinutes: 10,
-            UserStatsFetchIntervalMinutes: 60,
             SystemEventRetentionDays: 2,
-            MonitorsCount: null,
-            MonitorsLimit: null,
-            ActiveSubscription: null,
-            FeedFetchIntervalHours: 2,
-            WeatherLocation: "Karlstad",
-            WeatherFetchIntervalMinutes: 15,
-            ReportingTimeZoneId: "Europe/Stockholm"
+            MatViewRefreshIntervalMinutes: 60,
+            VisibleRecurringJobs: Array.Empty<Adwais.Application.Common.Jobs.RecurringJobKind>()
         );
 
         _configServiceMock.Setup(s => s.GetConfigAsync(It.IsAny<CancellationToken>()))
@@ -61,7 +53,7 @@ public class GlobalConfigControllerTests
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returned = Assert.IsType<GlobalConfigResponseDto>(okResult.Value);
-        Assert.Equal(2, returned.FeedFetchIntervalHours);
+        Assert.Equal(2, returned.SystemEventRetentionDays);
         _configServiceMock.Verify(s => s.GetConfigAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -69,30 +61,17 @@ public class GlobalConfigControllerTests
     public async Task UpdateConfig_ShouldReturnOkWithUpdatedConfig()
     {
         // Arrange
-        var request = new UpdateGlobalConfigRequestDto(FeedFetchIntervalHours: 6);
+        var request = new UpdateGlobalConfigRequestDto(SystemEventRetentionDays: 30);
         var responseDto = new GlobalConfigResponseDto(
             Id: 1,
             LastPolled: null,
-            OrderFetchEnabled: true,
-            MonitoringFetchEnabled: true,
-            OrderFetchIntervalMinutes: 60,
-            MonitoringProviderSettings: new Dictionary<string, string?>(),
-            MonitoringProviderConfiguredSecretKeys: [],
-            UptimeFetchIntervalMinutes: 60,
-            LatencyFetchIntervalMinutes: 10,
-            UserStatsFetchIntervalMinutes: 60,
-            SystemEventRetentionDays: 2,
-            MonitorsCount: null,
-            MonitorsLimit: null,
-            ActiveSubscription: null,
-            FeedFetchIntervalHours: 6,
-            WeatherLocation: "Karlstad",
-            WeatherFetchIntervalMinutes: 15,
-            ReportingTimeZoneId: "Europe/Stockholm"
+            SystemEventRetentionDays: 30,
+            MatViewRefreshIntervalMinutes: 60,
+            VisibleRecurringJobs: Array.Empty<Adwais.Application.Common.Jobs.RecurringJobKind>()
         );
 
         _configServiceMock.Setup(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(responseDto);
+            .ReturnsAsync(Result.Ok(responseDto));
 
         // Act
         var result = await _controller.UpdateConfig(request);
@@ -100,8 +79,24 @@ public class GlobalConfigControllerTests
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returned = Assert.IsType<GlobalConfigResponseDto>(okResult.Value);
-        Assert.Equal(6, returned.FeedFetchIntervalHours);
+        Assert.Equal(30, returned.SystemEventRetentionDays);
         _configServiceMock.Verify(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateConfig_ShouldReturnBadRequestForValidationFailure()
+    {
+        var request = new UpdateGlobalConfigRequestDto(MatViewRefreshIntervalMinutes: 4);
+        _configServiceMock.Setup(s => s.UpdateConfigAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail<GlobalConfigResponseDto>(new ValidationError(new Dictionary<string, string[]>
+            {
+                [nameof(request.MatViewRefreshIntervalMinutes)] = ["Interval must be at least 5 minutes."]
+            })));
+
+        var result = await _controller.UpdateConfig(request);
+
+        var problem = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.StatusCode);
     }
 
     [Fact]
@@ -158,7 +153,7 @@ public class GlobalConfigControllerTests
         };
 
         _configServiceMock.Setup(s => s.UpdateFetchIntervalsAsync(request, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(responseDto);
+            .ReturnsAsync(Result.Ok(responseDto));
 
         // Act
         var result = await _controller.UpdateFetchIntervals(request);

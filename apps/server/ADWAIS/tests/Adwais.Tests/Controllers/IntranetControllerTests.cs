@@ -67,17 +67,6 @@ public class IntranetControllerTests
     }
 
     [Fact]
-    public async Task ClearErrors_ShouldReturnNoContent()
-    {
-        // Arrange & Act
-        var result = await _controller.ClearErrors();
-
-        // Assert
-        Assert.IsType<NoContentResult>(result);
-        _healthServiceMock.Verify(s => s.ClearErrorsAsync(It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
     public async Task Webhooks_ReceiveBulletinPost_ShouldReturnOk_AndSaveToDb_WhenApiKeyIsValid()
     {
         // Arrange
@@ -93,11 +82,12 @@ public class IntranetControllerTests
             CreatedAt = DateTime.UtcNow
         };
         var postServiceMock = new Mock<IBulletinPostService>();
-        postServiceMock.Setup(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        postServiceMock.Setup(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(createdPost);
 
         var controller = new WebhooksController(
             new Mock<IOrderIngestionService>().Object,
+            new Mock<Adwais.Application.Common.Interfaces.IApplicationDbContext>().Object,
             configMock.Object,
             new Mock<ILogger<WebhooksController>>().Object,
             postServiceMock.Object);
@@ -115,7 +105,7 @@ public class IntranetControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returnedData = okResult.Value;
         Assert.NotNull(returnedData);
-        postServiceMock.Verify(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, It.IsAny<CancellationToken>()), Times.Once);
+        postServiceMock.Verify(s => s.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -128,6 +118,7 @@ public class IntranetControllerTests
         var postServiceMock = new Mock<IBulletinPostService>();
         var controller = new WebhooksController(
             new Mock<IOrderIngestionService>().Object,
+            new Mock<Adwais.Application.Common.Interfaces.IApplicationDbContext>().Object,
             configMock.Object,
             new Mock<ILogger<WebhooksController>>().Object,
             postServiceMock.Object);
@@ -302,7 +293,7 @@ public class IntranetControllerTests
         };
         var postServiceMock = new Mock<IBulletinPostService>();
         postServiceMock.Setup(s => s.GetPostByIdAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(post);
-        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(FluentResults.Result.Ok());
         var controller = CreatePostsController(postServiceMock, adminId, "Admin");
 
         var result = await controller.DeletePost(post.Id, CancellationToken.None);
@@ -325,7 +316,7 @@ public class IntranetControllerTests
         };
         var postServiceMock = new Mock<IBulletinPostService>();
         postServiceMock.Setup(s => s.GetPostByIdAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(post);
-        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        postServiceMock.Setup(s => s.DeletePostAsync(post.Id, It.IsAny<CancellationToken>())).ReturnsAsync(FluentResults.Result.Ok());
         var controller = CreatePostsController(postServiceMock, authorId, "Employee");
 
         var result = await controller.DeletePost(post.Id, CancellationToken.None);

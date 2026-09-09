@@ -18,8 +18,10 @@ import {
 } from '../api/generated/endpoints';
 import type { UptimeMonitorDto, ComparisonPeriod, UpdateMonitorRequestDto, Timeframe, ComparisonType } from '@types';
 import { toast } from 'sonner';
+import { useOrgSelection } from './useOrgSelection';
 
 export function useMonitorsQuery(timeframe?: string, tenantId?: string | null, comparison?: ComparisonPeriod) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiMonitors<UptimeMonitorDto[], Error>(
     {
       timeframe: timeframe as Timeframe,
@@ -28,7 +30,7 @@ export function useMonitorsQuery(timeframe?: string, tenantId?: string | null, c
     },
     {
       query: {
-        queryKey: ['monitors', timeframe, tenantId, comparison],
+        queryKey: ['monitors', selectedOrgId, timeframe, tenantId, comparison],
         select: (res) => res.data as UptimeMonitorDto[]
       }
     }
@@ -36,6 +38,7 @@ export function useMonitorsQuery(timeframe?: string, tenantId?: string | null, c
 }
 
 export function useUnassignedMonitorsQuery(timeframe?: string, comparison?: ComparisonPeriod) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiMonitorsUnassigned<UptimeMonitorDto[], Error>(
     {
       timeframe: timeframe as Timeframe,
@@ -43,7 +46,7 @@ export function useUnassignedMonitorsQuery(timeframe?: string, comparison?: Comp
     },
     {
       query: {
-        queryKey: ['unassigned-monitors', timeframe, comparison],
+        queryKey: ['unassigned-monitors', selectedOrgId, timeframe, comparison],
         select: (res) => res.data as UptimeMonitorDto[]
       }
     }
@@ -74,10 +77,7 @@ export function useCreateMonitorMutation(onSuccessCallback?: () => void) {
       payload: { name: string; url: string; type?: string | null; uptimeSla: number | null; latencyDegradedFloor?: number | null },
       options?: Parameters<typeof mutateRequest>[1]
     ) => 
-      mutateRequest({ 
-        params: { tenantId: '00000000-0000-0000-0000-000000000001' }, 
-        data: payload 
-      }, options), [mutateRequest]);
+      mutateRequest({ data: payload }, options), [mutateRequest]);
 
   return {
     ...mutation,

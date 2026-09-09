@@ -12,9 +12,11 @@ import { SettingsPanel } from '../../components/common/layout/SettingsPanel';
 import { ConsolePanel } from '../../components/common/layout/ConsolePanel';
 import { ConsoleLoadingRows } from '../../components/common/ui/ConsoleLoadingRows';
 import { useCurrentUser, type UserProfile } from '../../hooks/useCurrentUser';
+import { useOrgSelection } from '../../hooks/useOrgSelection';
+import { isAdminRole, isKioskOrStaff } from '../../utils/roles';
 import { formatDateTime } from '../../utils/dateTime';
 
-type ManualJobAccess = 'admin' | 'staff';
+type ManualJobAccess = 'admin' | 'staff' | 'platform';
 
 interface ManualJob {
     id: string;
@@ -31,12 +33,12 @@ const manualJobs = [
     { id: 'user-stats-sync', name: 'UptimeRobot User Stats', desc: 'Calculates active UptimeRobot user statistics.', access: 'admin', url: '/api/job/trigger/user-stats-sync' },
     { id: 'order-sync', name: 'Order Sync', desc: 'Synchronizes order data from external providers.', access: 'admin', url: '/api/job/trigger/order-sync' },
     { id: 'feed-fetch', name: 'Feed Fetch', desc: 'Triggers aggregation of RSS, blogs, and newsrooms immediately.', access: 'admin', url: '/api/global-config/feeds/fetch' },
-    { id: 'refresh-historic-order-data', name: 'Refresh Historic Orders', desc: 'Rebuilds materialized views for old orders.', access: 'staff', url: '/api/job/trigger/refresh-historic-order-data' },
-    { id: 'refresh-monitoring-data', name: 'Refresh Monitoring', desc: 'Rebuilds monitoring materialized views.', access: 'staff', url: '/api/job/trigger/refresh-monitoring-data' },
+    { id: 'refresh-historic-order-data', name: 'Refresh Historic Orders', desc: 'Rebuilds materialized views for old orders.', access: 'platform', url: '/api/job/trigger/refresh-historic-order-data' },
+    { id: 'refresh-monitoring-data', name: 'Refresh Monitoring', desc: 'Rebuilds monitoring materialized views.', access: 'platform', url: '/api/job/trigger/refresh-monitoring-data' },
 ] satisfies readonly ManualJob[];
 
 function canTriggerManualJob(role: UserProfile['role'] | null, access: ManualJobAccess) {
-    return role === 'Admin' || (role === 'Employee' && access === 'staff');
+    return isAdminRole(role) || (role === 'Employee' && access === 'staff');
 }
 
 export function BackgroundJobsView() {
@@ -46,7 +48,9 @@ export function BackgroundJobsView() {
     const { data: recurring } = recurringQuery;
     const { data: tenants } = tenantsQuery;
     const { data: recentJobs } = recentJobsQuery;
-    const { role } = useCurrentUser();
+    const { role, user } = useCurrentUser();
+    const { selectedOrgId } = useOrgSelection();
+    const platformScopeActive = user?.isPlatformAdmin === true && selectedOrgId === null;
 
     const triggerJob = useTriggerJobMutation();
     const triggerBackfill = useBackfillMutation();
@@ -62,6 +66,9 @@ export function BackgroundJobsView() {
                 >
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {manualJobs.map(job => {
+                                // Platform-gated jobs are only reachable in platform
+                                // view; the API denies them for org-scoped requests.
+                                if (job.access === 'platform' && !platformScopeActive) return null;
                                 const isRestricted = !canTriggerManualJob(role, job.access);
                                 return (
                                     <button
@@ -98,12 +105,13 @@ export function BackgroundJobsView() {
                     isLoading={tenantsQuery.isLoading}
                     isError={tenantsQuery.isError}
                     triggerBackfill={triggerBackfill}
-                    disabled={role !== 'Admin'}
+                    disabled={!isAdminRole(role)}
                 />
             </div>
 
             {/* Scheduled Jobs Section & Console Panel / Right Pane */}
             <div className="flex min-h-0 flex-col gap-4 h-full">
+                {isKioskOrStaff(role) && (
                 <SettingsPanel 
                     title="Scheduled Jobs"
                     subtitle="Recurring system schedules."
@@ -116,6 +124,7 @@ export function BackgroundJobsView() {
                             isError={recurringQuery.isError}
                         />
                 </SettingsPanel>
+                )}
 
                 {/* Recent Jobs */}
                 <ConsolePanel

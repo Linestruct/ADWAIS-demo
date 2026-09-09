@@ -76,7 +76,7 @@ export function ManualBackfillPanel({ tenants, isLoading, isError, triggerBackfi
       <div className="flex items-start gap-3 rounded-xl bg-error-container p-4 text-on-error-container">
         <ShieldAlert size={18} className="mt-1 shrink-0" aria-hidden="true" />
         <p className="mt-1 text-sm font-medium leading-5">
-          Large backfills may take a few minutes to ingest due to rate-limits and may also temporarily slow reporting while monitoring views are rebuilt.
+          Large backfills may take a few minutes to ingest due to rate-limits. Data will be available after the next table rebuild.
         </p>
       </div>
       <SecureButton

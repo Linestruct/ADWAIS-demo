@@ -33,72 +33,15 @@ namespace Adwais.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ActiveSubscription")
-                        .HasColumnType("text")
-                        .HasColumnName("active_subscription");
-
-                    b.Property<int>("FeedFetchIntervalHours")
-                        .HasColumnType("integer")
-                        .HasColumnName("feed_fetch_interval_hours");
-
                     b.Property<DateTimeOffset?>("LastPolled")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_polled");
 
-                    b.Property<string>("LastSyncError")
-                        .HasColumnType("text")
-                        .HasColumnName("last_sync_error");
-
-                    b.Property<int>("LatencyFetchIntervalMinutes")
+                    b.Property<int>("MatViewRefreshIntervalMinutes")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(10)
-                        .HasColumnName("latency_fetch_interval_minutes");
-
-                    b.Property<bool>("MonitoringFetchEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("monitoring_fetch_enabled");
-
-                    b.Property<string>("MonitoringProvider")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasDefaultValue("uptimerobot")
-                        .HasColumnName("monitoring_provider");
-
-                    b.Property<string>("MonitoringProviderSettings")
-                        .HasMaxLength(4096)
-                        .HasColumnType("character varying(4096)")
-                        .HasColumnName("monitoring_provider_settings");
-
-                    b.Property<int?>("MonitorsCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("monitors_count");
-
-                    b.Property<int?>("MonitorsLimit")
-                        .HasColumnType("integer")
-                        .HasColumnName("monitors_limit");
-
-                    b.Property<bool>("OrderFetchEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("order_fetch_enabled");
-
-                    b.Property<int>("OrderFetchIntervalMinutes")
-                        .HasColumnType("integer")
-                        .HasColumnName("order_fetch_interval_minutes");
-
-                    b.Property<string>("ReportingTimeZoneId")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasDefaultValue("Europe/Stockholm")
-                        .HasColumnName("reporting_time_zone_id");
+                        .HasDefaultValue(60)
+                        .HasColumnName("mat_view_refresh_interval_minutes");
 
                     b.Property<int>("SystemEventRetentionDays")
                         .ValueGeneratedOnAdd()
@@ -106,29 +49,11 @@ namespace Adwais.Infrastructure.Migrations
                         .HasDefaultValue(2)
                         .HasColumnName("system_event_retention_days");
 
-                    b.Property<int>("UptimeFetchIntervalMinutes")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(60)
-                        .HasColumnName("uptime_fetch_interval_minutes");
-
-                    b.Property<int>("UserStatsFetchIntervalMinutes")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(60)
-                        .HasColumnName("user_stats_fetch_interval_minutes");
-
-                    b.Property<int>("WeatherFetchIntervalMinutes")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(15)
-                        .HasColumnName("weather_fetch_interval_minutes");
-
-                    b.Property<string>("WeatherLocation")
+                    b.Property<string>("VisibleRecurringJobsCsv")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasDefaultValue("Karlstad")
-                        .HasColumnName("weather_location");
+                        .HasColumnName("visible_recurring_jobs_csv")
+                        .HasDefaultValueSql("'FinancialViewRefresh,MonitoringViewRefresh,StaleViewRefresh,SystemEventCleanup,CalendarSync'");
 
                     b.HasKey("Id")
                         .HasName("pk_global_config");
@@ -142,18 +67,9 @@ namespace Adwais.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            FeedFetchIntervalHours = 2,
-                            LatencyFetchIntervalMinutes = 10,
-                            MonitoringFetchEnabled = true,
-                            MonitoringProvider = "uptimerobot",
-                            OrderFetchEnabled = true,
-                            OrderFetchIntervalMinutes = 60,
-                            ReportingTimeZoneId = "Europe/Stockholm",
+                            MatViewRefreshIntervalMinutes = 60,
                             SystemEventRetentionDays = 2,
-                            UptimeFetchIntervalMinutes = 60,
-                            UserStatsFetchIntervalMinutes = 60,
-                            WeatherFetchIntervalMinutes = 15,
-                            WeatherLocation = "Karlstad"
+                            VisibleRecurringJobsCsv = "FinancialViewRefresh,MonitoringViewRefresh,StaleViewRefresh,SystemEventCleanup,CalendarSync"
                         });
                 });
 
@@ -174,6 +90,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -193,6 +113,9 @@ namespace Adwais.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_bulletin_post_created_at");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_bulletin_post_organization_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_bulletin_post_user_id");
@@ -242,6 +165,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("location");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Recurrence")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -275,6 +202,9 @@ namespace Adwais.Infrastructure.Migrations
 
                     b.HasIndex("ExternalUid")
                         .HasDatabaseName("ix_calendar_event_external_uid");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_calendar_event_organization_id");
 
                     b.HasIndex("StartTime")
                         .HasDatabaseName("ix_calendar_event_start_time");
@@ -323,6 +253,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasMaxLength(2048)
@@ -331,6 +265,9 @@ namespace Adwais.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_calendar_subscription");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_calendar_subscription_organization_id");
 
                     b.ToTable("calendar_subscription", (string)null);
                 });
@@ -424,6 +361,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasMaxLength(2048)
@@ -433,9 +374,9 @@ namespace Adwais.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_feed_source");
 
-                    b.HasIndex("Url")
+                    b.HasIndex("OrganizationId", "Url")
                         .IsUnique()
-                        .HasDatabaseName("ix_feed_source_url");
+                        .HasDatabaseName("ix_feed_source_organization_id_url");
 
                     b.ToTable("feed_source", (string)null);
                 });
@@ -478,6 +419,14 @@ namespace Adwais.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_authorized");
 
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.HasKey("Id")
                         .HasName("pk_kiosk_devices");
 
@@ -488,7 +437,26 @@ namespace Adwais.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_kiosk_devices_device_id");
 
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_kiosk_devices_organization_id");
+
                     b.ToTable("kiosk_devices", (string)null);
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.MaterializedViewDirty", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("MarkedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("marked_at");
+
+                    b.HasKey("OrganizationId")
+                        .HasName("pk_materialized_view_dirty");
+
+                    b.ToTable("materialized_view_dirty", (string)null);
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Monitoring.DailyAvailabilityGlobalRollup", b =>
@@ -497,11 +465,15 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<double?>("UptimePercentage")
                         .HasColumnType("double precision")
                         .HasColumnName("uptime_percentage");
 
-                    b.HasKey("Date");
+                    b.HasKey("Date", "OrganizationId");
 
                     b.ToTable((string)null);
 
@@ -514,6 +486,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<int>("MonitorId")
                         .HasColumnType("integer")
                         .HasColumnName("monitor_id");
@@ -522,7 +498,7 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("uptime_percentage");
 
-                    b.HasKey("Date", "MonitorId");
+                    b.HasKey("Date", "OrganizationId", "MonitorId");
 
                     b.HasIndex("MonitorId");
 
@@ -537,6 +513,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -545,7 +525,7 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("uptime_percentage");
 
-                    b.HasKey("Date", "TenantId");
+                    b.HasKey("Date", "OrganizationId", "TenantId");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_daily_availability_tenant_rollups_tenant_id");
@@ -561,6 +541,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<double?>("Average")
                         .HasColumnType("double precision")
                         .HasColumnName("average");
@@ -573,7 +557,7 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("p90");
 
-                    b.HasKey("Date");
+                    b.HasKey("Date", "OrganizationId");
 
                     b.ToTable((string)null);
 
@@ -585,6 +569,10 @@ namespace Adwais.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("Date")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
 
                     b.Property<int>("MonitorId")
                         .HasColumnType("integer")
@@ -602,7 +590,7 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("p90");
 
-                    b.HasKey("Date", "MonitorId");
+                    b.HasKey("Date", "OrganizationId", "MonitorId");
 
                     b.HasIndex("MonitorId");
 
@@ -616,6 +604,10 @@ namespace Adwais.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("Date")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -633,7 +625,7 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("p90");
 
-                    b.HasKey("Date", "TenantId");
+                    b.HasKey("Date", "OrganizationId", "TenantId");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_daily_latency_tenant_rollups_tenant_id");
@@ -878,6 +870,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_date");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<decimal>("GlobalRevenue")
                         .HasColumnType("numeric")
                         .HasColumnName("global_revenue");
@@ -886,7 +882,7 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("global_volume");
 
-                    b.HasKey("CreatedDate");
+                    b.HasKey("CreatedDate", "OrganizationId");
 
                     b.ToTable((string)null);
 
@@ -898,6 +894,10 @@ namespace Adwais.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_date");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
@@ -911,7 +911,7 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("volume");
 
-                    b.HasKey("CreatedDate", "TenantId");
+                    b.HasKey("CreatedDate", "OrganizationId", "TenantId");
 
                     b.ToTable((string)null);
 
@@ -997,7 +997,267 @@ namespace Adwais.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_orders_tenant_id_provider_external_id");
 
-                    b.ToTable("orders", (string)null);
+                    b.ToTable("orders", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_orders_order_state", "\"order_state\" IN ('Unknown', 'Confirmed', 'PendingProcessing', 'Processing', 'Completed', 'Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.Organization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization");
+
+                    b.ToTable("organization", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-00000000000a"),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Default Organization"
+                        });
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.OrganizationConfig", b =>
+                {
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("ActiveSubscription")
+                        .HasColumnType("text")
+                        .HasColumnName("active_subscription");
+
+                    b.Property<int>("FeedFetchIntervalHours")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2)
+                        .HasColumnName("feed_fetch_interval_hours");
+
+                    b.Property<string>("LastSyncError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_sync_error");
+
+                    b.Property<int>("LatencyFetchIntervalMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(10)
+                        .HasColumnName("latency_fetch_interval_minutes");
+
+                    b.Property<bool>("MonitoringFetchEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("monitoring_fetch_enabled");
+
+                    b.Property<string>("MonitoringProvider")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("uptimerobot")
+                        .HasColumnName("monitoring_provider");
+
+                    b.Property<string>("MonitoringProviderSettings")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("monitoring_provider_settings");
+
+                    b.Property<int?>("MonitorsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("monitors_count");
+
+                    b.Property<int?>("MonitorsLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("monitors_limit");
+
+                    b.Property<bool>("OrderFetchEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("order_fetch_enabled");
+
+                    b.Property<int>("OrderFetchIntervalMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(60)
+                        .HasColumnName("order_fetch_interval_minutes");
+
+                    b.Property<string>("ReportingTimeZoneId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("Europe/Stockholm")
+                        .HasColumnName("reporting_time_zone_id");
+
+                    b.Property<int>("UptimeFetchIntervalMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(60)
+                        .HasColumnName("uptime_fetch_interval_minutes");
+
+                    b.Property<int>("UserStatsFetchIntervalMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(60)
+                        .HasColumnName("user_stats_fetch_interval_minutes");
+
+                    b.Property<int>("WeatherFetchIntervalMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(15)
+                        .HasColumnName("weather_fetch_interval_minutes");
+
+                    b.Property<string>("WeatherLocation")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("weather_location");
+
+                    b.HasKey("OrganizationId")
+                        .HasName("pk_organization_config");
+
+                    b.ToTable("organization_config", (string)null);
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.PipelineRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("HangfireJobId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("hangfire_job_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTimeOffset>("LastStateChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_state_changed_at");
+
+                    b.Property<DateTimeOffset?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_retry_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("OutcomeCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("outcome_code");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("request_id");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("ResourceKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("resource_key");
+
+                    b.Property<string>("ResourceName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("resource_name");
+
+                    b.Property<string>("SafeSummary")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("safe_summary");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("state");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("trace_id");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("trigger");
+
+                    b.Property<int?>("WorkCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("work_count");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pipeline_run");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_pipeline_run_tenant_id");
+
+                    b.HasIndex("OrganizationId", "RequestedAt", "Id")
+                        .HasDatabaseName("ix_pipeline_run_organization_id_requested_at_id");
+
+                    b.HasIndex("OrganizationId", "TenantId", "Kind", "State")
+                        .HasDatabaseName("ix_pipeline_run_organization_id_tenant_id_kind_state");
+
+                    b.ToTable("pipeline_run", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_pipeline_run_kind", "\"kind\" IN ('OrderIngestion', 'FeedRefresh', 'MonitorSync', 'AccountStats')");
+
+                            t.HasCheckConstraint("ck_pipeline_run_state", "\"state\" IN ('Pending', 'Queued', 'Running', 'RetryScheduled', 'Succeeded', 'Failed', 'Canceled', 'Skipped', 'Unknown')");
+
+                            t.HasCheckConstraint("ck_pipeline_run_trigger", "\"trigger\" IN ('Manual', 'Scheduled', 'Retry', 'System')");
+                        });
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.SystemEvent", b =>
@@ -1007,6 +1267,22 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<string>("Audience")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Platform")
+                        .HasColumnName("audience");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("legacy")
+                        .HasColumnName("code");
 
                     b.Property<string>("Details")
                         .HasColumnType("text")
@@ -1023,11 +1299,29 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("message");
 
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("PipelineRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pipeline_run_id");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("request_id");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("source");
+
+                    b.Property<string>("SuggestedAction")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("suggested_action");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -1037,16 +1331,29 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
 
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("trace_id");
+
                     b.HasKey("Id")
                         .HasName("pk_system_event");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_system_event_tenant_id");
 
                     b.HasIndex("Timestamp")
                         .HasDatabaseName("ix_system_event_timestamp");
 
-                    b.ToTable("system_event", (string)null);
+                    b.HasIndex("OrganizationId", "Timestamp", "Id")
+                        .HasDatabaseName("ix_system_event_organization_id_timestamp_id");
+
+                    b.HasIndex("TenantId", "Timestamp", "Id")
+                        .HasDatabaseName("ix_system_event_tenant_id_timestamp_id");
+
+                    b.ToTable("system_event", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_system_event_audience", "\"audience\" IN ('Platform', 'Organization', 'Tenant')");
+
+                            t.HasCheckConstraint("ck_system_event_level", "\"level\" IN ('Information', 'Warning', 'Error', 'Critical')");
+                        });
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Tenant", b =>
@@ -1076,6 +1383,12 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("character varying(2048)")
                         .HasColumnName("image_url");
 
+                    b.Property<bool>("IsSystem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_system");
+
                     b.Property<DateTimeOffset?>("LastPolled")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_polled");
@@ -1091,7 +1404,9 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnName("name");
 
                     b.Property<bool>("OrderFetchingEnabled")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(false)
                         .HasColumnName("order_fetching_enabled");
 
                     b.Property<string>("OrderProvider")
@@ -1107,6 +1422,10 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("character varying(4096)")
                         .HasColumnName("order_provider_settings");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1118,16 +1437,24 @@ namespace Adwais.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tenant");
 
-                    b.ToTable("tenant", (string)null);
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_tenant_organization_id");
+
+                    b.ToTable("tenant", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_tenant_type", "\"type\" IN ('Mixed', 'B2B', 'B2C')");
+                        });
 
                     b.HasData(
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000001"),
                             CurrentlyFetching = false,
+                            IsSystem = true,
                             Name = "System (unassigned monitors)",
                             OrderFetchingEnabled = false,
                             OrderProvider = "litium",
+                            OrganizationId = new Guid("00000000-0000-0000-0000-00000000000a"),
                             Type = "Mixed"
                         });
                 });
@@ -1161,12 +1488,6 @@ namespace Adwais.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("role");
-
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -1189,19 +1510,75 @@ namespace Adwais.Infrastructure.Migrations
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000002"),
                             Email = "system@adwais.local",
-                            Name = "System",
-                            Role = "Employee"
+                            Name = "System"
+                        });
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.UserAccess", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("role");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_access");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_user_access_organization_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_user_access_tenant_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_access_user_id");
+
+                    b.ToTable("user_access", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_user_access_role", "\"role\" IN ('Admin', 'Viewer', 'Employee', 'TenantViewer', 'PlatformAdmin')\r\nAND (\r\n  (\"organization_id\" IS NULL AND \"role\" = 'PlatformAdmin')\r\n  OR (\"organization_id\" IS NOT NULL AND \"role\" <> 'PlatformAdmin')\r\n)");
                         });
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Intranet.BulletinPost", b =>
                 {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_bulletin_post_organization_organization_id");
+
                     b.HasOne("Adwais.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_bulletin_post_users_user_id");
+
+                    b.Navigation("Organization");
 
                     b.Navigation("User");
                 });
@@ -1214,6 +1591,13 @@ namespace Adwais.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("fk_calendar_event_calendar_subscriptions_calendar_subscription");
 
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_calendar_event_organization_organization_id");
+
                     b.HasOne("Adwais.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -1222,7 +1606,21 @@ namespace Adwais.Infrastructure.Migrations
 
                     b.Navigation("CalendarSubscription");
 
+                    b.Navigation("Organization");
+
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.Intranet.CalendarSubscription", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_calendar_subscription_organization_organization_id");
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Intranet.FeedItem", b =>
@@ -1234,6 +1632,37 @@ namespace Adwais.Infrastructure.Migrations
                         .HasConstraintName("fk_feed_item_feed_source_feed_source_id");
 
                     b.Navigation("FeedSource");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.Intranet.FeedSource", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_feed_source_organization_organization_id");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.KioskDevice", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_kiosk_devices_organization_organization_id");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.MaterializedViewDirty", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_materialized_view_dirty_organizations_organization_id");
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Monitoring.DailyAvailabilityMonitorRollup", b =>
@@ -1332,15 +1761,95 @@ namespace Adwais.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Adwais.Domain.Entities.OrganizationConfig", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithOne()
+                        .HasForeignKey("Adwais.Domain.Entities.OrganizationConfig", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_config_organization_organization_id");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.PipelineRun", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pipeline_run_organizations_organization_id");
+
+                    b.HasOne("Adwais.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_pipeline_run_tenants_tenant_id");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Adwais.Domain.Entities.SystemEvent", b =>
                 {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_system_event_organizations_organization_id");
+
                     b.HasOne("Adwais.Domain.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_system_event_tenants_tenant_id");
 
+                    b.Navigation("Organization");
+
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.Tenant", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany("Tenants")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_organizations_organization_id");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.UserAccess", b =>
+                {
+                    b.HasOne("Adwais.Domain.Entities.Organization", "Organization")
+                        .WithMany("UserAccesses")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_user_access_organization_organization_id");
+
+                    b.HasOne("Adwais.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_user_access_tenant_tenant_id");
+
+                    b.HasOne("Adwais.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_access_users_user_id");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Intranet.CalendarSubscription", b =>
@@ -1356,6 +1865,13 @@ namespace Adwais.Infrastructure.Migrations
             modelBuilder.Entity("Adwais.Domain.Entities.Monitoring.UptimeMonitor", b =>
                 {
                     b.Navigation("ResponseTimes");
+                });
+
+            modelBuilder.Entity("Adwais.Domain.Entities.Organization", b =>
+                {
+                    b.Navigation("Tenants");
+
+                    b.Navigation("UserAccesses");
                 });
 
             modelBuilder.Entity("Adwais.Domain.Entities.Tenant", b =>

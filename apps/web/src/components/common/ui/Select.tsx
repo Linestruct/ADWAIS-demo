@@ -32,6 +32,7 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
   label?: string;
   hint?: string;
   error?: string;
+  leadingIcon?: ReactNode;
   indicator?: ReactNode;
   variant?: SelectVariant;
   size?: SelectSize;
@@ -91,6 +92,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   label,
   hint,
   error,
+  leadingIcon,
   indicator = <ChevronDown size={16} strokeWidth={2.5} />,
   variant = 'filled',
   size = 'md',
@@ -324,8 +326,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         disabled={disabled}
         onClick={() => isOpen ? closeMenu() : openMenu()}
         onKeyDown={handleTriggerKeyDown}
-        className={`${fullWidth ? 'w-full' : 'w-auto'} group min-w-0 cursor-pointer items-center gap-2 border font-semibold outline-none transition-[background-color,border-color,box-shadow] focus:border-brand-link focus:ring-2 focus:ring-brand-link/30 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-on-surface/[0.12] disabled:text-on-surface/[0.38] ${indicator ? 'flex justify-between' : 'inline-flex'} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
+        className={`${fullWidth ? 'w-full' : 'w-auto'} group min-w-0 cursor-pointer items-center gap-2 border font-semibold outline-none transition-[background-color,border-color,box-shadow] focus:border-brand-link focus:ring-2 focus:ring-brand-link/30 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-on-surface/[0.12] disabled:text-on-surface/[0.38] ${leadingIcon || indicator ? 'flex justify-between' : 'inline-flex'} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
       >
+        {leadingIcon && (
+          <span aria-hidden="true" className={`flex shrink-0 items-center justify-center ${indicatorColorClasses[variant]} group-disabled:text-on-surface/[0.38]`}>
+            {leadingIcon}
+          </span>
+        )}
         <span className="min-w-0 flex-1 truncate text-left">{selectedOption?.label ?? 'Select…'}</span>
         {indicator && (
           <span aria-hidden="true" className={`flex shrink-0 items-center justify-center ${indicatorColorClasses[variant]} group-disabled:text-on-surface/[0.38]`}>

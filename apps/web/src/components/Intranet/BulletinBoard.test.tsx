@@ -58,6 +58,14 @@ vi.mock('../../hooks/useCurrentUser', () => ({
   useCurrentUser: () => currentUser,
 }));
 
+vi.mock('../../hooks/useOrgSelection', () => ({
+  useOrgSelection: () => ({
+    selectedOrgId: null,
+    setSelectedOrgId: vi.fn(),
+    organizations: [],
+  }),
+}));
+
 vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
   return {

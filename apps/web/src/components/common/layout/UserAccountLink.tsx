@@ -8,20 +8,17 @@ import { User } from 'lucide-react';
 
 type UserAccountLinkProps = {
   label: string | null;
-  variant: 'mobile' | 'desktop';
 };
 
-export function UserAccountLink({label, variant}: UserAccountLinkProps) {
+export function UserAccountLink({label}: UserAccountLinkProps) {
   if (!label) return null;
 
   return (
     <Link data-md3-ripple
       to="/settings/authentication"
-      className={variant === 'mobile'
-        ? 'inline-flex min-h-10 max-w-[160px] items-center gap-1.5 truncate rounded-full bg-secondary-container px-3 text-sm font-bold hover:bg-surface-container-highest hover:m3-elevation-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary'
-        : 'inline-flex min-h-11 max-w-[220px] items-center gap-2 truncate rounded-full bg-primary-container px-4 font-bold hover:bg-surface-container-highest hover:m3-elevation-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary whitespace-nowrap'}
+      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-container font-bold hover:bg-surface-container-highest hover:m3-elevation-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary"
     >
-      <User size={variant === 'mobile' ? 16 : 16} className="shrink-0" />
+      <User size={16} className="shrink-0" />
     </Link>
   );
 }

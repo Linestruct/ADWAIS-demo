@@ -8,6 +8,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronDown, Settings } from 'lucide-react';
 import type { Timeframe } from '../../../schemas';
 import { NotificationToggleWidget } from '../dashboard/NotificationToggleWidget';
+import { OrgPicker } from './OrgPicker';
 
 type MobileNavigationMenuProps = {
   isOpen: boolean;
@@ -82,11 +83,11 @@ export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fle
             </button>
             {isSettingsExpanded && (
               <div id="mobile-settings-navigation" role="group" aria-label="Settings navigation links" className="ml-4 flex flex-col gap-1 border-l border-outline-variant pl-2">
+                <Link data-md3-ripple to="/settings/diagnostics" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/diagnostics'))} aria-current={pathname.startsWith('/settings/diagnostics') ? 'page' : undefined}>Diagnostics</Link>
                 <Link data-md3-ripple to="/settings/jobs" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/jobs'), 'gap-3')} aria-current={pathname.startsWith('/settings/jobs') ? 'page' : undefined}>Background Jobs</Link>
                 <Link data-md3-ripple to="/settings/configuration" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/configuration'))}>Configuration</Link>
                 <Link data-md3-ripple to="/settings/tenants" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/tenants'))}>Tenants</Link>
                 <Link data-md3-ripple to="/settings/monitors" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/monitors'))}>Monitors</Link>
-                <Link data-md3-ripple to="/settings/events" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/events'))}>Events &amp; Health</Link>
                 <Link data-md3-ripple to="/settings/users" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/users'))}>Users</Link>
                 <Link data-md3-ripple to="/settings/authentication" onClick={onClose} className={mobileLinkClass(pathname.startsWith('/settings/authentication'))}>Authentication</Link>
               </div>
@@ -95,7 +96,10 @@ export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fle
 
           <div className="mt-auto border-t border-outline-variant px-2 pt-4">
             <span className="mb-3 block px-2 text-xs font-black uppercase tracking-wide text-on-surface-variant">Controls</span>
-            <NotificationToggleWidget />
+            <div className="flex w-full min-w-0 flex-nowrap gap-2">
+              <NotificationToggleWidget />
+              <OrgPicker className="min-w-0 flex-1" />
+            </div>
           </div>
         </div>
       </aside>

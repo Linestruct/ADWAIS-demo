@@ -15,12 +15,22 @@ public class BackgroundJobControllerTests
     [Theory]
     [InlineData(nameof(BackgroundJobController.TriggerMaterialViewRefresh))]
     [InlineData(nameof(BackgroundJobController.TriggerMonitoringMaterialViewRefresh))]
-    public void MaterializedViewRefreshEndpointsRequireStaffAccess(string actionName)
+    public void MaterializedViewRefreshEndpointsRequirePlatformAdmin(string actionName)
     {
         var action = typeof(BackgroundJobController).GetMethod(actionName);
         var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
 
         Assert.NotNull(authorization);
-        Assert.Equal("StaffAccess", authorization.Policy);
+        Assert.Equal("PlatformAdminOnly", authorization.Policy);
+    }
+
+    [Fact]
+    public void RecurringJobsEndpointIsReadableByStaffAndKiosk()
+    {
+        var action = typeof(BackgroundJobController).GetMethod(nameof(BackgroundJobController.GetRecurringJobs));
+        var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
+
+        Assert.NotNull(authorization);
+        Assert.Equal("KioskOrStaffAccess", authorization.Policy);
     }
 }

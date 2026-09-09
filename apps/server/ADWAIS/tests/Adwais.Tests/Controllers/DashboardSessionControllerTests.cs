@@ -33,12 +33,53 @@ public class DashboardSessionControllerTests
             context,
             AuthenticationExtensions.DashboardCookieScheme,
             It.Is<ClaimsPrincipal>(principal =>
-                principal.Identity!.IsAuthenticated && principal.IsInRole("Admin")),
+                principal.Identity!.IsAuthenticated 
+                && principal.IsInRole("PlatformAdmin")
+                && principal.HasClaim(Adwais.Application.Common.Access.AccessClaimTypes.IsPlatformAdmin, "true")),
             It.Is<AuthenticationProperties>(properties =>
                 properties.AllowRefresh == false
                 && properties.IsPersistent == false
                 && properties.ExpiresUtc.HasValue)),
             Times.Once);
+    }
+
+    [Fact]
+    public void AdminDashboardAuthorizationFilter_AllowsOnlyPlatformAdmin()
+    {
+        var filter = new Adwais.Api.Filters.AdminDashboardAuthorizationFilter();
+        var storage = new Mock<Hangfire.JobStorage>();
+        var options = new Hangfire.DashboardOptions();
+
+        var services = new ServiceCollection().BuildServiceProvider();
+
+        // 1. Unauthenticated
+        var unauthHttp = new DefaultHttpContext { RequestServices = services };
+        var unauthContext = new Hangfire.Dashboard.AspNetCoreDashboardContext(storage.Object, options, unauthHttp);
+        Assert.False(filter.Authorize(unauthContext));
+
+        // 2. Org Admin (Role = Admin, but NOT Platform Admin)
+        var orgAdminHttp = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(ClaimTypes.Role, "Admin"),
+                new Claim(Adwais.Application.Common.Access.AccessClaimTypes.OrganizationId, Guid.NewGuid().ToString())
+            ], "Cookie"))
+        };
+        var orgAdminContext = new Hangfire.Dashboard.AspNetCoreDashboardContext(storage.Object, options, orgAdminHttp);
+        Assert.False(filter.Authorize(orgAdminContext));
+
+        // 3. Platform Admin (Role = Admin, IsPlatformAdmin = "true")
+        var platformAdminHttp = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(ClaimTypes.Role, "Admin"),
+                new Claim(Adwais.Application.Common.Access.AccessClaimTypes.IsPlatformAdmin, "true")
+            ], "Cookie"))
+        };
+        var platformAdminContext = new Hangfire.Dashboard.AspNetCoreDashboardContext(storage.Object, options, platformAdminHttp);
+        Assert.True(filter.Authorize(platformAdminContext));
     }
 
     [Fact]

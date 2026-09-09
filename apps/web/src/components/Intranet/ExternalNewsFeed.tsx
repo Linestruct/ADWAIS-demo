@@ -7,6 +7,7 @@ import { CollectionPanel } from '../common/dashboard/CollectionPanel';
 import { EmptyState } from '../common/ui/EmptyState';
 import { ErrorAlert } from '../common/ui/ErrorAlert';
 import { useGetApiIntranetFeeds } from '../../api/generated/endpoints';
+import { useOrgSelection } from '../../hooks/useOrgSelection';
 import {ExternalLink} from "lucide-react";
 import { formatDateTime } from '../../utils/dateTime';
 
@@ -16,7 +17,11 @@ type ExternalNewsFeedProps = {
 };
 
 export function ExternalNewsFeed({ authorName, title = 'Industry news' }: ExternalNewsFeedProps) {
-  const { data: response, isLoading, isError } = useGetApiIntranetFeeds({ PageSize: 10, AuthorName: authorName });
+  const { selectedOrgId } = useOrgSelection();
+  const { data: response, isLoading, isError } = useGetApiIntranetFeeds(
+    { PageSize: 10, AuthorName: authorName },
+    { query: { queryKey: ['intranet-feeds', selectedOrgId, authorName, 10] } },
+  );
   const feedItems = response?.data || [];
 
   return (

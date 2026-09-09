@@ -19,4 +19,5 @@ public record CreateBulletinPostWebhookRequest
     /// The post body.
     /// </summary>
     public required string Body { get; set; }
+    public Guid? OrganizationId { get; set; }
 }

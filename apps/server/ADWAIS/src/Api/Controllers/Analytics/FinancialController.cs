@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 using Adwais.Api.DTOs.Financial;
+using Adwais.Api.Extensions;
 using Adwais.Application.DTOs.Financial;
 using Adwais.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Adwais.Api.Controllers.Analytics;
@@ -15,7 +17,9 @@ namespace Adwais.Api.Controllers.Analytics;
 [Route("api/financial")]
 [Authorize(Policy = "KioskOrStaffAccess")]
 public class FinancialController(
-    IFinancialService financialService,
+    IFinancialKpiService kpiService,
+    IFinancialSeriesService seriesService,
+    IFinancialDistributionService distributionService,
     IReportingCalendar reportingCalendar) : ControllerBase
 {
     /// <summary>
@@ -23,22 +27,27 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("kpis")]
+    [ProducesResponseType(typeof(KpiResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<KpiResponseDto>> GetKpis([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetKpisAsync(period, request.TenantId, request.TenantTypes, ct);
+        var result = await kpiService.GetKpisAsync(period, request.TenantId, request.TenantTypes, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var kpis = result.Value;
         return Ok(new KpiResponseDto(
-            result.CurrentRevenue,
-            result.PreviousRevenue,
-            result.RevenueGrowthPercentage,
-            result.TransactionVolume,
-            result.VolumeGrowthPercentage,
-            result.AverageOrderValue,
-            result.AovGrowthPercentage,
-            result.ActiveTenants,
-            result.ActiveTenantsGrowthPercentage,
-            result.AverageRevenuePerTenant,
-            result.ArptGrowthPercentage));
+            kpis.CurrentRevenue,
+            kpis.PreviousRevenue,
+            kpis.RevenueGrowthPercentage,
+            kpis.TransactionVolume,
+            kpis.VolumeGrowthPercentage,
+            kpis.AverageOrderValue,
+            kpis.AovGrowthPercentage,
+            kpis.ActiveTenants,
+            kpis.ActiveTenantsGrowthPercentage,
+            kpis.AverageRevenuePerTenant,
+            kpis.ArptGrowthPercentage));
     }
 
     /// <summary>
@@ -46,11 +55,15 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("accumulated-revenue")]
+    [ProducesResponseType(typeof(IEnumerable<AccumulatedRevenuePointResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<AccumulatedRevenuePointResponseDto>>> GetAccumulatedRevenue([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetAccumulatedRevenueAsync(period, request.TenantId, request.TenantTypes, ct);
-        return Ok(result.Select(v => new AccumulatedRevenuePointResponseDto(
+        var result = await seriesService.GetAccumulatedRevenueAsync(period, request.TenantId, request.TenantTypes, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(v => new AccumulatedRevenuePointResponseDto(
                 v.Timestamp,
                 v.CurrentRevenue,
                 v.CurrentRevenueB2C,
@@ -69,7 +82,7 @@ public class FinancialController(
     public async Task<ActionResult<RevenueEfficiencyResponseDto>> GetRevenueEfficiency([FromQuery] PortfolioRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetRevenueEfficiencyAsync(period, request.TenantTypes, ct);
+        var result = await seriesService.GetRevenueEfficiencyAsync(period, request.TenantTypes, ct);
         return Ok(new RevenueEfficiencyResponseDto(
             result.GlobalAverageOrderValue,
             result.MedianOrderVolume,
@@ -95,7 +108,7 @@ public class FinancialController(
     public async Task<ActionResult<CrossSegmentDistributionResponseDto>> GetCrossSegmentDistribution([FromQuery] PortfolioRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetCrossSegmentDistributionAsync(period, request.TenantTypes, ct);
+        var result = await distributionService.GetCrossSegmentDistributionAsync(period, request.TenantTypes, ct);
         return Ok(new CrossSegmentDistributionResponseDto(
             result.Cohorts.Select(c => new CrossSegmentCohortGroupResponseDto(
                 c.Type,
@@ -128,7 +141,7 @@ public class FinancialController(
     public async Task<ActionResult<PortfolioImpactResponseDto>> GetPortfolioImpact([FromQuery] PortfolioRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetPortfolioImpactAsync(period, request.TenantTypes, ct);
+        var result = await distributionService.GetPortfolioImpactAsync(period, request.TenantTypes, ct);
         return Ok(new PortfolioImpactResponseDto(
             result.MedianBaselineRevenue,
             result.GlobalGrowthPercentage,
@@ -151,11 +164,15 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("daily-revenue-delta")]
+    [ProducesResponseType(typeof(IEnumerable<NetGrowthAdditionPointResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<NetGrowthAdditionPointResponseDto>>> GetNetGrowthAddition([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetNetGrowthAdditionAsync(period, request.TenantId, request.TenantTypes, ct);
-        return Ok(result.Select(n => new NetGrowthAdditionPointResponseDto(
+        var result = await seriesService.GetNetGrowthAdditionAsync(period, request.TenantId, request.TenantTypes, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(n => new NetGrowthAdditionPointResponseDto(
                 n.Timestamp,
                 n.NetGrowthAddition)).ToList());
     }
@@ -164,11 +181,14 @@ public class FinancialController(
     /// Histogram of order values with adaptive binning. Drilldown view only.
     /// </summary>
     [HttpGet("order-distribution")]
+    [ProducesResponseType(typeof(IEnumerable<OrderBinResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IEnumerable<OrderBinResponseDto>>> GetOrderDistribution([FromQuery] OrderDistributionRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetOrderDistributionAsync(period, request.TenantId, request.BinCount, ct);
-        return Ok(result.Select(b => new OrderBinResponseDto(
+        var result = await distributionService.GetOrderDistributionAsync(period, request.TenantId, request.BinCount, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(b => new OrderBinResponseDto(
             b.BinLabel,
             b.MinValue,
             b.MaxValue,
@@ -182,21 +202,25 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("transaction-density")]
+    [ProducesResponseType(typeof(TransactionDensityResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<TransactionDensityResponseDto>> GetTransactionDensity([FromQuery] TransactionDensityRequestDto request, CancellationToken ct = default)
     {
-        var result = await financialService.GetTransactionDensityAsync(request.Period, request.TenantId, request.TenantTypes, ct);
+        var result = await distributionService.GetTransactionDensityAsync(request.Period, request.TenantId, request.TenantTypes, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        var density = result.Value;
         return Ok(new TransactionDensityResponseDto(
-            result.TotalCount,
-            result.MinCount,
-            result.MaxCount,
-            result.AverageCountPerBucket,
-            result.SampleQuality,
-            result.RequestedPeriod,
-            result.EffectivePeriod,
-            result.TimeZoneId,
-            result.PeriodStart,
-            result.PeriodEnd,
-            result.Points.Select(p => new TransactionDensityPointResponseDto(
+            density.TotalCount,
+            density.MinCount,
+            density.MaxCount,
+            density.AverageCountPerBucket,
+            density.SampleQuality,
+            density.RequestedPeriod,
+            density.EffectivePeriod,
+            density.TimeZoneId,
+            density.PeriodStart,
+            density.PeriodEnd,
+            density.Points.Select(p => new TransactionDensityPointResponseDto(
                 p.DayOfWeek,
                 p.Hour,
                 p.Count,
@@ -208,11 +232,15 @@ public class FinancialController(
     /// Scopes to a single tenant if tenantId is provided, otherwise portfolio-wide.
     /// </summary>
     [HttpGet("cumulative-growth-delta")]
+    [ProducesResponseType(typeof(IEnumerable<CumulativeGrowthDeltaPointResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IEnumerable<CumulativeGrowthDeltaPointResponseDto>>> GetCumulativeGrowthDelta([FromQuery] FinancialRequestDto request, CancellationToken ct = default)
     {
         var period = await reportingCalendar.ResolvePeriodAsync(request.Timeframe, request.Comparison, ct);
-        var result = await financialService.GetCumulativeGrowthDeltaAsync(period, request.TenantId, request.TenantTypes, ct);
-        return Ok(result.Select(p => new CumulativeGrowthDeltaPointResponseDto(
+        var result = await seriesService.GetCumulativeGrowthDeltaAsync(period, request.TenantId, request.TenantTypes, ct);
+        if (result.IsFailed) return result.ToProblem(HttpContext);
+        return Ok(result.Value.Select(p => new CumulativeGrowthDeltaPointResponseDto(
                 p.Timestamp,
                 p.CurrentCumulative,
                 p.PreviousCumulative,
@@ -227,7 +255,7 @@ public class FinancialController(
     [HttpGet("orders")]
     public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrders([FromQuery] OrderRequestDto request, CancellationToken ct = default)
     {
-        var result = await financialService.GetOrdersAsync(request.DateSince, request.DateUntil, request.CeilingCount, ct);
+        var result = await kpiService.GetOrdersAsync(request.DateSince, request.DateUntil, request.CeilingCount, ct);
         return Ok(result.Select(p => new OrderDto(
             AdwaisOrderId: p.AdwaisOrderId,
             OrderNumber: p.OrderNumber,

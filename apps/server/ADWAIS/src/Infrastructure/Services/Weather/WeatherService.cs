@@ -10,9 +10,13 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Exceptions;
+using Adwais.Application.Common.Errors;
 using Adwais.Application.DTOs.Weather;
 using Adwais.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
+using FluentResults;
 
 namespace Adwais.Infrastructure.Services;
 
@@ -20,35 +24,58 @@ namespace Adwais.Infrastructure.Services;
 /// Resolves the configured weather location through Open-Meteo geocoding, then fetches
 /// current conditions from the Open-Meteo Forecast API.
 /// No API key required. Responses use the configured cache interval.
+/// The location and cache entry are scoped to the current organization.
 /// </summary>
 public class WeatherService(
     HttpClient httpClient,
-    IGlobalConfigService configService,
-    IMemoryCache cache) : IWeatherService
+    IOrganizationConfigService configService,
+    IMemoryCache cache,
+    ICurrentAccess currentAccess) : IWeatherService
 {
-    private const string CacheKey = "weather:current";
+    private const string CacheKeyPrefix = "weather:current:";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    public async Task<WeatherDto> GetCurrentWeatherAsync(CancellationToken ct = default)
+    public async Task<Result<WeatherDto>> GetCurrentWeatherAsync(CancellationToken ct = default)
     {
-        var config = await configService.GetConfigAsync(ct);
-        var location = config.WeatherLocation;
+        var orgId = currentAccess.Scope?.OrganizationId;
+        if (orgId is null)
+            return Result.Fail<WeatherDto>(new ScopeDeniedError("an organization scope", "none"));
+
+        var config = await configService.GetConfigAsync(orgId.Value, ct);
+        var location = config?.WeatherLocation;
         if (string.IsNullOrWhiteSpace(location))
-            throw new InvalidOperationException("Weather location is not configured.");
+            return Result.Fail<WeatherDto>(new ConfigurationError("Weather location is not configured."));
 
-        if (cache.TryGetValue(CacheKey, out WeatherDto? cached) && cached is not null)
-            return cached;
+        var cacheKey = $"{CacheKeyPrefix}{orgId}";
+        if (cache.TryGetValue(cacheKey, out WeatherDto? cached) && cached is not null)
+            return Result.Ok(cached);
 
-        var (latitude, longitude, resolvedLocation) = await GeocodeAsync(location, ct);
-        var dto = await FetchForecastAsync(latitude, longitude, resolvedLocation, ct);
+        WeatherDto dto;
+        try
+        {
+            var (latitude, longitude, resolvedLocation) = await GeocodeAsync(location, ct);
+            dto = await FetchForecastAsync(latitude, longitude, resolvedLocation, ct);
+        }
+        catch (ConfigurationException exception)
+        {
+            return Result.Fail<WeatherDto>(new ConfigurationError(exception.Message));
+        }
+        catch (TaskCanceledException exception) when (!ct.IsCancellationRequested)
+        {
+            return Result.Fail<WeatherDto>(new ProviderTimeoutError(exception.Message));
+        }
+        catch (HttpRequestException exception)
+        {
+            return Result.Fail<WeatherDto>(new ProviderError(exception.Message));
+        }
 
-        var duration = TimeSpan.FromMinutes(config.WeatherFetchIntervalMinutes > 0 ? config.WeatherFetchIntervalMinutes : 15);
-        cache.Set(CacheKey, dto, duration);
-        return dto;
+        var duration = TimeSpan.FromMinutes(config!.WeatherFetchIntervalMinutes > 0 ? config.WeatherFetchIntervalMinutes : 15);
+        cache.Set(cacheKey, dto, duration);
+        return Result.Ok(dto);
     }
 
     private async Task<(double latitude, double longitude, string location)> GeocodeAsync(
@@ -57,10 +84,10 @@ public class WeatherService(
     {
         var url = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(location)}&count=1&language=en&format=json";
         var response = await httpClient.GetFromJsonAsync<GeocodingResponse>(url, JsonOptions, ct)
-            ?? throw new InvalidOperationException($"Geocoding API returned no response for '{location}'.");
+            ?? throw new HttpRequestException($"Geocoding API returned no response for '{location}'.");
         var result = response.Results?.Length > 0
             ? response.Results[0]
-            : throw new InvalidOperationException($"No coordinates found for weather location '{location}'.");
+            : throw new ConfigurationException($"No coordinates found for weather location '{location}'.");
         return (result.Latitude, result.Longitude, result.Name);
     }
 
@@ -78,7 +105,7 @@ public class WeatherService(
                   $"&timezone=UTC";
 
         var response = await httpClient.GetFromJsonAsync<ForecastResponse>(url, JsonOptions, ct)
-                       ?? throw new InvalidOperationException("Open-Meteo forecast API returned null.");
+                       ?? throw new HttpRequestException("Open-Meteo forecast API returned null.");
 
         var current = response.Current;
         return new WeatherDto(

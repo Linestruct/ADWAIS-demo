@@ -25,12 +25,14 @@ import type {
   CalendarTokenDto
 } from '@types';
 import { toast } from 'sonner';
+import { useOrgSelection } from './useOrgSelection';
 
 export function useCalendarEventsQuery(start?: string, end?: string) {
+  const { selectedOrgId } = useOrgSelection();
   const params = start && end ? { start, end } : undefined;
   return useGetApiIntranetEvents<CalendarEventDto[], Error>(params, {
     query: {
-      queryKey: ['calendar-events', start, end],
+      queryKey: ['calendar-events', selectedOrgId, start, end],
       select: (res) => res.data as CalendarEventDto[]
     }
   });
@@ -114,9 +116,10 @@ export function useDeleteCalendarEventMutation(onSuccessCallback?: () => void) {
 }
 
 export function useCalendarTokenQuery(enabled = true) {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiIntranetCalendarToken<CalendarTokenDto, Error>({
     query: {
-      queryKey: ['calendar-token'],
+      queryKey: ['calendar-token', selectedOrgId],
       enabled,
       select: (res) => res.data as CalendarTokenDto
     }
@@ -127,13 +130,9 @@ export function useRegenerateCalendarTokenMutation() {
   const queryClient = useQueryClient();
   return usePostApiIntranetCalendarTokenRegenerate<Error>({
     mutation: {
-      onSuccess: (res: { data: CalendarTokenDto }) => {
+      onSuccess: () => {
         toast.success('Feed token regenerated.');
-        if (res?.data) {
-          queryClient.setQueryData(['calendar-token'], res);
-        } else {
-          queryClient.invalidateQueries({ queryKey: ['calendar-token'] });
-        }
+        queryClient.invalidateQueries({ queryKey: ['calendar-token'] });
       },
       onError: (err: Error) => {
         toast.error('Failed to regenerate token', {
@@ -146,9 +145,10 @@ export function useRegenerateCalendarTokenMutation() {
 }
 
 export function useCalendarSubscriptionsQuery() {
+  const { selectedOrgId } = useOrgSelection();
   return useGetApiIntranetCalendarSubscriptions<CalendarSubscriptionDto[], Error>({
     query: {
-      queryKey: ['calendar-subscriptions'],
+      queryKey: ['calendar-subscriptions', selectedOrgId],
       select: (res) => res.data as CalendarSubscriptionDto[]
     }
   });

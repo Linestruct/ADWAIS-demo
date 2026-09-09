@@ -53,9 +53,55 @@ public class TokenServiceTests
         Assert.Equal($"Kiosk-Device-{deviceId}", nameClaim);
         Assert.Equal("Viewer", roleClaim);
 
-        // Verify expiration is around 30 days from now
+        // Verify expiration is around one hour from now
         var diff = jwtToken.ValidTo - DateTime.UtcNow;
-        Assert.True(diff.TotalDays >= 29 && diff.TotalDays <= 31);
+        Assert.True(diff.TotalHours >= 0.9 && diff.TotalHours <= 1.1);
+    }
+
+    [Fact]
+    public void GenerateKioskToken_WithOrganization_EmbedsOrgClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+        var orgId = Guid.NewGuid();
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("kiosk-org-device", organizationId: orgId));
+
+        Assert.Equal(orgId.ToString(), jwtToken.Claims.FirstOrDefault(c => c.Type == "org_id")?.Value);
+    }
+
+    [Fact]
+    public void GenerateKioskToken_WithoutOrganization_HasNoOrgClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("kiosk-plain-device"));
+
+        Assert.Null(jwtToken.Claims.FirstOrDefault(c => c.Type == "org_id"));
+    }
+
+    [Fact]
+    public void GenerateKioskToken_WithPlatformFlag_EmbedsPlatformClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("dev-admin", "Admin", isPlatformAdmin: true));
+
+        Assert.Equal("true", jwtToken.Claims.FirstOrDefault(c => c.Type == "is_platform_admin")?.Value);
+        Assert.Null(jwtToken.Claims.FirstOrDefault(c => c.Type == "org_id"));
+    }
+
+    [Fact]
+    public void GenerateKioskToken_WithoutPlatformFlag_HasNoPlatformClaim()
+    {
+        var tokenService = new TokenService(_configMock.Object);
+
+        var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokenService.GenerateKioskToken("kiosk-plain-device"));
+
+        Assert.Null(jwtToken.Claims.FirstOrDefault(c => c.Type == "is_platform_admin"));
     }
 
     [Theory]

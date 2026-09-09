@@ -30,9 +30,22 @@ public class AdminDashboardAuthorizationFilterTests
     }
 
     [Fact]
-    public void AllowsAuthenticatedAdmins()
+    public void RejectsAuthenticatedOrgAdmins()
     {
-        var identity = new ClaimsIdentity([new Claim(ClaimTypes.Role, "Admin")], "test");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.Role, "Admin"),
+            new Claim(Adwais.Application.Common.Access.AccessClaimTypes.OrganizationId, Guid.NewGuid().ToString())
+        ], "test");
+        Assert.False(new AdminDashboardAuthorizationFilter().Authorize(CreateDashboardContext(new ClaimsPrincipal(identity))));
+    }
+
+    [Fact]
+    public void AllowsAuthenticatedPlatformAdmins()
+    {
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.Role, "Admin"),
+            new Claim(Adwais.Application.Common.Access.AccessClaimTypes.IsPlatformAdmin, "true")
+        ], "test");
         Assert.True(new AdminDashboardAuthorizationFilter().Authorize(CreateDashboardContext(new ClaimsPrincipal(identity))));
     }
 

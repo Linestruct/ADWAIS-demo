@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Adwais.Api.Authentication;
+using Adwais.Application.Common.Access;
 using Adwais.Infrastructure.Security;
 
 namespace Adwais.Api.Extensions;
@@ -148,28 +150,69 @@ public static class AuthenticationExtensions
         // Register claims transformation for external OIDC users.
         services.AddTransient<IClaimsTransformation, LocalUserClaimsTransformation>();
 
+        var isDevelopment = string.Equals(
+            configuration["ASPNETCORE_ENVIRONMENT"],
+            "Development",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (isDevelopment)
+        {
+            authBuilder.AddScheme<AuthenticationSchemeOptions, DevMockAuthenticationHandler>("DevMock", null);
+        }
+
         // Configure Authorization Policies
         services.AddAuthorization(options =>
         {
+            options.AddPolicy("PlatformAdminOnly", policy =>
+            {
+                policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                policy.AuthenticationSchemes.Add("KioskJwt");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireClaim(AccessClaimTypes.IsPlatformAdmin, "true");
+            });
+
             options.AddPolicy("AdminOnly", policy =>
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
-                policy.RequireRole("Admin");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireRole("Admin", "PlatformAdmin");
             });
 
             options.AddPolicy("StaffAccess", policy =>
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
-                policy.RequireRole("Admin", "Employee");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireRole("Admin", "Employee", "PlatformAdmin");
             });
 
             options.AddPolicy("KioskOrStaffAccess", policy =>
             {
                 policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
                 policy.AuthenticationSchemes.Add("KioskJwt");
-                policy.RequireRole("Admin", "Employee", "Viewer");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireRole("Admin", "Employee", "Viewer", "PlatformAdmin");
+            });
+
+            // Kiosk devices use the same organization-scoped diagnostics
+            // surface as regular staff. Platform-wide diagnostics remain
+            // restricted to platform administrators below.
+            options.AddPolicy("DiagnosticsRead", policy =>
+            {
+                policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                policy.AuthenticationSchemes.Add("KioskJwt");
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireRole("Admin", "Employee", "Viewer", "PlatformAdmin");
+            });
+
+            options.AddPolicy("PlatformDiagnosticsRead", policy =>
+            {
+                // A kiosk may carry a platform claim for other legacy admin
+                // flows, but it is never a platform diagnostics principal.
+                policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+                if (isDevelopment) policy.AuthenticationSchemes.Add("DevMock");
+                policy.RequireClaim(AccessClaimTypes.IsPlatformAdmin, "true");
             });
         });
 

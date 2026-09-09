@@ -9,6 +9,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using Adwais.Application.Common.Access;
 using Adwais.Application.Interfaces;
 
 namespace Adwais.Infrastructure.Services;
@@ -21,7 +22,7 @@ public class TokenService(IConfiguration configuration) : ITokenService
     private readonly IConfiguration _configuration = configuration;
 
     /// <inheritdoc />
-    public string GenerateKioskToken(string deviceId, string role = "Viewer")
+    public string GenerateKioskToken(string deviceId, string role = "Viewer", Guid? organizationId = null, bool isPlatformAdmin = false)
     {
         var secret = _configuration["Authentication:KioskJwtSecret"];
         if (string.IsNullOrEmpty(secret) || secret.Length < 32)
@@ -36,16 +37,26 @@ public class TokenService(IConfiguration configuration) : ITokenService
             var issuer = _configuration["Authentication:KioskJwtIssuer"] ?? "ADWAIS";
             var audience = _configuration["Authentication:KioskJwtAudience"] ?? "ADWAIS-Kiosk";
 
+            var claims = new List<Claim>
+            {
+                new("sub", deviceId),
+                new(ClaimTypes.NameIdentifier, deviceId),
+                new("name", $"Kiosk-Device-{deviceId}"),
+                new("role", role)
+            };
+            if (organizationId is { } orgId)
+            {
+                claims.Add(new Claim(AccessClaimTypes.OrganizationId, orgId.ToString()));
+            }
+            if (isPlatformAdmin)
+            {
+                claims.Add(new Claim(AccessClaimTypes.IsPlatformAdmin, "true"));
+            }
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim("sub", deviceId),
-                    new Claim(ClaimTypes.NameIdentifier, deviceId),
-                    new Claim("name", $"Kiosk-Device-{deviceId}"),
-                    new Claim("role", role)
-                }),
-                Expires = DateTime.UtcNow.AddDays(30),
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = issuer,
                 Audience = audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

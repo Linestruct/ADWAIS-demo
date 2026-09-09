@@ -9,7 +9,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
+using Adwais.Application.Common.Observability;
 using Adwais.Application.Interfaces;
+using Adwais.Domain.Entities;
 using Adwais.Domain.Entities.Intranet;
 using Adwais.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +25,8 @@ public class FeedAggregationService(
     IEnumerable<IFeedParser> parsers,
     HttpClient httpClient,
     ILogger<FeedAggregationService> logger,
-    ISystemEventService eventService)
+    ISystemEventService eventService,
+    IPipelineRunService? pipelineRunService = null)
     : IFeedAggregationService
 {
     private readonly IDbContextFactory<AnalyticsDbContext> _contextFactory = contextFactory;
@@ -30,6 +34,7 @@ public class FeedAggregationService(
     private readonly HttpClient _httpClient = httpClient;
     private readonly ILogger<FeedAggregationService> _logger = logger;
     private readonly ISystemEventService _eventService = eventService;
+    private readonly IPipelineRunService? _pipelineRunService = pipelineRunService;
 
     public async Task AggregateAllFeedsAsync(CancellationToken ct = default)
     {
@@ -43,17 +48,157 @@ public class FeedAggregationService(
         {
             try
             {
-                await AggregateSourceAsync(source.Id, ct);
+                await AggregateSourceWithRunAsync(source, PipelineTriggerKind.Scheduled, ct);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to aggregate feed source {Name}", source.Name);
-                await _eventService.LogErrorAsync(nameof(FeedAggregationService), $"Feed aggregation failed for {source.Name}: {ex.Message}", ex);
+                if (_pipelineRunService is null)
+                {
+                    await _eventService.LogErrorAsync(
+                        nameof(FeedAggregationService),
+                        "The feed refresh failed for this organization.",
+                        ex,
+                        organizationId: source.OrganizationId,
+                        code: "pipeline.failed",
+                        audience: SystemEventAudience.Organization,
+                        suggestedAction: "Review the feed configuration and retry the refresh.");
+                }
             }
         }
     }
 
-    public async Task AggregateSourceAsync(Guid sourceId, CancellationToken ct = default)
+    public async Task AggregateOrgFeedsAsync(Guid organizationId, CancellationToken ct = default)
+    {
+        List<FeedSource> sources;
+        await using (var context = await _contextFactory.CreateDbContextAsync(ct))
+        {
+            sources = await context.FeedSources
+                .Where(s => s.IsActive && s.OrganizationId == organizationId)
+                .ToListAsync(ct);
+        }
+
+        foreach (var source in sources)
+        {
+            try
+            {
+                await AggregateSourceWithRunAsync(source, PipelineTriggerKind.Scheduled, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to aggregate feed source {Name}", source.Name);
+                if (_pipelineRunService is null)
+                {
+                    await _eventService.LogErrorAsync(
+                        nameof(FeedAggregationService),
+                        "The feed refresh failed for this organization.",
+                        ex,
+                        organizationId: source.OrganizationId,
+                        code: "pipeline.failed",
+                        audience: SystemEventAudience.Organization,
+                        suggestedAction: "Review the feed configuration and retry the refresh.");
+                }
+            }
+        }
+    }
+
+    private async Task AggregateSourceWithRunAsync(FeedSource source, PipelineTriggerKind trigger, CancellationToken ct)
+    {
+        var startedAt = Stopwatch.GetTimestamp();
+        PipelineRun? run = null;
+        using var activity = ObservabilityTelemetry.ActivitySource.StartActivity(
+            "adwais.pipeline.feed_refresh", ActivityKind.Internal);
+        activity?.SetTag("adwais.organization_id", source.OrganizationId);
+        activity?.SetTag("adwais.pipeline", PipelineKind.FeedRefresh.ToString());
+        activity?.SetTag("adwais.resource_id", source.Id);
+
+        if (_pipelineRunService is not null)
+        {
+            run = await _pipelineRunService.StartAsync(
+                source.OrganizationId,
+                tenantId: null,
+                PipelineKind.FeedRefresh,
+                trigger,
+                resourceKey: source.Id.ToString("D"),
+                resourceName: source.Name,
+                traceId: Activity.Current?.TraceId.ToHexString(),
+                ct: ct);
+            await _pipelineRunService.MarkRunningAsync(run.Id, ct);
+            activity?.SetTag("adwais.pipeline_run_id", run.Id);
+        }
+
+        using var logScope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["OrganizationId"] = source.OrganizationId,
+            ["Pipeline"] = PipelineKind.FeedRefresh.ToString(),
+            ["PipelineRunId"] = run?.Id,
+            ["TraceId"] = Activity.Current?.TraceId.ToHexString()
+        });
+        ObservabilityTelemetry.PipelineAttempts.Add(1,
+            new KeyValuePair<string, object?>("pipeline", "feed_refresh"));
+
+        var outcome = "succeeded";
+        try
+        {
+            await AggregateSourceAsync(source.Id, ct, run?.Id);
+
+            bool failed;
+            await using (var context = await _contextFactory.CreateDbContextAsync(ct))
+            {
+                failed = await context.FeedSources
+                    .AsNoTracking()
+                    .Where(candidate => candidate.Id == source.Id)
+                    .Select(candidate => candidate.LastSyncError != null)
+                    .SingleOrDefaultAsync(ct);
+            }
+
+            if (run is not null)
+            {
+                if (failed)
+                {
+                    outcome = "failed";
+                    await _pipelineRunService!.FailAsync(
+                        run.Id,
+                        "pipeline.failed",
+                        "The feed refresh failed.",
+                        CancellationToken.None);
+                }
+                else
+                {
+                    await _pipelineRunService!.CompleteAsync(
+                        run.Id,
+                        workCount: null,
+                        "Feed refresh completed.",
+                        ct);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            outcome = "failed";
+            if (run is not null)
+                await _pipelineRunService!.FailAsync(
+                    run.Id,
+                    "pipeline.failed",
+                    "The feed refresh failed.",
+                    CancellationToken.None);
+            _logger.LogError(ex,
+                "Feed refresh wrapper failed for organization {OrganizationId}, source {SourceId}, run {RunId}.",
+                source.OrganizationId, source.Id, run?.Id);
+            throw;
+        }
+        finally
+        {
+            ObservabilityTelemetry.PipelineOutcomes.Add(1,
+                new KeyValuePair<string, object?>("pipeline", "feed_refresh"),
+                new KeyValuePair<string, object?>("outcome", outcome));
+            ObservabilityTelemetry.PipelineDuration.Record(
+                Stopwatch.GetElapsedTime(startedAt).TotalSeconds,
+                new KeyValuePair<string, object?>("pipeline", "feed_refresh"));
+        }
+    }
+
+    public async Task AggregateSourceAsync(Guid sourceId, CancellationToken ct = default, Guid? pipelineRunId = null)
     {
         FeedSource? source;
         await using (var context = await _contextFactory.CreateDbContextAsync(ct))
@@ -188,14 +333,42 @@ public class FeedAggregationService(
         }
         catch (Exception ex)
         {
-            await using (var context = await _contextFactory.CreateDbContextAsync(ct))
+            try
             {
-                var src = await context.FeedSources.SingleAsync(s => s.Id == sourceId, ct);
+                await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
+                var src = await context.FeedSources.SingleAsync(s => s.Id == sourceId, CancellationToken.None);
                 src.LastPolledAt = DateTime.UtcNow;
                 src.LastSyncError = ex.Message;
-                await context.SaveChangesAsync(ct);
+                await context.SaveChangesAsync(CancellationToken.None);
             }
-            await _eventService.LogErrorAsync(nameof(FeedAggregationService), $"Feed aggregation failed for {source.Name}: {ex.Message}", ex);
+            catch (Exception stateException)
+            {
+                _logger.LogError(stateException, "Failed to persist feed failure state for source {SourceId}.", sourceId);
+            }
+
+            try
+            {
+                await _eventService.LogErrorAsync(
+                    nameof(FeedAggregationService),
+                    "The feed refresh failed for this organization.",
+                    ex,
+                    organizationId: source.OrganizationId,
+                    code: "pipeline.failed",
+                    audience: SystemEventAudience.Organization,
+                    pipelineRunId: pipelineRunId,
+                    traceId: Activity.Current?.TraceId.ToHexString(),
+                    suggestedAction: "Review the feed configuration and retry the refresh.");
+            }
+            catch (Exception eventException)
+            {
+                _logger.LogError(eventException, "Failed to persist feed failure event for source {SourceId}.", sourceId);
+            }
+
+            // Legacy direct callers historically observed a swallowed feed
+            // failure. Tracked production runs must rethrow so their run state
+            // cannot be reported as a success when state persistence failed.
+            if (_pipelineRunService is not null)
+                throw;
         }
     }
 

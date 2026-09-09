@@ -1,6 +1,6 @@
 # ADWAIS
 
-A multi-tenant platform for e-commerce analytics, endpoint monitoring, and team communication.
+A multi-organization platform for e-commerce analytics, endpoint monitoring, and team communication.
 
 [Live interactive demo](https://adwais.marmenlind.com)
 
@@ -15,6 +15,7 @@ graph TD
     API -->|EF Core / SQL| DB[(PostgreSQL Database)]
     Hangfire[Hangfire Background Service] -->|Queue Jobs| DB
     API -.->|Enqueue Jobs| Hangfire
+    API -.->|Optional OTLP| Telemetry[Aspire Dashboard or OTLP receiver]
 ```
 
 ## Directory structure
@@ -31,7 +32,7 @@ graph TD
 
 Other root files: `pnpm-workspace.yaml`, `.env.example`.
 
-Docs: [authentication](docs/authentication.md), [Shopify order source](docs/shopify-integration.md).
+Docs: [authentication](docs/authentication.md), [multi-organization model](docs/multi-organization.md), [observability](docs/observability-overview.md), [Shopify order source](docs/shopify-integration.md).
 
 ## Prerequisites
 
@@ -77,6 +78,15 @@ VITE_DEMO_MODE=true
 Demo mode adds a login option that requests a Viewer token from `/api/demo/token`. OIDC settings are not needed in demo mode.
 
 Outside demo mode, set `VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` in the frontend. Set `Authentication:OidcAuthority` and `Authentication:OidcAudience` in the API.
+
+The API exports live traces, metrics, and structured logs through OTLP only when an endpoint is configured. Set either `OpenTelemetry__OtlpEndpoint` (the preferred .NET configuration key) or `OTEL_EXPORTER_OTLP_ENDPOINT` in the API environment, for example:
+
+```env
+# apps/server/ADWAIS/src/.env
+OpenTelemetry__OtlpEndpoint=http://localhost:18889
+```
+
+This is suitable for an Aspire Dashboard or another OTLP receiver. Leave the setting unset when no telemetry backend is running; the ADWAIS diagnostics pages and API continue to work from the application database.
 
 3. Start the database:
 

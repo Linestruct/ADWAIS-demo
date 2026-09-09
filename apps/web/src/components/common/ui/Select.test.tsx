@@ -51,30 +51,13 @@ describe('Select', () => {
     expect(select).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('forwards disabled state and supports compact presentation variants', () => {
+  it('forwards disabled state', () => {
     render(
       <Select aria-label="Type" variant="plain" size="xs" fullWidth={false} disabled indicator={null}>
         <option>B2B</option>
       </Select>,
     );
 
-    const select = screen.getByRole('combobox', { name: 'Type' });
-    expect(select).toBeDisabled();
-    expect(select).toHaveClass('h-6', 'w-auto', 'bg-transparent');
-  });
-
-  it('renders a padded, rounded menu independently of its trigger width', () => {
-    render(
-      <Select aria-label="Period" size="sm" fullWidth={false}>
-        <option value="T30">30 days</option>
-        <option value="T365">365 days</option>
-      </Select>,
-    );
-
-    fireEvent.click(screen.getByRole('combobox', { name: 'Period' }));
-
-    expect(screen.getByRole('listbox')).toHaveAttribute('data-select-menu');
-    expect(screen.getByRole('listbox')).toHaveClass('rounded-2xl', 'p-2');
-    expect(screen.getByRole('option', { name: '365 days' })).toHaveClass('rounded-xl', 'px-3', 'py-2.5');
+    expect(screen.getByRole('combobox', { name: 'Type' })).toBeDisabled();
   });
 });

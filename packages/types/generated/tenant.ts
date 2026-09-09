@@ -5,11 +5,13 @@
  * OpenAPI spec version: 1.0
  */
 import type { Order } from './order';
+import type { Organization } from './organization';
 import type { TenantType } from './tenantType';
 import type { UptimeMonitor } from './uptimeMonitor';
 
 export interface Tenant {
   id?: string;
+  organizationId?: string;
   /** @nullable */
   name: string | null;
   type?: TenantType;
@@ -29,8 +31,10 @@ export interface Tenant {
   currentlyFetching?: boolean;
   /** @nullable */
   lastSyncError?: string | null;
+  isSystem?: boolean;
   /** @nullable */
   orders?: Order[] | null;
   /** @nullable */
   monitors?: UptimeMonitor[] | null;
+  organization?: Organization;
 }

@@ -6,5 +6,8 @@
  */
 
 export type GetApiIntranetCalendarFeedIcsParams = {
+/**
+ * The calendar feed token.
+ */
 token?: string;
 };

@@ -42,7 +42,10 @@ export function RecurringJobsTable({ recurring, isLoading = recurring === undefi
           ) : (
             recurring?.map((job) => (
               <tr key={job.id} className="transition-colors bg-surface-container-low hover:bg-surface-container">
-                <td className="px-3 py-2 font-bold text-on-surface break-words max-w-[150px]">{job.id}</td>
+                <td className="px-3 py-2 break-words max-w-[150px]">
+                  <span className="font-bold text-on-surface">{job.name || job.id}</span>
+                  <span className="block text-xs text-on-surface-variant break-all">{job.id}</span>
+                </td>
                 <td className="whitespace-nowrap px-3 py-2">
                   <span className="px-1 py-0.5 bg-brand-accent/10 text-brand-text rounded text-xs font-bold tracking-wide break-words max-w-[100px] inline-block">
                     {job.cron}
@@ -54,7 +57,7 @@ export function RecurringJobsTable({ recurring, isLoading = recurring === undefi
                     hour: 'numeric', minute: 'numeric', second: 'numeric',
                   }) || 'Never'}
                 </td>
-                <td className="px-3 py-2 text-on-surface-variant whitespace-nowrap">
+                <td className="px-3 py-2 text-on-surface-variant font-bold whitespace-nowrap">
                   {formatDateTime(job.nextExecution, {
                     year: 'numeric', month: 'numeric', day: 'numeric',
                     hour: 'numeric', minute: 'numeric', second: 'numeric',

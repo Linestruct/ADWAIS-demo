@@ -6,11 +6,34 @@
 import { QueryClient, QueryCache } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+function isConnectivityError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return message.includes('502')
+    || message.includes('bad gateway')
+    || message.includes('503')
+    || message.includes('service unavailable')
+    || message.includes('504')
+    || message.includes('gateway timeout')
+    || message.includes('failed to fetch')
+    || message.includes('network error')
+    || message.includes('connection refused')
+    || message.includes('load failed');
+}
+
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
       const queryKey = query.queryKey[0];
       if (queryKey === 'kiosk') return; // Suppress toasts for background kiosk polling
+      if (queryKey === 'current-user') return; // The shell renders the access-pending panel instead
+
+      if (isConnectivityError(error)) {
+        toast.error('Backend unavailable', {
+          id: 'backend-unavailable',
+          description: 'The server is not reachable right now.',
+        });
+        return;
+      }
 
       let title = 'Failed to load data';
       if (typeof queryKey === 'string') {
@@ -31,7 +54,7 @@ export const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      retry: 3,
+      retry: (failureCount, error) => !isConnectivityError(error) && failureCount < 3,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes

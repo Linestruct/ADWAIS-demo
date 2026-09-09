@@ -11,6 +11,7 @@ import {NavLink} from './NavLink';
 import {ConnectivityStatus} from './ConnectivityStatus';
 import {UserAccountLink} from './UserAccountLink';
 import {BrandLogoLink} from './BrandLogoLink';
+import {OrgPicker} from './OrgPicker';
 import {useMediaQuery} from '../../../hooks/useMediaQuery';
 
 type SiteHeaderProps = {
@@ -45,8 +46,8 @@ export function SiteHeader({
             className="text-2xl leading-none text-white"
           />
           <div className="flex items-center gap-4">
-            <ConnectivityStatus isOnline={isOnline} isBackendOnline={isBackendOnline} variant="mobile" />
-            <UserAccountLink label={userLabel} variant="mobile" />
+            <ConnectivityStatus isOnline={isOnline} isBackendOnline={isBackendOnline} />
+            <UserAccountLink label={userLabel} />
             <button
               onClick={onToggleMobileMenu}
               className="flex h-11 w-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
@@ -78,10 +79,9 @@ export function SiteHeader({
           </nav>
 
           <div className="flex flex-1 shrink-0 items-center justify-end gap-2" data-header="controls">
-            <div className="flex items-center gap-8">
-              <ConnectivityStatus isOnline={isOnline} isBackendOnline={isBackendOnline} variant="desktop" />
-              <UserAccountLink label={userLabel} variant="desktop" />
-            </div>
+            <ConnectivityStatus isOnline={isOnline} isBackendOnline={isBackendOnline} />
+            <OrgPicker className="max-w-[240px] shrink-0" />
+            <UserAccountLink label={userLabel} />
             <NotificationToggleWidget />
             <KioskControls />
           </div>

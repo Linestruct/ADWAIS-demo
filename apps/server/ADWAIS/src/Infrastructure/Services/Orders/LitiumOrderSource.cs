@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 using System.Text.Json;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.DTOs.Financial.Upstream;
 using Adwais.Application.DTOs.Integrations;
 using Adwais.Application.Interfaces;
@@ -91,7 +92,7 @@ public sealed class LitiumOrderSource(HttpClient httpClient) : IOrderSource
     {
         var sourceSettings = ParseSettings(settings);
         if (string.IsNullOrWhiteSpace(sourceSettings.EndpointUrl) || string.IsNullOrWhiteSpace(sourceSettings.Authorization))
-            throw new InvalidOperationException("Litium provider settings require endpointUrl and authorization.");
+            throw new ConfigurationException("Litium provider settings require endpointUrl and authorization.");
 
         var since = Uri.EscapeDataString(startDate.ToString("O"));
         var until = Uri.EscapeDataString(endDate.ToString("O"));

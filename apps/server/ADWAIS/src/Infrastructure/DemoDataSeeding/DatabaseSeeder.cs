@@ -22,7 +22,8 @@ public static class DatabaseSeeder
         progress.StartStep(2, "Demo metadata and monitor definitions");
         var random = new Random(42);
         var forceReSeed = Environment.GetEnvironmentVariable("RESEED") == "true";
-        var reportingTimeZoneId = await context.GlobalConfigs
+        var reportingTimeZoneId = await context.OrganizationConfigs
+            .Where(config => config.OrganizationId == AnalyticsDbContext.DefaultOrganizationGuid)
             .Select(config => config.ReportingTimeZoneId)
             .SingleAsync();
         var reportingTimeZone = TimeZoneInfo.FindSystemTimeZoneById(reportingTimeZoneId);
@@ -59,12 +60,12 @@ public static class DatabaseSeeder
         if (!await context.FeedSources.AnyAsync())
         {
             context.FeedSources.AddRange(
-                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Blog", Url = "https://www.litium.com/blog", IsActive = true },
-                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Reports & Guides", Url = "https://www.litium.com/reports-and-guides", IsActive = true },
-                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Cision News", Url = "https://news.cision.com/se/litium/ListItems?format=rss", IsActive = true },
-                new FeedSource { Id = Guid.NewGuid(), Name = "Motillo Aktuellt", Url = "https://www.motillo.com/sv/aktuellt", IsActive = true },
-                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Nyhetsrum", Url = "https://www.litium.se/nyhetsrum", IsActive = true },
-                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Rapporter & Guider (SV)", Url = "https://www.litium.se/insikter/rapporter-guider", IsActive = true }
+                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Blog", Url = "https://www.litium.com/blog", IsActive = true, OrganizationId = AnalyticsDbContext.DefaultOrganizationGuid },
+                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Reports & Guides", Url = "https://www.litium.com/reports-and-guides", IsActive = true, OrganizationId = AnalyticsDbContext.DefaultOrganizationGuid },
+                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Cision News", Url = "https://news.cision.com/se/litium/ListItems?format=rss", IsActive = true, OrganizationId = AnalyticsDbContext.DefaultOrganizationGuid },
+                new FeedSource { Id = Guid.NewGuid(), Name = "Motillo Aktuellt", Url = "https://www.motillo.com/sv/aktuellt", IsActive = true, OrganizationId = AnalyticsDbContext.DefaultOrganizationGuid },
+                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Nyhetsrum", Url = "https://www.litium.se/nyhetsrum", IsActive = true, OrganizationId = AnalyticsDbContext.DefaultOrganizationGuid },
+                new FeedSource { Id = Guid.NewGuid(), Name = "Litium Rapporter & Guider (SV)", Url = "https://www.litium.se/insikter/rapporter-guider", IsActive = true, OrganizationId = AnalyticsDbContext.DefaultOrganizationGuid }
             );
             await context.SaveChangesAsync();
         }
@@ -344,6 +345,7 @@ public static class DatabaseSeeder
                 tenant = new Tenant
                 {
                     Id = Guid.NewGuid(),
+                    OrganizationId = AnalyticsDbContext.DefaultOrganizationGuid,
                     Name = profile.Name,
                     Type = profile.Type,
                     OrderProviderSettings = System.Text.Json.JsonSerializer.Serialize(new

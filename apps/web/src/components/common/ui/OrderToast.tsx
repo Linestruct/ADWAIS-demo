@@ -21,7 +21,7 @@ export function OrderToast({ order, t, faviconUrl, displayValue }: OrderToastPro
 
   return (
     <div 
-      className="w-[calc(100vw-2rem)] lg:w-[480px] bg-primary-container rounded-xl lg:rounded-2xl p-3.5 lg:p-6 m3-elevation-2 flex items-center gap-5 lg:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
+      className="w-[356px] max-w-[calc(100vw-2rem)] lg:w-[480px] bg-primary-container rounded-xl lg:rounded-2xl p-3.5 lg:p-6 m3-elevation-2 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="w-11 h-11 lg:w-16 lg:h-16 rounded-lg lg:rounded-xl bg-surface flex items-center justify-center shrink-0 overflow-hidden shadow-sm">

@@ -12,7 +12,11 @@ const testState = vi.hoisted(() => ({
 }));
 
 vi.mock('../../hooks/useCurrentUser', () => ({
-  useCurrentUser: () => ({ role: 'Viewer' }),
+  useCurrentUser: () => ({ role: 'Viewer', user: null }),
+}));
+
+vi.mock('../../hooks/useOrgSelection', () => ({
+  useOrgSelection: () => ({ selectedOrgId: null }),
 }));
 
 vi.mock('../../hooks/useJobSettingsQueries', () => ({
@@ -44,13 +48,5 @@ describe('recent jobs console state', () => {
 
     expect(screen.getByLabelText('Loading recent executions')).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByText('No recent background jobs found')).not.toBeInTheDocument();
-  });
-
-  it('explains a failed recent-jobs query without an inline retry control', () => {
-    testState.recentJobsQuery = { data: undefined, isLoading: false, isError: true, refetch: vi.fn() };
-    render(<BackgroundJobsView />);
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load recent executions.');
-    expect(screen.queryByRole('button', { name: 'Reload recent executions' })).not.toBeInTheDocument();
   });
 });

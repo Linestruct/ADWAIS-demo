@@ -10,6 +10,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Access;
+using Adwais.Application.Common.Exceptions;
 using Adwais.Application.Common.Interfaces;
 using Adwais.Application.Interfaces;
 using Adwais.Domain.Entities.Intranet;
@@ -28,7 +30,7 @@ public class CalendarFeedService(IApplicationDbContext dbContext) : ICalendarFee
     public async Task<string> GetUserCalendarFeedTokenAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync(new object[] { userId }, ct);
-        if (user == null) throw new KeyNotFoundException("User not found.");
+        if (user == null) throw new HttpContractException(404, "Not Found", "User not found.");
 
         if (string.IsNullOrEmpty(user.CalendarFeedToken))
         {
@@ -42,7 +44,7 @@ public class CalendarFeedService(IApplicationDbContext dbContext) : ICalendarFee
     public async Task<string> RegenerateUserCalendarFeedTokenAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync(new object[] { userId }, ct);
-        if (user == null) throw new KeyNotFoundException("User not found.");
+        if (user == null) throw new HttpContractException(404, "Not Found", "User not found.");
 
         user.CalendarFeedToken = GenerateSecureToken();
         await _dbContext.SaveChangesAsync(ct);
@@ -52,15 +54,31 @@ public class CalendarFeedService(IApplicationDbContext dbContext) : ICalendarFee
 
     public async Task<byte[]> GenerateIcsFeedAsync(string feedToken, CancellationToken ct = default)
     {
-        // Validate user feed token
-        var userExists = await _dbContext.Users.AnyAsync(u => u.CalendarFeedToken == feedToken, ct);
-        if (!userExists)
+        var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.CalendarFeedToken == feedToken, ct);
+        if (user == null)
         {
-            throw new UnauthorizedAccessException("Invalid calendar feed token.");
+            throw new HttpContractException(403, "Forbidden", "Invalid calendar feed token.");
         }
 
-        // Fetch all events for the feed
-        var events = await _dbContext.CalendarEvents.OrderBy(oe => oe.StartTime).ToListAsync(ct);
+        var memberships = await _dbContext.UserAccesses
+            .AsNoTracking()
+            .Where(access => access.UserId == user.Id)
+            .ToListAsync(ct);
+        var scope = AccessScopeResolver.SelectEffective(
+            AccessScopeResolver.ResolveAllowed(memberships),
+            null,
+            null);
+        var filter = OrganizationFilter.From(scope);
+        if (filter.Denied || filter.OrganizationId is null)
+        {
+            throw new HttpContractException(403, "Forbidden", "The calendar feed user has no organization scope.");
+        }
+
+        // Fetch the organization's events for the feed
+        var events = await _dbContext.CalendarEvents
+            .Where(oe => oe.OrganizationId == filter.OrganizationId)
+            .OrderBy(oe => oe.StartTime)
+            .ToListAsync(ct);
 
         var calendar = new Calendar();
         calendar.ProductId = "-//ADWAIS//Intranet Calendar//EN";

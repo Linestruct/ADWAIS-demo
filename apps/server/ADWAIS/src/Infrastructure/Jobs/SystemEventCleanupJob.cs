@@ -18,7 +18,7 @@ public class SystemEventCleanupJob(
         await using var db = await dbContextFactory.CreateDbContextAsync();
         var config = await db.GlobalConfigs.AsNoTracking().SingleOrDefaultAsync();
         
-        var retentionDays = config?.SystemEventRetentionDays ?? 30;
+        var retentionDays = Math.Max(1, config?.SystemEventRetentionDays ?? 30);
         var cutoff = DateTimeOffset.UtcNow.AddDays(-retentionDays);
 
         logger.LogInformation("Starting SystemEvent cleanup. Removing events older than {RetentionDays} days (Cutoff: {Cutoff})", 
@@ -30,7 +30,21 @@ public class SystemEventCleanupJob(
                 .Where(e => e.Timestamp < cutoff)
                 .ExecuteDeleteAsync();
 
-            logger.LogInformation("Successfully deleted {Count} old system events.", deletedCount);
+            // Keep active or unresolved runs available for reconciliation. A
+            // completed run is historical once its completion is outside the
+            // same retention window as events.
+            var deletedRunCount = await db.PipelineRuns
+                .Where(run => run.CompletedAt != null
+                    && run.CompletedAt < cutoff
+                    && run.State != Domain.Entities.PipelineRunState.Pending
+                    && run.State != Domain.Entities.PipelineRunState.Queued
+                    && run.State != Domain.Entities.PipelineRunState.Running
+                    && run.State != Domain.Entities.PipelineRunState.RetryScheduled
+                    && run.State != Domain.Entities.PipelineRunState.Unknown)
+                .ExecuteDeleteAsync();
+
+            logger.LogInformation("Successfully deleted {EventCount} old system events and {RunCount} completed pipeline runs.",
+                deletedCount, deletedRunCount);
         }
         catch (Exception ex)
         {

@@ -14,6 +14,11 @@ import {useConnectivityStatus} from '../hooks/useConnectivityStatus';
 import {useMobileMenu} from '../hooks/useMobileMenu';
 import {RootProviders} from '../components/common/layout/RootProviders';
 import {AuthRouteShell} from '../components/common/layout/AuthRouteShell';
+import {
+  AccessLoadingPanel,
+  AccessPendingPanel,
+  AccessUnavailablePanel,
+} from '../components/common/layout/AccessPendingPanel';
 import {AppShell} from '../components/common/layout/AppShell';
 
 export const Route = createRootRoute({
@@ -38,7 +43,13 @@ function RootComponent() {
   useSearch({strict: false});
 
   const auth = useContext(AuthContext);
-  const {user} = useCurrentUser();
+  const {
+    user,
+    isLoading: isUserLoading,
+    isUnprovisioned,
+    isAccessCheckError,
+    retryAccessCheck,
+  } = useCurrentUser();
   const {isOnline, isBackendOnline} = useConnectivityStatus();
   const location = useRouterState({select: (state) => state.location});
   const mobileMenu = useMobileMenu(location.pathname);
@@ -50,13 +61,19 @@ function RootComponent() {
   const timeframeDomain: PersistentDomain | null = isFinancialPage ? '/financial' : isFleetPage ? '/fleet-status' : null;
 
   const kioskToken = getKioskToken();
-  const userLabel = user?.name || auth?.user?.profile?.name || (kioskToken ? 'Kiosk' : null);
+  const userLabel = user?.name || auth?.user?.profile?.name || (kioskToken ? (user?.organizationName ? `Kiosk · ${user.organizationName}` : 'Kiosk') : null);
   const isAuthRoute = location.pathname === '/login' || location.pathname.startsWith('/kiosk');
 
   return (
     <RootProviders>
       {isAuthRoute ? (
         <AuthRouteShell routeKey={location.pathname} />
+      ) : isUserLoading ? (
+        <AccessLoadingPanel />
+      ) : isUnprovisioned ? (
+        <AccessPendingPanel onRetry={() => void retryAccessCheck()} isRetrying={isUserLoading} />
+      ) : isAccessCheckError ? (
+        <AccessUnavailablePanel onRetry={() => void retryAccessCheck()} isRetrying={isUserLoading} />
       ) : (
         <AppShell
           pathname={location.pathname}

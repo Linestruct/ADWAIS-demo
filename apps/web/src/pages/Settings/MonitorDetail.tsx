@@ -203,10 +203,9 @@ function MonitorDetailForm({ monitor, isAdmin, onBack }: { monitor: UptimeMonito
 export const MonitorAssignmentPanel = React.memo(function MonitorAssignmentPanel({ monitor, isAdmin }: { monitor: UptimeMonitorDto, isAdmin: boolean }) {
   const navigate = useNavigate();
   const { tenants, assignMonitor, unassignMonitor } = useTenantsViewModel();
-  const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000001';
-  const isAssignedToRealTenant = monitor.tenantId != null && monitor.tenantId !== SYSTEM_TENANT_ID;
+  const isAssignedToRealTenant = monitor.tenantId != null && (tenants || []).some(t => t.id === monitor.tenantId);
   const assignedTenant = isAssignedToRealTenant ? tenants?.find(t => t.id === monitor.tenantId) : null;
-  const availableTenants = tenants?.filter(t => t.id !== SYSTEM_TENANT_ID) || [];
+  const availableTenants = tenants || [];
 
   return (
     <div className="space-y-4">

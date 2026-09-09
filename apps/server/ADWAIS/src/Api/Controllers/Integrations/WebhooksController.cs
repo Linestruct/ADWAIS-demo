@@ -4,8 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Adwais.Application.Common.Interfaces;
 using Adwais.Application.DTOs.Financial.Upstream;
 using Adwais.Application.DTOs.Intranet;
 using Adwais.Application.Interfaces;
@@ -14,6 +16,7 @@ using Adwais.Infrastructure.Persistence;
 using Adwais.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +27,7 @@ namespace Adwais.Api.Controllers.Integrations;
 [AllowAnonymous]
 public class WebhooksController(
     IOrderIngestionService ingestionService,
+    IApplicationDbContext dbContext,
     IConfiguration configuration,
     ILogger<WebhooksController> logger,
     IBulletinPostService postService)
@@ -36,6 +40,7 @@ public class WebhooksController(
         [FromBody] LitiumSyncResponse.LitiumOrderDto? payload,
         CancellationToken ct)
     {
+        throw new NotImplementedException();
         if (string.IsNullOrEmpty(apiKey) || apiKey != configuration["Webhooks:MotasticApiKey"])
         {
             return Unauthorized();
@@ -48,7 +53,14 @@ public class WebhooksController(
 
         try
         {
-            await ingestionService.IngestSingleOrderAsync(tenantId, IntegrationProviders.Litium, LitiumOrderSource.Normalize(payload), ct);
+            var tenantOrg = await dbContext.Tenants
+                .AsNoTracking()
+                .Where(t => t.Id == tenantId)
+                .Select(t => (Guid?)t.OrganizationId)
+                .SingleOrDefaultAsync(ct);
+            if (tenantOrg is null) return NotFound(new { Error = "Tenant not found." });
+
+            await ingestionService.IngestSingleOrderAsync(tenantOrg.Value, tenantId, IntegrationProviders.Litium, LitiumOrderSource.Normalize(payload), ct);
             return Ok();
         }
         catch (Exception ex)
@@ -74,7 +86,8 @@ public class WebhooksController(
             return BadRequest(new { Error = "Payload cannot be null." });
         }
 
-        var post = await postService.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, ct);
+        var targetOrgId = payload.OrganizationId ?? AnalyticsDbContext.DefaultOrganizationGuid;
+        var post = await postService.CreatePostAsync(AnalyticsDbContext.SystemUserGuid, payload.Title, payload.Body, targetOrgId, ct);
 
         return Ok(new { Id = post.Id });
     }

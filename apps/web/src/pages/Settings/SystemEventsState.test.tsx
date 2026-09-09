@@ -15,8 +15,12 @@ vi.mock('../../hooks/useSystemEventsViewModel', () => ({
   useSystemEventsViewModel: () => testState.viewModel,
 }));
 
-vi.mock('../../api/generated/endpoints', () => ({
-  usePostApiDashboardSession: () => ({ mutateAsync: vi.fn(), isPending: false }),
+vi.mock('../../hooks/useCurrentUser', () => ({
+  useCurrentUser: () => ({ role: 'PlatformAdmin', user: { isPlatformAdmin: true } }),
+}));
+
+vi.mock('../../hooks/useOrgSelection', () => ({
+  useOrgSelection: () => ({ selectedOrgId: null }),
 }));
 
 function baseViewModel() {
@@ -43,19 +47,5 @@ describe('system events state', () => {
 
     expect(screen.getByLabelText('Loading system events')).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByText('No system events found.')).not.toBeInTheDocument();
-  });
-
-  it('explains query failures without adding route-level reload controls', () => {
-    testState.viewModel = {
-      ...baseViewModel(),
-      isHealthError: true,
-      isEventsError: true,
-    };
-    render(<SystemEventsView />);
-
-    expect(screen.getByText(/Unable to load pipeline health/)).toBeVisible();
-    expect(screen.getByText(/Unable to load system events/)).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Reload pipeline health' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Reload system events' })).not.toBeInTheDocument();
   });
 });

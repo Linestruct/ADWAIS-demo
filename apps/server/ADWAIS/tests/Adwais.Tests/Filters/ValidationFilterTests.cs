@@ -54,14 +54,11 @@ public class ValidationFilterTests
     }
 
     [Fact]
-    public async Task InvalidMonitoringProvider_ReturnsBadRequestBeforeTheActionRuns()
+    public async Task InvalidSystemEventRetention_ReturnsBadRequestBeforeTheActionRuns()
     {
-        var provider = new Mock<IMonitoringProvider>();
-        provider.SetupGet(x => x.Provider).Returns("uptimerobot");
-
         var context = CreateContext(
-            new UpdateGlobalConfigRequestDto(MonitoringProvider: "unsupported"),
-            new UpdateGlobalConfigRequestDtoValidator([provider.Object]));
+            new UpdateGlobalConfigRequestDto(SystemEventRetentionDays: 0),
+            new UpdateGlobalConfigRequestDtoValidator());
 
         Assert.False(await ExecuteAsync(context));
         Assert.IsType<BadRequestObjectResult>(context.Result);

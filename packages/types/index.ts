@@ -100,7 +100,10 @@ export type SystemHealthDto = {
   lastFleetLatencyUpdate: string | null;
 };
 
-export type BackgroundJobStatusDto = Required<Omit<Generated.BackgroundJobStatusDto, 'jobId' | 'jobName' | 'jobArgs' | 'state' | 'createdAt' | 'durationSeconds' | 'exceptionMessage'>> & {
+// The legacy settings jobs table still uses this presentation shape while
+// its data now comes from the scoped PipelineRun diagnostics endpoint. It is
+// intentionally kept local because the old public Hangfire DTO was retired.
+export type BackgroundJobStatusDto = {
   jobId: string;
   jobName: string;
   jobArgs: string | null;
@@ -108,6 +111,8 @@ export type BackgroundJobStatusDto = Required<Omit<Generated.BackgroundJobStatus
   createdAt: string | null;
   durationSeconds: number | null;
   exceptionMessage: string | null;
+  tenantName: string | null;
+  monitorName: string | null;
 };
 
 export type UserResponseDto = Generated.UserResponseDto;

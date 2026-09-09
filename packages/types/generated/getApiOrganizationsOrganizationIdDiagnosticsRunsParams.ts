@@ -5,9 +5,7 @@
  * OpenAPI spec version: 1.0
  */
 
-export type GetApiIntranetCalendarFeedIcsParams = {
-/**
- * The calendar feed token.
- */
-token?: string;
+export type GetApiOrganizationsOrganizationIdDiagnosticsRunsParams = {
+tenantId?: string;
+take?: number;
 };

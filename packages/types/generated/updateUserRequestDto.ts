@@ -6,8 +6,14 @@
  */
 import type { UserRole } from './userRole';
 
+/**
+ * Request data for partially updating an application user.
+ */
 export interface UpdateUserRequestDto {
-  /** @nullable */
+  /**
+     * The replacement display name, or null to keep the current name.
+     * @nullable
+     */
   name?: string | null;
   role?: UserRole;
 }

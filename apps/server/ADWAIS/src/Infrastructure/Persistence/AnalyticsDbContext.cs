@@ -56,6 +56,11 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
     
     // intranät
 
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Conventions.Add(_ => new EnumToStringConvention());
+    }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -104,12 +109,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(e => e.Source).HasMaxLength(100);
             entity.Property(e => e.Code).HasMaxLength(100).IsRequired()
                 .HasDefaultValue("legacy");
-            entity.Property(e => e.Audience).StoreAsString().HasMaxLength(50)
+            entity.Property(e => e.Audience).HasMaxLength(50)
                 .HasDefaultValue(SystemEventAudience.Platform);
             entity.Property(e => e.TraceId).HasMaxLength(64);
             entity.Property(e => e.RequestId).HasMaxLength(200);
             entity.Property(e => e.SuggestedAction).HasMaxLength(500);
-            entity.Property(e => e.Level).StoreAsString().HasMaxLength(50);
+            entity.Property(e => e.Level).HasMaxLength(50);
             entity.HasOne(e => e.Tenant)
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
@@ -129,9 +134,9 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.ToTable("pipeline_run");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("uuid_generate_v4()");
-            entity.Property(e => e.Kind).StoreAsString().HasMaxLength(50);
-            entity.Property(e => e.Trigger).StoreAsString().HasMaxLength(50);
-            entity.Property(e => e.State).StoreAsString().HasMaxLength(50);
+            entity.Property(e => e.Kind).HasMaxLength(50);
+            entity.Property(e => e.Trigger).HasMaxLength(50);
+            entity.Property(e => e.State).HasMaxLength(50);
             entity.Property(e => e.ResourceKey).HasMaxLength(200);
             entity.Property(e => e.ResourceName).HasMaxLength(255);
             entity.Property(e => e.HangfireJobId).HasMaxLength(100);
@@ -160,7 +165,6 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(t => t.OrganizationId).IsRequired();
             entity.Property(t => t.Name).HasMaxLength(255);
             entity.Property(t => t.Type)
-                .StoreAsString()
                 .HasMaxLength(50)
                 .HasDefaultValue(TenantType.Mixed);
             entity.Property(t => t.OrderProvider)
@@ -204,7 +208,6 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.ToTable("orders");
             entity.HasKey(o => o.Id);
             entity.Property(o => o.OrderState)
-                .StoreAsString()
                 .HasMaxLength(255);
             entity.Property(o => o.OrderNumber).HasMaxLength(255);
             entity.Property(o => o.Provider).HasMaxLength(100).IsRequired();
@@ -439,7 +442,6 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(access => access.Id)
                 .HasDefaultValueSql("uuid_generate_v4()");
             entity.Property(access => access.Role)
-                .StoreAsString()
                 .HasMaxLength(50)
                 .IsRequired();
             entity.Property(access => access.CreatedAt)
@@ -599,12 +601,10 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options, ID
             entity.Property(oe => oe.Description).IsRequired(false);
             entity.Property(oe => oe.Location).HasMaxLength(255).IsRequired(false);
             entity.Property(oe => oe.EventType)
-                .StoreAsString()
                 .HasMaxLength(20)
                 .IsRequired()
                 .HasDefaultValue(EventType.General);
             entity.Property(oe => oe.Recurrence)
-                .StoreAsString()
                 .HasMaxLength(20)
                 .IsRequired()
                 .HasDefaultValue(RecurrenceType.None);

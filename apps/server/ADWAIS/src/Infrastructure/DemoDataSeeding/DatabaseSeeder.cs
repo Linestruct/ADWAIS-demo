@@ -92,7 +92,7 @@ public static class DatabaseSeeder
             return monitoringHistorySeeded;
         }
 
-        var endDate = DemoDataSimulation.FloorToFinancialInterval(DateTimeOffset.UtcNow);
+        var endDate = DemoDataSimulation.FloorToHistoricalFinancialInterval(DateTimeOffset.UtcNow);
         var startDate = endDate.AddMonths(-24);
 
         progress.StartStep(5, "Financial order history");
@@ -206,7 +206,7 @@ public static class DatabaseSeeder
         TimeZoneInfo reportingTimeZone)
     {
         var count = 0;
-        var intervalMinutes = RuntimeDataSeederJob.FinancialSimulationIntervalMinutes;
+        var intervalMinutes = RuntimeDataSeederJob.HistoricalFinancialDataIntervalMinutes;
         if (60 % intervalMinutes != 0)
             throw new InvalidOperationException("The financial simulation interval must divide evenly into one hour.");
 
@@ -234,7 +234,8 @@ public static class DatabaseSeeder
             var expectedOrdersPerRun = DemoDataSimulation.GetExpectedOrderCountPerRun(
                 profile,
                 hourStart.AddMinutes(firstSlot * intervalMinutes),
-                reportingTimeZone);
+                reportingTimeZone,
+                intervalMinutes);
             var guaranteedOrdersPerRun = (int)expectedOrdersPerRun;
             var fractionalProbability = expectedOrdersPerRun - guaranteedOrdersPerRun;
 

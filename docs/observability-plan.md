@@ -1,6 +1,6 @@
 # Observability: organization diagnostics and platform operations
 
-Status: proposed design, not an approved implementation specification.
+Status: the scoped run/failure explorer and observability baseline are implemented; integration verification remains tracked below.
 
 ## Purpose and decisions
 
@@ -13,16 +13,17 @@ An organization monitors financial data and integrations for many tenants. A ten
 
 The proposed direction is:
 
-- Give organizations an application-owned diagnostics API with safe events and pipeline history scoped to their data.
-- Give platform administrators a separate operations API and access to technical telemetry.
+- Build a new in-product diagnostics experience as the primary deliverable: organization users find and act on their data problems, while platform operators investigate shared technical problems.
+- Give that experience application-owned APIs, safe events, and pipeline history scoped to the viewer's data.
+- Give platform administrators a separate operations experience and access to technical telemetry.
 - Use native health checks for host probes. They do not replace either diagnostics API.
 - Keep queryable operational events in the application database. They are not a complete technical log or a compliance audit trail.
-- Use structured logs as the baseline technical signal. OpenTelemetry export is an optional deployment capability, not a dependency of organization diagnostics.
+- Instrument the application with OpenTelemetry from the first pipeline implementation. When an installation enables OTLP export, Aspire Dashboard is the live technical-diagnostics target. The product diagnostics API remains available whether or not OTLP is enabled.
 - Decide whether to record a failure at the operation boundary. A failed FluentResults result is not automatically an event.
 
-This is greenfield work: existing pages, navigation, and API shapes are not compatibility constraints. Revise or replace the UI around organization diagnostics and platform operations. Frontend implementation has not been inspected for this plan; that limits implementation detail, not design scope.
+This is greenfield work: existing pages, navigation, and API shapes are not compatibility constraints. The UI is the primary product outcome, not a later consumer of backend work. Diagnostics lives under Settings and is built around a filterable run/failure explorer. A row identifies the organization in platform view, tenant, pipeline, type, run state, requested/completed times, and a safe result. Expanding a row shows attempts, outcome, work count, request/trace references, and related safe events.
 
-The organization experience should start with data freshness and actionable pipeline issues, then let users inspect a resource's runs and safe events. Platform operations should start with shared infrastructure and affected organizations, with an explicit transition into an organization's diagnostics. Users with both roles must always see which scope they are viewing. Page count and layout should follow these tasks rather than mirror controllers or preserve the current two pages.
+The organization experience answers which tenant or organization operation failed, when it failed, and what can be fixed. Platform operations answers whether shared services and workers are healthy and which organizations are affected, then lets a platform administrator inspect the same run history across all organizations. These are separate scopes and contracts; the platform view is not a second copy of the organization status table.
 
 ## 1. Scope and access
 
@@ -157,15 +158,18 @@ Diagnostic APIs return HTTP 200 with degraded/unavailable component states when 
 
 ## 6. API shape and unsafe mutations
 
-Proposed routes, subject to repository naming conventions:
+These are backing contracts for the new UI, subject to repository naming conventions:
 
 | Route | Contract |
 |---|---|
 | GET /api/organizations/{organizationId}/diagnostics/pipelines | Authorized resource status and scoped summary |
-| GET /api/organizations/{organizationId}/diagnostics/runs | Scoped cursor-paginated run history |
+| GET /api/organizations/{organizationId}/diagnostics/runs | Scoped bounded latest-page run history; add a cursor when deeper history is required |
+| GET /api/organizations/{organizationId}/diagnostics/runs/{runId} | One authorized run with related safe events |
 | GET /api/organizations/{organizationId}/diagnostics/events | Scoped safe event history |
 | GET /api/platform/diagnostics/health | Infrastructure/worker status and affected-org summary |
+| GET /api/platform/diagnostics/pipelines | All organization pipeline status, safe for platform administrators; optional organization filter |
 | GET /api/platform/diagnostics/runs | Cross-org support view of application runs |
+| GET /api/platform/diagnostics/runs/{runId} | One cross-org run with related safe events |
 | GET /api/platform/diagnostics/events | Platform event view with scope/audience filters |
 
 Apply identical authorization to future single-record endpoints. Follow established denied-scope/missing-resource ProblemDetails contracts without unscoped existence lookups. Use FluentValidation and typed ValidationError for invalid queries. Require take in 1..100, validate enum/date filters and cursors, and order by timestamp plus ID. Index organization/time/ID, with tenant indexes as needed. Totals use the authorized query, not the returned page.
@@ -174,29 +178,43 @@ Remove ClearErrors as a product action. Clearing failure fields is not recovery 
 
 Remove public DELETE .../clear history deletion. Scheduled retention handles normal cleanup; this design adds no org-admin deletion API. Disable legacy global clear routes during migration. If a temporary platform-only cleanup route must remain, reject olderThanDays outside an explicit positive range before mutation and record the actor. Negative-value behavior is not preserved.
 
-## 7. Telemetry and hosting
+## 7. OpenTelemetry and the backend
 
-Every installation gets application diagnostics and structured ILogger output. Configure JSON console logs with service/version/environment and operation correlation. Self-hosting requires no collector or hosted account; telemetry is never automatically sent to the software author. Application platform roles do not themselves grant access to an external log backend.
+OpenTelemetry is part of the implementation, not a late exporter retrofit. Configure it once in a small `AddObservability` composition-root extension. That extension owns service/version/environment resource attributes, instrumentation, and conditional OTLP export. Domain entities and application DTOs must not depend on OpenTelemetry packages.
 
-Enable OpenTelemetry only with explicit export configuration and an OTLP destination. Start with request, outbound HTTP, database tracing, and supported job-boundary activities. Verify compatibility with installed .NET/Npgsql/Hangfire versions; avoid duplicate database spans from overlapping EF/Npgsql instrumentation. The baseline works without export. An exporter does not supply a query backend; see [OpenTelemetry exporters](https://opentelemetry.io/docs/languages/dotnet/exporters/).
+Instrument the same operation boundaries that write `PipelineRun` and safe application events. For each pipeline execution, the boundary:
 
-Initial metrics answer operator questions: request errors/latency, provider errors/latency, pipeline attempts/final outcomes/duration, and reliable worker/queue state. Use bounded labels such as pipeline kind, provider kind, and outcome code. Keep organization, tenant, run, actor, URL, and exception text out of metric labels. Per-org breakdowns use the scoped API and restricted logs/traces. See [OpenTelemetry .NET metric guidance](https://opentelemetry.io/docs/languages/dotnet/metrics/best-practices/).
+1. Restores or starts an `Activity` from a single application `ActivitySource`.
+2. Opens a structured log scope with trusted organization, tenant, pipeline, run, request, and trace correlation where known.
+3. Records a small set of `Meter` counters/histograms for attempt, final outcome, duration, and provider activity.
+4. Updates the durable run record and writes a safe event when the outcome is significant.
 
-Choose sampling, backend access, retention, and a useful dashboard/alert with the deployment. Keep final application failures independently of trace sampling. Export failure must not block requests/jobs. Organization pages do not query a telemetry backend or parse Prometheus output.
+Use automatic instrumentation for inbound ASP.NET Core requests and outbound `HttpClient` calls. Enable one verified database instrumentation path for EF/Npgsql, not overlapping paths that create duplicate spans. Add a small Hangfire client/server filter or equivalent trusted job metadata path to propagate W3C trace context and run ID across enqueue and execution. Background work starts its own execution activity and links it to the initiating request when one exists. It must not rely on HTTP scope being present in a worker.
+
+The baseline in this repository enables ASP.NET Core, `HttpClient`, and EF Core instrumentation. A Hangfire client/server filter carries W3C context into background execution activities. Package compatibility and sensitive-field behavior still need end-to-end verification with the selected Aspire deployment.
+
+Initial metrics answer operator questions: request errors/latency, provider errors/latency, pipeline attempts/final outcomes/duration, and reliable worker/queue state. Use bounded labels such as pipeline kind, provider kind, and outcome code. Keep organization, tenant, run, actor, URL, and exception text out of metric labels. Per-organization investigation uses the scoped application API and restricted logs/traces. See [OpenTelemetry .NET metric guidance](https://opentelemetry.io/docs/languages/dotnet/metrics/best-practices/).
+
+Aspire Dashboard is the selected live technical-diagnostics target. Run it standalone where live logs, traces, and metrics are useful. It receives OTLP and normally keeps telemetry in memory, so it is intentionally not a long-term history system. Do not adopt an Aspire AppHost solely for this purpose. [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone) documents its standalone OTLP receiver and in-memory behavior.
+
+OTLP export is optional per installation. `AddObservability` must work with no OTLP endpoint configured: it creates no unavailable-backend failure path, and the API/workers still start and operate normally. In that mode, ADWAIS diagnostics continue to use durable `PipelineRun`, safe event, and current-state data. When an OTLP endpoint is configured, it targets Aspire Dashboard and provides live platform investigation only. Export failure must not block requests/jobs. Product diagnostics never query a telemetry backend or parse Prometheus output, and durable final application failures remain available even if traces are sampled out.
+
+Use `OpenTelemetry:OtlpEndpoint` or the standard `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable. Leave both unset when the deployment does not run an OTLP receiver.
+
+Keep standard OTLP configuration so a later retained backend can be introduced without changing pipeline instrumentation. Such a backend is not part of this delivery. Aspire access is restricted to platform operators; an application platform role does not itself grant access to its host/dashboard.
 
 ## 8. Retention and migration
 
-Retention is a platform deployment policy. Events, completed runs, and external logs/traces have separate settings. Existing SystemEventRetentionDays governs rows, not exported logs. Set durations for the support window/volume before rollout; do not silently change retention in a schema migration. Exclude active/unresolved runs from cleanup until reconciled, and preserve current status/last success.
+Retention is a platform deployment policy. Events and completed runs retain history in the application database; Aspire Dashboard has no long-term retention requirement. A future retained telemetry backend will have separate log/trace/metric retention. Existing SystemEventRetentionDays governs rows, not exported logs. Set durations for the support window/volume before rollout; do not silently change retention in a schema migration. Exclude active/unresolved runs from cleanup until reconciled, and preserve current status/last success.
 
 Use bounded cleanup batches and report cleanup failure. Keep occurrence-time ownership. Resource deletion must explicitly handle retention/anonymization, not accidentally cascade-delete history. Selected admin events remain operational records, not guaranteed tamper-proof auditing.
 
-Migrate additively:
+The observability schema migration is already applied for this local-development project. No historical event classification or compatibility backfill is part of this delivery. Future changes use ordinary EF migrations and only add fields needed by the current workflows.
 
-1. Add event ownership/audience/code/correlation and safe DTOs. New org events require validated ownership. Legacy rows start platform-only.
-2. Backfill ownership only from reliable evidence. A current tenant relationship is insufficient if historical reassignment cannot be ruled out. Never assign unknown rows to a default org. Old messages/details remain platform-only unless deliberately converted to safe templates.
-3. Add run tracking/explicit success semantics per pipeline. Mark incomplete historical coverage; never fabricate past successes or trust parsed legacy arguments as ownership.
-4. Build or revise the organization and platform UI around these workflows, and update generated OpenAPI/client contracts. Replace old routes and consumers together where practical; legacy adapters are not required for compatibility. Any temporary adapters must enforce the new scope/redaction rules.
-5. Remove obsolete global aggregations, entity-returning endpoints, raw job DTOs, and clear operations. Retire redundant fields only after all writers/readers migrate.
+1. Keep event ownership/audience/code/correlation and safe DTOs enforced for new writes. Existing unknown rows remain available only under the existing platform-safe rules until retention removes them.
+2. Keep run tracking and explicit success semantics at each pipeline boundary. Never fabricate historical successes or infer ownership from parsed legacy arguments.
+3. Build organization and platform UI with generated OpenAPI/client contracts. Legacy adapters are not required for this greenfield surface.
+4. Remove obsolete global aggregations, entity-returning endpoints, raw job DTOs, and clear operations as their consumers disappear.
 
 ## 9. Delivery and verification
 
@@ -204,13 +222,11 @@ Use independently reviewable slices. Replace the old fixed 2.5-day estimate: thi
 
 | Slice | Deliverable | Required evidence |
 |---|---|---|
-| 1. Close exposure | Scoped safe event/job reads, query validation, disabled global clears, safe 500 detail | Org A cannot read/change B; negative input cannot mutate/query unsafely; no stack/payload leaks |
-| 2. Event contract | Scope/audience/correlation, safe summaries, explicit failure policy | Validation creates no event; scheduled configuration failure does; original error survives persistence failure |
-| 3. One complete pipeline | Order ingestion state/runs and org routes | Zero-order success, configuration failure, retry/recovery, exhausted retry, cancellation |
-| 4. Other pipelines | Feed/monitor mappings to the same public meanings | Disabled/manual schedules, never-run resources, staleness, suppressed exceptions, correct aggregates |
-| 5. Platform operations | Component reports and configured probes | DB outage fails readiness only; absent workers visible; org failure does not make API unready |
-| 6. UI and cleanup | Organization/platform workflows, explicit scope navigation, removed legacy paths, retention enabled | Users can find stale data, understand failures, and inspect runs; degraded/unknown states render; scope changes cannot reuse broader cached data; cleanup preserves current status |
-| Independent, optional telemetry | Follow a request into background execution in a configured deployment | Correlation across retries, safe signals, unavailable exporter has no business effect |
+| 1. Product workflow and safety baseline | Organization/platform run explorer, scoped safe event/run reads, query validation, disabled global clears, safe 500 detail | An org user can identify the tenant/run at issue and see only its safe data; Org A cannot read/change B; negative input cannot mutate/query unsafely; no stack/payload leaks |
+| 2. Event contract | Scope/audience/correlation, safe summaries, explicit failure policy, UI event presentation | Validation creates no event; scheduled configuration failure does; original error survives persistence failure; safe causes/actions are understandable in the UI |
+| 3. Pipeline run coverage | Order, feed, monitor, and account-stat run records, safe outcomes, and boundary instrumentation | A run identifies its organization/tenant, records success/failure, and exposes a safe reason; zero-work success and provider/configuration failure remain distinguishable |
+| 4. Platform operations and live telemetry | Component reports, configured probes, EF/Hangfire tracing, and Aspire Dashboard when OTLP is enabled | DB outage fails readiness only; org failure does not make API unready; with OTLP configured, Aspire receives correlated logs/traces/metrics; without it, API/workers still operate normally |
+| 5. Integration verification and cleanup | Role/scope tests, retry/interruption checks, retention, and removal of obsolete readers | Users can find a failed tenant/run; scope changes cannot reuse broader cached data; cleanup preserves current status; ambiguous job lifecycle states are visible |
 
 Cross-cutting tests cover two hosted organizations, self-hosting with multiple platform admins, a dual-role person, tenant restrictions, and a kiosk. Exercise lists/counts, unauthorized filter IDs, null scope, guessed record IDs, conflicting selection headers, and legacy rows.
 
@@ -220,6 +236,6 @@ Test safe projections with sample credentials/private URLs in exceptions/provide
 
 ## Proposed product defaults and boundaries
 
-This proposal gives human Employee/Viewer users safe diagnostic reads within existing resource grants, excludes kiosks, removes manual error clearing, and removes org-level history deletion. These are defaults to review, not claims about current behavior. Retention durations and a managed-host telemetry backend remain deployment choices. Tenant-user boundaries are supported without building a tenant-user feature now.
+This proposal gives human Employee/Viewer users safe diagnostic reads within existing resource grants, excludes kiosks, removes manual error clearing, and removes org-level history deletion. These are defaults to review, not claims about current behavior. Application-history retention remains a deployment choice; Aspire has no long-term retention role. Tenant-user boundaries are supported without building a tenant-user feature now.
 
-UI redesign is in scope; detailed layouts remain implementation work. Out of scope: generic workflow engines, a browser metrics service, custom incident management, guaranteed audit delivery, and per-organization alert subscriptions. Add those for a concrete requirement.
+UI redesign is in scope and the first run explorer is implemented. Out of scope: generic workflow engines, a browser metrics service, custom incident management, guaranteed audit delivery, Grafana Cloud integration, and per-organization alert subscriptions. Add those for a concrete requirement.

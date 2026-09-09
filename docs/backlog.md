@@ -19,6 +19,3 @@ Context: `user_access.role` and `calendar_event.event_type` plus `calendar_event
 Work: add a `HasCheckConstraint` per table in `AnalyticsDbContext` using `DbEnum.CheckConstraintSql<TEnum>(column)`. One migration scaffolds all three. Existing data already holds enum names, so the constraint applies cleanly.
 
 Verify: `pnpm migration:update` applies without violations. Insert a garbage value into one column with direct SQL and confirm the database rejects it.
-
-## 3. Anyone with a valid oicd login can "log in" to the frontend
-This is technically correct since the backend won't let the user access any data since theyre not provisioned but the frontend should provide some kind of feedback for this, but how?

@@ -42,10 +42,9 @@ vi.mock('./useOrgSelection', () => ({
   }),
 }));
 
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function createWrapper(queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})) {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
@@ -230,5 +229,22 @@ describe('useCurrentUser', () => {
 
     await waitFor(() => expect(result.current.isUnprovisioned).toBe(false));
     expect(result.current.user).toBeNull();
+  });
+
+  it('does not refetch a failed access check when the gate remounts', async () => {
+    mockApiFetch.mockRejectedValue(Object.assign(new Error('Bad gateway.'), { status: 502 }));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = createWrapper(queryClient);
+
+    const first = renderHook(() => useCurrentUser(), { wrapper });
+    await waitFor(() => expect(first.result.current.isAccessCheckError).toBe(true));
+    first.unmount();
+
+    const second = renderHook(() => useCurrentUser(), { wrapper });
+    await waitFor(() => expect(second.result.current.isAccessCheckError).toBe(true));
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    queryClient.clear();
   });
 });

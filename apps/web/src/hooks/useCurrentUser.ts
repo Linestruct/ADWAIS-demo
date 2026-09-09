@@ -68,6 +68,10 @@ export function useCurrentUser() {
       }),
     enabled: hasOidcUser,
     retry: false,
+    retryOnMount: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
@@ -76,6 +80,11 @@ export function useCurrentUser() {
     queryFn: () => apiFetch<UserProfile>('/api/users/me'),
     enabled: !!kioskToken,
     retry: false,
+    retryOnMount: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Calculate profile and role dynamically on render

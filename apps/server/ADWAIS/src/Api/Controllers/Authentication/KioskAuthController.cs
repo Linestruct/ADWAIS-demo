@@ -77,7 +77,7 @@ public class KioskAuthController(IKioskService kioskService, ICurrentAccess curr
     /// their own organization's devices.
     /// </summary>
     [HttpGet("devices")]
-    [Authorize(Policy = "StaffAccess")]
+    [Authorize(Policy = "KioskOrStaffAccess")]
     public async Task<ActionResult<IReadOnlyList<KioskDeviceResponseDto>>> GetDevices(CancellationToken ct)
     {
         var organizationId = currentAccess.Scope?.OrganizationId;

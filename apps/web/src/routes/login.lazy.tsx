@@ -96,7 +96,7 @@ function LoginComponent() {
 
       <div className="pt-4 flex justify-between items-center text-sm text-on-surface-variant tracking-wide uppercase relative z-10 w-full animate-stagger delay-300">
         <span><a href={"https://marmenlind.com?utm_source=adwais"} target="_blank" rel="noopener noreferrer">© Marmenlind</a></span>
-        <span className="text-on-surface-variant">v1.0.0</span>
+        <span className="text-on-surface-variant">v2.0.0</span>
       </div>
     </>
   );

@@ -18,7 +18,8 @@ public class RuntimeDataSeederJob(
     IDbContextFactory<AnalyticsDbContext> dbContextFactory,
     ILogger<RuntimeDataSeederJob> logger)
 {
-    public const int FinancialSimulationIntervalMinutes = 1;
+    // Five-minute batches keep the demo live without writing a row every minute.
+    public const int FinancialSimulationIntervalMinutes = 5;
     public const int LatencySimulationIntervalMinutes = 30;
     public const int AvailabilitySimulationIntervalMinutes = 24 * 60;
 
@@ -41,23 +42,40 @@ public class RuntimeDataSeederJob(
         if (!tenants.Any()) return;
 
         var random = new Random();
-        var now = DateTimeOffset.UtcNow;
+        var now = DemoDataSimulation.FloorToFinancialInterval(DateTimeOffset.UtcNow);
         var orders = new List<Order>();
+
+        var tenantIds = tenants.Select(tenant => tenant.Id).ToArray();
+        var runtimeTenantsAlreadySeeded = (await db.Orders
+                .AsNoTracking()
+                .Where(order => order.Provider == IntegrationProviders.Demo
+                    && order.ExternalId.StartsWith("RUNTIME-")
+                    && order.CreatedDate == now
+                    && tenantIds.Contains(order.TenantId))
+                .Select(order => order.TenantId)
+                .Distinct()
+                .ToListAsync())
+            .ToHashSet();
 
         foreach (var tenant in tenants)
         {
             var profile = DemoDataCatalog.FindTenant(tenant.Name);
             if (profile == null) continue;
 
+            // A deterministic slot seed makes retries idempotent and keeps a
+            // manually triggered run from producing a second batch.
+            if (runtimeTenantsAlreadySeeded.Contains(tenant.Id)) continue;
+            var tenantRandom = new Random(CreateSlotSeed(tenant.Id, now));
+
             var count = DemoDataSimulation.GenerateOrderCount(
                 profile,
                 now,
                 reportingTimeZone,
-                random);
+                tenantRandom);
 
             if (count > 0)
             {
-                AddOrders(orders, tenant.Id, profile, count, now, random);
+                AddOrders(orders, tenant.Id, profile, count, now, tenantRandom);
             }
         }
 
@@ -159,7 +177,7 @@ public class RuntimeDataSeederJob(
             var valueIncVat = DemoDataSimulation.GenerateOrderValue(profile, random);
             decimal valueExcVat = Math.Round(valueIncVat / 1.25m, 2);
 
-            var externalId = $"RUNTIME-{tenantId.ToString()[..4]}-{now.Ticks}-{i}";
+            var externalId = $"RUNTIME-{tenantId:N}-{now.UtcTicks}-{i}";
             orders.Add(new Order
             {
                 Id = Guid.NewGuid(),
@@ -174,5 +192,15 @@ public class RuntimeDataSeederJob(
                 Currency = "SEK"
             });
         }
+    }
+
+    private static int CreateSlotSeed(Guid tenantId, DateTimeOffset slot)
+    {
+        var bytes = tenantId.ToByteArray();
+        var seed = 17;
+        foreach (var value in bytes)
+            seed = unchecked(seed * 31 + value);
+
+        return unchecked(seed ^ (int)slot.UtcTicks ^ (int)(slot.UtcTicks >> 32));
     }
 }

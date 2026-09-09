@@ -4357,10 +4357,12 @@
         "tags": [
           "OrganizationDiagnostics"
         ],
+        "summary": "Retrieves the current pipeline status summary for an organization.",
         "parameters": [
           {
             "name": "organizationId",
             "in": "path",
+            "description": "The organization whose pipelines should be inspected.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4397,10 +4399,12 @@
         "tags": [
           "OrganizationDiagnostics"
         ],
+        "summary": "Retrieves recent pipeline runs for an organization.",
         "parameters": [
           {
             "name": "organizationId",
             "in": "path",
+            "description": "The organization whose runs should be returned.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4410,6 +4414,7 @@
           {
             "name": "tenantId",
             "in": "query",
+            "description": "Optional tenant filter.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -4418,6 +4423,7 @@
           {
             "name": "take",
             "in": "query",
+            "description": "Maximum number of runs to return.",
             "schema": {
               "type": "integer",
               "format": "int32",
@@ -4463,10 +4469,12 @@
         "tags": [
           "OrganizationDiagnostics"
         ],
+        "summary": "Retrieves one pipeline run and its related diagnostic events.",
         "parameters": [
           {
             "name": "organizationId",
             "in": "path",
+            "description": "The organization that owns the run.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4476,6 +4484,7 @@
           {
             "name": "runId",
             "in": "path",
+            "description": "The pipeline run identifier.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4512,10 +4521,12 @@
         "tags": [
           "OrganizationDiagnostics"
         ],
+        "summary": "Retrieves recent diagnostic events for an organization.",
         "parameters": [
           {
             "name": "organizationId",
             "in": "path",
+            "description": "The organization whose events should be returned.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4525,6 +4536,7 @@
           {
             "name": "tenantId",
             "in": "query",
+            "description": "Optional tenant filter.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -4533,6 +4545,7 @@
           {
             "name": "take",
             "in": "query",
+            "description": "Maximum number of events to return.",
             "schema": {
               "type": "integer",
               "format": "int32",
@@ -4542,6 +4555,7 @@
           {
             "name": "minLevel",
             "in": "query",
+            "description": "Optional minimum event level.",
             "schema": {
               "$ref": "#/components/schemas/SystemEventLevel"
             }
@@ -4762,6 +4776,7 @@
         "tags": [
           "PlatformDiagnostics"
         ],
+        "summary": "Retrieves the current platform health summary.",
         "responses": {
           "200": {
             "description": "OK",
@@ -4791,10 +4806,12 @@
         "tags": [
           "PlatformDiagnostics"
         ],
+        "summary": "Retrieves current pipeline status for the platform or one organization.",
         "parameters": [
           {
             "name": "organizationId",
             "in": "query",
+            "description": "Optional organization filter.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -4839,10 +4856,12 @@
         "tags": [
           "PlatformDiagnostics"
         ],
+        "summary": "Retrieves recent pipeline runs across the platform.",
         "parameters": [
           {
             "name": "organizationId",
             "in": "query",
+            "description": "Optional organization filter.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -4851,6 +4870,7 @@
           {
             "name": "tenantId",
             "in": "query",
+            "description": "Optional tenant filter.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -4859,6 +4879,7 @@
           {
             "name": "take",
             "in": "query",
+            "description": "Maximum number of runs to return.",
             "schema": {
               "type": "integer",
               "format": "int32",
@@ -4904,10 +4925,12 @@
         "tags": [
           "PlatformDiagnostics"
         ],
+        "summary": "Retrieves one platform pipeline run and its related diagnostic events.",
         "parameters": [
           {
             "name": "runId",
             "in": "path",
+            "description": "The pipeline run identifier.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4944,10 +4967,12 @@
         "tags": [
           "PlatformDiagnostics"
         ],
+        "summary": "Retrieves recent diagnostic events across the platform.",
         "parameters": [
           {
             "name": "organizationId",
             "in": "query",
+            "description": "Optional organization filter.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -4956,6 +4981,7 @@
           {
             "name": "tenantId",
             "in": "query",
+            "description": "Optional tenant filter.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -4964,6 +4990,7 @@
           {
             "name": "take",
             "in": "query",
+            "description": "Maximum number of events to return.",
             "schema": {
               "type": "integer",
               "format": "int32",
@@ -4973,6 +5000,7 @@
           {
             "name": "minLevel",
             "in": "query",
+            "description": "Optional minimum event level.",
             "schema": {
               "$ref": "#/components/schemas/SystemEventLevel"
             }

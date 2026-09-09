@@ -24,7 +24,8 @@ namespace Adwais.Infrastructure.Services;
 /// Resolves the configured weather location through Open-Meteo geocoding, then fetches
 /// current conditions from the Open-Meteo Forecast API.
 /// No API key required. Responses use the configured cache interval.
-/// The location and cache entry are scoped to the current organization.
+/// Organization requests use their configured location and cache entry. The
+/// unscoped platform-admin view uses Stockholm as its default location.
 /// </summary>
 public class WeatherService(
     HttpClient httpClient,
@@ -33,6 +34,7 @@ public class WeatherService(
     ICurrentAccess currentAccess) : IWeatherService
 {
     private const string CacheKeyPrefix = "weather:current:";
+    private const string PlatformDefaultLocation = "Stockholm";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -41,16 +43,21 @@ public class WeatherService(
 
     public async Task<Result<WeatherDto>> GetCurrentWeatherAsync(CancellationToken ct = default)
     {
-        var orgId = currentAccess.Scope?.OrganizationId;
-        if (orgId is null)
+        var scope = currentAccess.Scope;
+        if (scope is null)
             return Result.Fail<WeatherDto>(new ScopeDeniedError("an organization scope", "none"));
 
-        var config = await configService.GetConfigAsync(orgId.Value, ct);
-        var location = config?.WeatherLocation;
+        var orgId = scope.OrganizationId;
+        var config = orgId is { } organizationId
+            ? await configService.GetConfigAsync(organizationId, ct)
+            : null;
+        var location = scope.IsPlatformAdmin
+            ? PlatformDefaultLocation
+            : config?.WeatherLocation;
         if (string.IsNullOrWhiteSpace(location))
             return Result.Fail<WeatherDto>(new ConfigurationError("Weather location is not configured."));
 
-        var cacheKey = $"{CacheKeyPrefix}{orgId}";
+        var cacheKey = $"{CacheKeyPrefix}{orgId?.ToString() ?? "platform"}";
         if (cache.TryGetValue(cacheKey, out WeatherDto? cached) && cached is not null)
             return Result.Ok(cached);
 
@@ -73,7 +80,10 @@ public class WeatherService(
             return Result.Fail<WeatherDto>(new ProviderError(exception.Message));
         }
 
-        var duration = TimeSpan.FromMinutes(config!.WeatherFetchIntervalMinutes > 0 ? config.WeatherFetchIntervalMinutes : 15);
+        var duration = TimeSpan.FromMinutes(
+            config is not null && config.WeatherFetchIntervalMinutes > 0
+                ? config.WeatherFetchIntervalMinutes
+                : 15);
         cache.Set(cacheKey, dto, duration);
         return Result.Ok(dto);
     }

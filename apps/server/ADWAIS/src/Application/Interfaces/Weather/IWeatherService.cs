@@ -12,6 +12,6 @@ namespace Adwais.Application.Interfaces;
 
 public interface IWeatherService
 {
-    /// <summary>Fetches current weather for the configured WeatherLocation.</summary>
+    /// <summary>Fetches current weather for the organization or the platform default location.</summary>
     Task<Result<WeatherDto>> GetCurrentWeatherAsync(CancellationToken ct = default);
 }

@@ -32,7 +32,8 @@ internal static class DemoDataSimulation
         var expectedOrdersPerRun = GetExpectedOrderCountPerRun(
             profile,
             timestamp,
-            reportingTimeZone);
+            reportingTimeZone,
+            RuntimeDataSeederJob.FinancialSimulationIntervalMinutes);
 
         return (int)expectedOrdersPerRun
             + (random.NextDouble() < expectedOrdersPerRun % 1.0 ? 1 : 0);
@@ -41,12 +42,13 @@ internal static class DemoDataSimulation
     public static double GetExpectedOrderCountPerRun(
         DemoTenantProfile profile,
         DateTimeOffset timestamp,
-        TimeZoneInfo reportingTimeZone)
+        TimeZoneInfo reportingTimeZone,
+        int intervalMinutes)
     {
         var reportingTimestamp = TimeZoneInfo.ConvertTime(timestamp, reportingTimeZone);
         var expectedOrdersToday = profile.DailyVolume * 7.0 * DailyWeights[(int)reportingTimestamp.DayOfWeek];
         var expectedOrdersThisHour = expectedOrdersToday * HourlyWeights[reportingTimestamp.Hour] / HourlyWeightTotal;
-        return expectedOrdersThisHour * RuntimeDataSeederJob.FinancialSimulationIntervalMinutes / 60.0;
+        return expectedOrdersThisHour * intervalMinutes / 60.0;
     }
 
     public static decimal GenerateOrderValue(DemoTenantProfile profile, Random random)
@@ -107,6 +109,9 @@ internal static class DemoDataSimulation
 
     public static DateTimeOffset FloorToFinancialInterval(DateTimeOffset timestamp)
         => FloorToInterval(timestamp, RuntimeDataSeederJob.FinancialSimulationIntervalMinutes);
+
+    public static DateTimeOffset FloorToHistoricalFinancialInterval(DateTimeOffset timestamp)
+        => FloorToInterval(timestamp, RuntimeDataSeederJob.HistoricalFinancialDataIntervalMinutes);
 
     public static DateTimeOffset FloorToLatencyInterval(DateTimeOffset timestamp)
         => FloorToInterval(timestamp, RuntimeDataSeederJob.LatencySimulationIntervalMinutes);

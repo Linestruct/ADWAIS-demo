@@ -159,7 +159,7 @@ public class RecurringJobRegistrationTests
 
         await RegisterAsync(seeding: true);
 
-        VerifyPerOrgJob<RuntimeDataSeederJob>(RecurringJobId.Platform(RecurringJobKind.RuntimeDataSeeder), "*/1 * * * *");
+        VerifyPerOrgJob<RuntimeDataSeederJob>(RecurringJobId.Platform(RecurringJobKind.RuntimeDataSeeder), "*/5 * * * *");
     }
 
     [Fact]

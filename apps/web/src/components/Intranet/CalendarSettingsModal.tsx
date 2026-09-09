@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { X, Settings, Link, RefreshCw, ShieldAlert } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { FormField } from '../common/ui/FormField';
 import { Button } from '../common/ui/Button';
 
@@ -31,14 +32,14 @@ export function CalendarSettingsModal({
 }: CalendarSettingsModalProps) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal((
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-2 backdrop-blur-sm animate-in fade-in sm:p-4"
       role="presentation"
       onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}
     >
-      <div className="bg-surface rounded-3xl m3-elevation-4 border-0 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 max-h-[90vh]">
-        <div className="flex items-center justify-between bg-surface px-6 py-5">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-surface m3-elevation-4 animate-in zoom-in-95 sm:max-h-[90vh]">
+        <div className="flex shrink-0 items-center justify-between bg-surface px-4 py-3 sm:px-6 sm:py-5">
           <h3 className="flex items-center gap-4 text-xl font-bold text-on-surface">
             <Settings size={20} className="text-on-surface-variant animate-spin-slow" /> Calendar Settings
           </h3>
@@ -47,7 +48,8 @@ export function CalendarSettingsModal({
           </button>
         </div>
         
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto bg-surface px-6 pb-6 custom-scrollbar">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface px-4 pb-4 text-sm sm:px-6 sm:pb-6 sm:text-base custom-scrollbar [overflow-wrap:anywhere]">
+          <div className="flex flex-col gap-6">
           {/* Personal ICS Subscription Feed */}
           <div className="flex flex-col gap-6">
             <h4 className="flex items-center gap-4 pl-1 text-base font-bold text-on-surface">
@@ -108,8 +110,9 @@ export function CalendarSettingsModal({
               </div>
             )}
           </div>
+          </div>
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

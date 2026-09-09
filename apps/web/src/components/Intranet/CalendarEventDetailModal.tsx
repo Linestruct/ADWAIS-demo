@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { X, Clock, MapPin, User as UserIcon, Globe, Repeat2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import type { CalendarEventDto } from '@types';
 import { getEventRangeLabel } from './calendar/calendarPresentation';
 import { Button } from '../common/ui/Button';
@@ -40,14 +41,14 @@ export function CalendarEventDetailModal({
 
   const badgeClass = BADGE_STYLES[event.eventType || ''] ?? DEFAULT_BADGE;
 
-  return (
+  return createPortal((
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-2 backdrop-blur-sm animate-in fade-in sm:p-4"
       role="presentation"
       onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}
     >
-      <div className="bg-surface rounded-3xl m3-elevation-4 border-0 w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95">
-        <div className="flex justify-between items-center bg-surface px-6 py-5">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-surface m3-elevation-4 animate-in zoom-in-95 sm:max-h-[90vh]">
+        <div className="flex shrink-0 items-center justify-between bg-surface px-4 py-3 sm:px-6 sm:py-5">
           <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full ${badgeClass}`}>
             {event.eventType || 'Event'}
           </span>
@@ -60,7 +61,8 @@ export function CalendarEventDetailModal({
           </button>
         </div>
         
-        <div className="flex flex-col gap-6 bg-surface px-6 pb-6">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface px-4 pb-4 text-sm sm:px-6 sm:pb-6 sm:text-base custom-scrollbar [overflow-wrap:anywhere]">
+          <div className="flex flex-col gap-6">
           <div>
             <h3 className="text-xl font-bold leading-snug text-on-surface">{event.title}</h3>
             {event.description && (
@@ -107,23 +109,24 @@ export function CalendarEventDetailModal({
             )}
           </div>
 
-          {isWriter && !event.externalUid && (
-            <div className="flex justify-end gap-4 pt-2">
-              <Button
-                onClick={() => event.id && onDelete(event.id)}
-                variant="text"
-                color="error"
-                className="!px-4 !text-base"
-              >
-                Delete
-              </Button>
-              <Button onClick={() => onEdit(event)} variant="tonal" color="secondary" className="!text-base">
-                Edit Event
-              </Button>
-            </div>
-          )}
+          </div>
         </div>
+        {isWriter && !event.externalUid && (
+          <div className="flex shrink-0 justify-end gap-4 bg-surface px-4 py-3 sm:px-6 sm:py-4">
+            <Button
+              onClick={() => event.id && onDelete(event.id)}
+              variant="text"
+              color="error"
+              className="!px-4 !text-base"
+            >
+              Delete
+            </Button>
+            <Button onClick={() => onEdit(event)} variant="tonal" color="secondary" className="!text-base">
+              Edit Event
+            </Button>
+          </div>
+        )}
       </div>
     </div>
-  );
+  ), document.body);
 }

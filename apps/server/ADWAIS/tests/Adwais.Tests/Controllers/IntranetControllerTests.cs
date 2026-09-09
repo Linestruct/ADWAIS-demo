@@ -67,18 +67,6 @@ public class IntranetControllerTests
     }
 
     [Fact]
-    public async Task ClearErrors_ShouldReturnGoneWithoutMutatingState()
-    {
-        // Arrange & Act
-        var result = await _controller.ClearErrors();
-
-        // Assert
-        var gone = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status410Gone, gone.StatusCode);
-        _healthServiceMock.Verify(s => s.ClearErrorsAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
     public async Task Webhooks_ReceiveBulletinPost_ShouldReturnOk_AndSaveToDb_WhenApiKeyIsValid()
     {
         // Arrange

@@ -5179,66 +5179,6 @@
         }
       }
     },
-    "/api/system/health/clear-errors": {
-      "post": {
-        "tags": [
-          "SystemHealth"
-        ],
-        "summary": "Clears all stored sync errors from tenants, monitors, and global configuration.",
-        "responses": {
-          "410": {
-            "description": "Gone",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/system/health/jobs": {
-      "get": {
-        "tags": [
-          "SystemHealth"
-        ],
-        "summary": "The legacy Hangfire job projection has been retired. Use the scoped\r\ndiagnostics runs endpoints instead.",
-        "responses": {
-          "410": {
-            "description": "Gone",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/tenants": {
       "get": {
         "tags": [

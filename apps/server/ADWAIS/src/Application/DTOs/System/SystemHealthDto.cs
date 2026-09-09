@@ -33,15 +33,3 @@ public record SyncHealthDto(
     int FeedsWithErrorsCount,
     string? GlobalSyncError
 );
-
-public record BackgroundJobStatusDto(
-    string JobId,
-    string JobName,
-    string? JobArgs,
-    string State,
-    DateTime? CreatedAt,
-    double? DurationSeconds,
-    string? ExceptionMessage,
-    string? TenantName = null,
-    string? MonitorName = null
-);

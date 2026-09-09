@@ -71,9 +71,9 @@ The managed set lives on `GlobalConfig.VisibleRecurringJobsCsv`, stored as kind 
 
 ## Recent executions and health
 
-`GET /api/system/health/jobs` filters rows by the payload org id. Platform scope keeps everything including platform jobs.
+Recent executions are read from the scoped diagnostics runs endpoints. The legacy Hangfire job-history endpoint has been removed.
 
-`GET /api/system/health` and `GET /api/job/recurring` mirror Hangfire internals and stay readable under the staff policies in force.
+`GET /api/system/health` remains as the aggregate health projection used by dashboard status widgets. `GET /api/job/recurring` exposes the recurring schedule and execution state.
 
 ## Dashboard
 

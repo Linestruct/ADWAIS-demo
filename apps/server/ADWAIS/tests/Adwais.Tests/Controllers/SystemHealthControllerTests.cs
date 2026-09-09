@@ -21,13 +21,4 @@ public class SystemHealthControllerTests
         Assert.Equal("PlatformDiagnosticsRead", authorization.Policy);
     }
 
-    [Fact]
-    public void GetRecentJobs_RequiresDiagnosticsAccess()
-    {
-        var action = typeof(SystemHealthController).GetMethod(nameof(SystemHealthController.GetRecentJobs));
-        var authorization = action?.GetCustomAttribute<AuthorizeAttribute>();
-
-        Assert.NotNull(authorization);
-        Assert.Equal("DiagnosticsRead", authorization.Policy);
-    }
 }

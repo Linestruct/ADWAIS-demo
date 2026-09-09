@@ -6,5 +6,8 @@
  */
 
 export type GetApiPlatformDiagnosticsPipelinesParams = {
+/**
+ * Optional organization filter.
+ */
 organizationId?: string;
 };

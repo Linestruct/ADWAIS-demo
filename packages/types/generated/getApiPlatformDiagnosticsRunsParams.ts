@@ -6,7 +6,16 @@
  */
 
 export type GetApiPlatformDiagnosticsRunsParams = {
+/**
+ * Optional organization filter.
+ */
 organizationId?: string;
+/**
+ * Optional tenant filter.
+ */
 tenantId?: string;
+/**
+ * Maximum number of runs to return.
+ */
 take?: number;
 };

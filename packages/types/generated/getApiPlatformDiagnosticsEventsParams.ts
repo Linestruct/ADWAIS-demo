@@ -7,8 +7,20 @@
 import type { SystemEventLevel } from './systemEventLevel';
 
 export type GetApiPlatformDiagnosticsEventsParams = {
+/**
+ * Optional organization filter.
+ */
 organizationId?: string;
+/**
+ * Optional tenant filter.
+ */
 tenantId?: string;
+/**
+ * Maximum number of events to return.
+ */
 take?: number;
+/**
+ * Optional minimum event level.
+ */
 minLevel?: SystemEventLevel;
 };

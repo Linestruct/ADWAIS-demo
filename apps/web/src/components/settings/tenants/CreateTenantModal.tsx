@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { Building2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import type { CreateTenantRequestDto } from '@types';
 import { FormField } from '../../common/ui/FormField';
 import { useOrderProviderDescriptorsQuery } from '../../../hooks/useIntegrationQueries';
@@ -46,20 +47,20 @@ export function CreateTenantModal({ isOpen, onClose, createTenant }: CreateTenan
     });
   };
 
-  return (
+  return createPortal((
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-2 backdrop-blur-sm animate-in fade-in sm:p-4"
       role="presentation"
       onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}
     >
       <form
         onSubmit={handleSubmit}
-        className="m3-elevation-4 flex w-full max-w-md flex-col overflow-hidden rounded-3xl border-0 bg-surface animate-in zoom-in-95"
+        className="m3-elevation-4 flex max-h-[calc(100dvh-1rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl border-0 bg-surface animate-in zoom-in-95 sm:max-h-[90vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-tenant-title"
       >
-        <div className="flex items-center justify-between bg-surface px-6 py-5">
+        <div className="flex shrink-0 items-center justify-between bg-surface px-4 py-3 sm:px-6 sm:py-5">
           <h3 id="create-tenant-title" className="flex items-center gap-4 text-xl font-bold text-on-surface">
             <Building2 size={20} className="text-on-surface-variant" aria-hidden="true" />
             Create tenant
@@ -69,10 +70,11 @@ export function CreateTenantModal({ isOpen, onClose, createTenant }: CreateTenan
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 bg-surface px-6 pb-6">
-          <p className="text-sm font-medium text-on-surface-variant mb-2">
-            Connect a commerce environment to the dashboard.
-          </p>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface px-4 pb-4 text-sm sm:px-6 sm:pb-6 sm:text-base custom-scrollbar [overflow-wrap:anywhere]">
+          <div className="flex flex-col gap-4">
+            <p className="mb-2 text-sm font-medium text-on-surface-variant">
+              Connect a commerce environment to the dashboard.
+            </p>
 
           <FormField
             id="tenant-name"
@@ -120,9 +122,10 @@ export function CreateTenantModal({ isOpen, onClose, createTenant }: CreateTenan
             onChange={e => setDraft({ ...draft, imageUrl: e.target.value })}
           />
 
+          </div>
         </div>
 
-        <div className="flex justify-end gap-3 bg-surface px-6 py-4">
+        <div className="flex shrink-0 justify-end gap-3 bg-surface px-4 py-3 sm:px-6 sm:py-4">
           <button type="button" onClick={onClose} disabled={createTenant.isPending} className="inline-flex min-h-11 items-center justify-center rounded-full px-4 text-base font-bold transition-colors hover:bg-surface-container-high focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:cursor-not-allowed disabled:text-on-surface/[0.38] disabled:hover:bg-transparent">
             Cancel
           </button>
@@ -132,5 +135,5 @@ export function CreateTenantModal({ isOpen, onClose, createTenant }: CreateTenan
         </div>
       </form>
     </div>
-  );
+  ), document.body);
 }

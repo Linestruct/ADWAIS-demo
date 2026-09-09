@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Calendar, Edit, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { EventType, RecurrenceType } from '@types';
 import { DatePickerField, TimePickerField } from '../common/ui/DateTimePickerField';
 import { FormField } from '../common/ui/FormField';
@@ -33,20 +34,20 @@ export function CalendarEventFormModal({ mode, isOpen, onClose, onSubmit, form, 
   const isEditing = mode === 'edit';
   const Icon = isEditing ? Edit : Calendar;
 
-  return (
+  return createPortal((
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-2 backdrop-blur-sm animate-in fade-in sm:p-4"
       role="presentation"
       onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}
     >
       <form
         onSubmit={onSubmit}
-        className="m3-elevation-4 flex w-full max-w-md flex-col overflow-hidden rounded-3xl border-0 bg-surface animate-in zoom-in-95"
+        className="m3-elevation-4 flex max-h-[calc(100dvh-1rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl border-0 bg-surface animate-in zoom-in-95 sm:max-h-[90vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${mode}-event-dialog-title`}
       >
-        <div className="flex items-center justify-between bg-surface px-6 py-5">
+        <div className="flex shrink-0 items-center justify-between bg-surface px-4 py-3 sm:px-6 sm:py-5">
           <h3 id={`${mode}-event-dialog-title`} className="flex items-center gap-4 text-xl font-bold text-on-surface">
             <Icon size={20} className="text-on-surface-variant" aria-hidden="true" />
             {isEditing ? 'Edit Calendar Event' : 'Add Calendar Event'}
@@ -56,7 +57,8 @@ export function CalendarEventFormModal({ mode, isOpen, onClose, onSubmit, form, 
           </button>
         </div>
 
-        <div className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto bg-surface px-6 pb-6 custom-scrollbar">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface px-4 pb-4 text-sm sm:px-6 sm:pb-6 sm:text-base custom-scrollbar">
+          <div className="flex flex-col gap-4">
           <FormField id={`${mode}-event-title`} label="Event Title" type="text" placeholder="Weekly Sync / Launch / etc." value={form.title} onChange={event => onChange({ ...form, title: event.target.value })} required />
 
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(112px,0.65fr)] gap-3">
@@ -83,9 +85,10 @@ export function CalendarEventFormModal({ mode, isOpen, onClose, onSubmit, form, 
             <option value={RecurrenceType.Yearly}>Yearly</option>
           </FormField>
 
+          </div>
         </div>
 
-        <div className="flex justify-end gap-3 bg-surface px-6 py-4">
+        <div className="flex shrink-0 justify-end gap-3 bg-surface px-4 py-3 sm:px-6 sm:py-4">
           <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-full px-4 text-base font-bold transition-colors hover:bg-surface-container focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary">Cancel</button>
           <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-full bg-on-primary-container px-5 text-base font-bold text-primary-container transition-colors hover:bg-brand-btn-quaternary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary">
             {isEditing ? 'Save Changes' : 'Save Event'}
@@ -93,5 +96,5 @@ export function CalendarEventFormModal({ mode, isOpen, onClose, onSubmit, form, 
         </div>
       </form>
     </div>
-  );
+  ), document.body);
 }

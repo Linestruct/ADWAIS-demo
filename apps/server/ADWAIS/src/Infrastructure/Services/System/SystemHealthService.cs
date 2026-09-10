@@ -10,17 +10,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Adwais.Application.DTOs.System;
 using Adwais.Application.Interfaces;
-using Adwais.Application.Common.Access;
 using Adwais.Application.Common.Interfaces;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace Adwais.Infrastructure.Services;
 
-public class SystemHealthService(IApplicationDbContext dbContext, ICurrentAccess currentAccess) : ISystemHealthService
+public class SystemHealthService(IApplicationDbContext dbContext) : ISystemHealthService
 {
     private readonly IApplicationDbContext _dbContext = dbContext;
-    private readonly ICurrentAccess _currentAccess = currentAccess;
 
     public async Task<SystemHealthDto> GetHealthAsync(CancellationToken ct = default)
     {

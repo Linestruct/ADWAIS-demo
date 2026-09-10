@@ -27,13 +27,14 @@ public static class AccessClaimsBuilder
         {
             identity.AddClaim(new Claim(AccessClaimTypes.IsPlatformAdmin, "true"));
         }
-        else
+
+        if (scope.OrganizationId is { } organizationId)
         {
-            identity.AddClaim(new Claim(AccessClaimTypes.OrganizationId, scope.OrganizationId!.Value.ToString()));
-            if (scope.TenantId is { } tenantId)
-            {
-                identity.AddClaim(new Claim(AccessClaimTypes.TenantId, tenantId.ToString()));
-            }
+            identity.AddClaim(new Claim(AccessClaimTypes.OrganizationId, organizationId.ToString()));
+        }
+        if (scope.TenantId is { } tenantId)
+        {
+            identity.AddClaim(new Claim(AccessClaimTypes.TenantId, tenantId.ToString()));
         }
 
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, userId.ToString()));

@@ -21,7 +21,7 @@ public class OrganizationFilterTests
     [Fact]
     public void From_PlatformScope_IsUnrestricted()
     {
-        var filter = OrganizationFilter.From(new AccessScope(null, null, [UserRole.Admin]));
+        var filter = OrganizationFilter.From(new AccessScope(null, null, [UserRole.PlatformAdmin]));
 
         Assert.False(filter.Denied);
         Assert.Null(filter.OrganizationId);
@@ -32,6 +32,19 @@ public class OrganizationFilterTests
     {
         var orgId = Guid.NewGuid();
         var filter = OrganizationFilter.From(new AccessScope(orgId, null, [UserRole.Employee]));
+
+        Assert.False(filter.Denied);
+        Assert.Equal(orgId, filter.OrganizationId);
+    }
+
+    [Fact]
+    public void From_SelectedPlatformOrganizationScope_RemainsOrganizationLimited()
+    {
+        var orgId = Guid.NewGuid();
+        var filter = OrganizationFilter.From(new AccessScope(orgId, null, [UserRole.Admin])
+        {
+            IsPlatformAdmin = true
+        });
 
         Assert.False(filter.Denied);
         Assert.Equal(orgId, filter.OrganizationId);

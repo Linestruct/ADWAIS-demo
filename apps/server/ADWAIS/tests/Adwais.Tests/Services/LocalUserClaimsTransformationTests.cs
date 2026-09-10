@@ -418,7 +418,7 @@ public class LocalUserClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_AdminRequestingOrgHeader_EmitsOrgClaimsWithAdminRole()
+    public async Task TransformAsync_PlatformAdminRequestingOrgHeader_PreservesPlatformClaimAndOrgScope()
     {
         var userId = Guid.NewGuid();
         var orgId = Guid.NewGuid();
@@ -448,7 +448,7 @@ public class LocalUserClaimsTransformationTests
 
         Assert.True(result.IsInRole("Admin"));
         Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.OrganizationId && c.Value == orgId.ToString()));
-        Assert.False(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin));
+        Assert.True(result.HasClaim(c => c.Type == AccessClaimTypes.IsPlatformAdmin && c.Value == "true"));
     }
 
     [Fact]

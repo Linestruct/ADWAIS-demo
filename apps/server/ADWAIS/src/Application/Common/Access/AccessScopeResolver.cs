@@ -65,7 +65,10 @@ public static class AccessScopeResolver
                 return new AccessScope(null, null, [UserRole.PlatformAdmin]);
             }
 
-            return new AccessScope(requestedOrganizationId, requestedTenantId, [UserRole.Admin]);
+            return new AccessScope(requestedOrganizationId, requestedTenantId, [UserRole.Admin])
+            {
+                IsPlatformAdmin = true
+            };
         }
 
         if (requestedOrganizationId is null)

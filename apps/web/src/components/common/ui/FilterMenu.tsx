@@ -234,7 +234,7 @@ export function FloatingFilterMenu({
           disabled={activeCount === 0}
           aria-label={clearLabel}
           title={clearLabel}
-          className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-l-[4px] rounded-r-[18px] bg-error-container text-on-error-container outline-none transition-colors enabled:hover:bg-error/20 focus-visible:ring-2 focus-visible:ring-secondary disabled:cursor-not-allowed disabled:bg-on-surface/[0.1] disabled:text-on-surface/[0.38]"
+          className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-l-[4px] rounded-r-[18px] bg-secondary-container outline-none transition-colors enabled:hover:bg-secondary-container/80 focus-visible:ring-2 focus-visible:ring-secondary disabled:cursor-not-allowed disabled:bg-on-surface/[0.1] disabled:text-on-surface/[0.38]"
         >
           <ListRestart aria-hidden="true" size={18} strokeWidth={2.5} />
         </button>
@@ -283,7 +283,7 @@ export function FloatingFilterMenu({
         disabled={activeCount === 0}
         aria-label={clearLabel}
         title={clearLabel}
-        className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-l-[8px] rounded-r-[28px] bg-error-container text-on-error-container enabled:m3-elevation-1 enabled:hover:bg-error/20 enabled:hover:m3-elevation-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary disabled:cursor-not-allowed disabled:bg-on-surface/[0.1] disabled:text-on-surface/[0.38]"
+        className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-l-[8px] rounded-r-[28px] bg-secondary-container enabled:m3-elevation-1 enabled:hover:bg-secondary-container/80 enabled:hover:m3-elevation-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary disabled:cursor-not-allowed disabled:bg-on-surface/[0.1] disabled:text-on-surface/[0.38]"
       >
         <ListRestart aria-hidden="true" size={18} className={"-translate-x-0.5"} />
       </button>

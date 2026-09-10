@@ -93,7 +93,7 @@ describe('OrganizationConfigurationForm', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit API Key' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Monitoring Provider API Key' }));
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
 
     await waitFor(() => expect(onClear).toHaveBeenCalledOnce());

@@ -76,4 +76,22 @@ describe('provision user modal', () => {
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });
+
+  it('creates a platform admin without an organization', () => {
+    testState.isPlatformAdmin = true;
+    renderModal();
+    fireEvent.change(screen.getByLabelText('Email Address'), { target: { value: 'platform@example.com' } });
+    fireEvent.click(screen.getByRole('combobox', { name: 'Role' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Platform Admin' }));
+
+    const organizationSelect = screen.getByRole('combobox', { name: 'Organization' });
+    expect(organizationSelect).toBeDisabled();
+    expect(organizationSelect).toHaveTextContent('No organization (platform level)');
+    fireEvent.click(screen.getByRole('button', { name: 'Add user' }));
+
+    expect(testState.createUser).toHaveBeenCalledWith(
+      { email: 'platform@example.com', role: 'PlatformAdmin', organizationId: null },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
+  });
 });

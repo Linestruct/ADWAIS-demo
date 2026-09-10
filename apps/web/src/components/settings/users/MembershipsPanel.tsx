@@ -32,7 +32,8 @@ export function MembershipsPanel({ userId, isAdmin, isPlatformAdmin }: Membershi
   const [organizationId, setOrganizationId] = useState('');
   const [role, setRole] = useState<UserRole>('Viewer');
 
-  const isPlatformRow = organizationId === PLATFORM_VALUE;
+  const effectiveOrganizationId = organizationId || (!isPlatformAdmin ? organizations[0]?.id ?? '' : PLATFORM_VALUE);
+  const isPlatformRow = isPlatformAdmin && effectiveOrganizationId === PLATFORM_VALUE;
   const orgOptions = isPlatformAdmin
     ? [{ label: 'Platform (no organization)', value: PLATFORM_VALUE }, ...organizations.map(org => ({ label: org.name, value: org.id }))]
     : organizations.map(org => ({ label: org.name, value: org.id }));
@@ -42,7 +43,7 @@ export function MembershipsPanel({ userId, isAdmin, isPlatformAdmin }: Membershi
 
   const handleAdd = () => {
     addMembership.mutate({
-      organizationId: isPlatformRow ? null : organizationId,
+      organizationId: isPlatformRow ? null : effectiveOrganizationId,
       role: isPlatformRow ? 'PlatformAdmin' : role,
     });
   };
@@ -91,7 +92,7 @@ export function MembershipsPanel({ userId, isAdmin, isPlatformAdmin }: Membershi
               as="select"
               id="membership-organization"
               label="Organization"
-              value={organizationId}
+              value={effectiveOrganizationId}
               onChange={(e) => setOrganizationId(e.target.value)}
             >
               {orgOptions.map(option => (
@@ -115,7 +116,7 @@ export function MembershipsPanel({ userId, isAdmin, isPlatformAdmin }: Membershi
             </FormField>
             <Button
               onClick={handleAdd}
-              disabled={addMembership.isPending}
+              disabled={addMembership.isPending || (!isPlatformRow && !effectiveOrganizationId)}
               variant="tonal"
               color="primary"
               icon={<Plus size={16} />}

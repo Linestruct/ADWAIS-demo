@@ -17,7 +17,7 @@ import {
   useDeleteApiMonitorsId
 } from '../api/generated/endpoints';
 import type { UptimeMonitorDto, ComparisonPeriod, UpdateMonitorRequestDto, Timeframe, ComparisonType } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 import { useOrgSelection } from './useOrgSelection';
 
 export function useMonitorsQuery(timeframe?: string, tenantId?: string | null, comparison?: ComparisonPeriod) {
@@ -58,13 +58,13 @@ export function useCreateMonitorMutation(onSuccessCallback?: () => void) {
   const mutation = usePostApiMonitors<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Monitor created successfully.');
+        showSuccessToast('Monitor created successfully.');
         queryClient.invalidateQueries({ queryKey: ['monitors'] });
         queryClient.invalidateQueries({ queryKey: ['unassigned-monitors'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to create monitor', {
+        showErrorToast('Failed to create monitor', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -103,7 +103,7 @@ export function useControlMonitorMutation() {
       {
         ...options,
         onSuccess: (...args) => {
-          toast.success(`Monitor ${action === 'start' ? 'started' : 'paused'} successfully.`);
+          showSuccessToast(`Monitor ${action === 'start' ? 'started' : 'paused'} successfully.`);
           queryClient.invalidateQueries({ queryKey: ['monitors'] });
           if (options?.onSuccess) {
             options.onSuccess(...args);
@@ -111,7 +111,7 @@ export function useControlMonitorMutation() {
         },
         onError: (...args) => {
           const err = args[0] as Error;
-          toast.error('Failed to control monitor', {
+          showErrorToast('Failed to control monitor', {
             description: err.message || String(err),
             duration: Infinity
           });
@@ -134,7 +134,7 @@ export function useUpdateMonitorMutation() {
   const mutation = usePatchApiMonitorsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Monitor updated successfully.');
+        showSuccessToast('Monitor updated successfully.');
         queryClient.invalidateQueries({ queryKey: ['monitors'] });
         queryClient.invalidateQueries({ queryKey: ['unassigned-monitors'] });
       }
@@ -160,14 +160,14 @@ export function useAssignMonitorMutation(onSuccessCallback?: () => void) {
   const mutation = usePatchApiMonitorsIdAssignTenantId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Monitor assigned successfully.');
+        showSuccessToast('Monitor assigned successfully.');
         queryClient.invalidateQueries({ queryKey: ['monitors'] });
         queryClient.invalidateQueries({ queryKey: ['unassigned-monitors'] });
         queryClient.invalidateQueries({ queryKey: ['tenants'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to assign monitor', {
+        showErrorToast('Failed to assign monitor', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -194,13 +194,13 @@ export function useUnassignMonitorMutation() {
   const mutation = usePatchApiMonitorsIdUnassign<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Monitor unassigned successfully.');
+        showSuccessToast('Monitor unassigned successfully.');
         queryClient.invalidateQueries({ queryKey: ['monitors'] });
         queryClient.invalidateQueries({ queryKey: ['unassigned-monitors'] });
         queryClient.invalidateQueries({ queryKey: ['tenants'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to unassign monitor', {
+        showErrorToast('Failed to unassign monitor', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -224,12 +224,12 @@ export function useDeleteMonitorMutation() {
   const mutation = useDeleteApiMonitorsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Monitor deleted successfully.');
+        showSuccessToast('Monitor deleted successfully.');
         queryClient.invalidateQueries({ queryKey: ['monitors'] });
         queryClient.invalidateQueries({ queryKey: ['unassigned-monitors'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to delete monitor', {
+        showErrorToast('Failed to delete monitor', {
           description: err.message || String(err),
           duration: Infinity
         });

@@ -16,7 +16,7 @@ import { customClient } from '../apiClient';
 import { useDiagnosticRunsQuery } from './useDiagnosticsQueries';
 import { useOrgSelection } from './useOrgSelection';
 import type { GlobalConfigDto, RecurringJobDto, BackgroundJobStatusDto, UpdateGlobalConfigRequestDto } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 import { getKioskToken } from '../utils/auth';
 import { useCurrentUser } from './useCurrentUser';
 
@@ -78,10 +78,10 @@ export function useTriggerJobMutation() {
   return useMutation<unknown, Error, string>({
     mutationFn: (endpoint: string) => customClient<unknown>(endpoint, { method: 'POST' }),
     onSuccess: () => {
-      toast.success('Job triggered successfully.');
+      showSuccessToast('Job triggered successfully.');
     },
     onError: (err: Error) => {
-        toast.error('Failed to trigger job', {
+        showErrorToast('Failed to trigger job', {
           description: err.message || String(err),
           duration: Infinity
       });
@@ -93,11 +93,11 @@ export function useBackfillMutation(onSuccessCallback?: () => void) {
   const mutation = usePostApiIngestionBackfill<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Backfill initiated.');
+        showSuccessToast('Backfill initiated.');
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Backfill failed', {
+        showErrorToast('Backfill failed', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -123,11 +123,11 @@ export function useUpdateConfigMutation() {
   const mutation = usePatchApiGlobalConfig<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Configuration updated.');
+        showSuccessToast('Configuration updated.');
         queryClient.invalidateQueries({ queryKey: ['global-config'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to update configuration', {
+        showErrorToast('Failed to update configuration', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -167,12 +167,12 @@ export function useUpdateFetchIntervalsMutation() {
   const mutation = usePatchApiGlobalConfigIntervals<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Fetch intervals updated.');
+        showSuccessToast('Fetch intervals updated.');
         queryClient.invalidateQueries({ queryKey: ['fetch-intervals'] });
         queryClient.invalidateQueries({ queryKey: ['job-recurring'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to update intervals', {
+        showErrorToast('Failed to update intervals', {
           description: err.message || String(err),
           duration: Infinity
         });

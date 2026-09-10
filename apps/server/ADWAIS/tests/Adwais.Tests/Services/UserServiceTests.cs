@@ -48,6 +48,12 @@ public class UserServiceTests
             .Returns(new AccessScope(organizationId, null, [UserRole.Admin]));
     }
 
+    private void GivenPlatformAdminOrgScope(Guid organizationId)
+    {
+        _accessMock.Setup(access => access.Scope)
+            .Returns(new AccessScope(organizationId, null, [UserRole.Admin]) { IsPlatformAdmin = true });
+    }
+
     private void GivenDeniedScope()
     {
         _accessMock.Setup(access => access.Scope).Returns((AccessScope?)null);
@@ -312,6 +318,20 @@ public class UserServiceTests
         var result = await _userService.CreateUserAsync("escalation@example.com", UserRole.PlatformAdmin, ct: CancellationToken.None);
 
         AssertFailure<ScopeDeniedError>(result);
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_ShouldCreatePlatformRow_WhenPlatformAdminWearsOrganizationScope()
+    {
+        GivenPlatformAdminOrgScope(Guid.NewGuid());
+
+        var user = await _userService.CreateUserAsync("platform-in-org-view@example.com", UserRole.PlatformAdmin, ct: CancellationToken.None);
+
+        Assert.True(user.IsSuccess);
+        await using var db = new AnalyticsDbContext(_dbOptions);
+        var membership = await db.UserAccesses.SingleAsync(access => access.UserId == user.Value.Id);
+        Assert.Null(membership.OrganizationId);
+        Assert.Equal(UserRole.PlatformAdmin, membership.Role);
     }
 
     [Fact]

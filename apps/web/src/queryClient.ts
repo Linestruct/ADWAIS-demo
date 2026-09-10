@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { QueryClient, QueryCache } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { showErrorToast } from './components/common/ui/toastNotifications';
 
 function isConnectivityError(error: unknown): boolean {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
@@ -28,10 +28,11 @@ export const queryClient = new QueryClient({
       if (queryKey === 'current-user') return; // The shell renders the access-pending panel instead
 
       if (isConnectivityError(error)) {
-        toast.error('Backend unavailable', {
-          id: 'backend-unavailable',
-          description: 'The server is not reachable right now.',
-        });
+        showErrorToast(
+          'Backend unavailable',
+          'The server is not reachable right now.',
+          { id: 'backend-unavailable' },
+        );
         return;
       }
 
@@ -47,9 +48,7 @@ export const queryClient = new QueryClient({
         else if (queryKey === 'system-events') title = 'Failed to load system events';
         else if (queryKey === 'system-jobs') title = 'Failed to load background job status';
       }
-      toast.error(title, {
-        description: error.message || String(error)
-      });
+      showErrorToast(title, error.message || String(error));
     }
   }),
   defaultOptions: {

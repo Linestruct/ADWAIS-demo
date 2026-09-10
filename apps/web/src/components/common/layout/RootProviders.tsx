@@ -32,6 +32,7 @@ export function RootProviders({children}: { children: ReactNode }) {
         position="top-center"
         offset={{ top: '5rem' }}
         mobileOffset={{ top: '5rem' }}
+        swipeDirections={['top', 'bottom', 'left', 'right']}
         closeButton
         theme="light"
         toastOptions={{

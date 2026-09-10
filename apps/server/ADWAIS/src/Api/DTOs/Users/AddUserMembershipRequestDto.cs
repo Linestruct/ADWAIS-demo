@@ -9,4 +9,4 @@ namespace Adwais.Api.DTOs.Users;
 
 public record AddUserMembershipRequestDto(
     Guid? OrganizationId,
-    [property: Required] UserRole Role);
+    [param: Required] UserRole Role);

@@ -5973,9 +5973,6 @@
         "additionalProperties": false
       },
       "AddUserMembershipRequestDto": {
-        "required": [
-          "role"
-        ],
         "type": "object",
         "properties": {
           "organizationId": {

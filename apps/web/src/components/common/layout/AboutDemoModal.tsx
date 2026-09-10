@@ -54,6 +54,7 @@ export function AboutDemoModal({ isOpen, onClose }: AboutDemoModalProps) {
               It serves as an analytics dashboard of client storefronts (Shopify, Litium, etc.), a two-way control of their website monitoring tools (UptimeRobot, Uptime Kuma, etc.), and an intranet (bulletin board, shared calendar, and aggregation of internal and external articles/news).
             </p>
             <p>Today the schema supports multiple organizations within one deployment and has OpenTelemetry implemented with support for Grafana, .NET Aspire, and more.</p>
+            <p>This demo is self-hosted on my Debian homelab.</p>
             <p>
               As I approach the conclusion of my degree I'll be transitioning into Software/Systems engineering. I&apos;m currently also looking for a company to host my graduate thesis anytime between January-May 2027. Know a person or company who&apos;d be willing to do so? Don&apos;t hesitate to reach out!
             </p>

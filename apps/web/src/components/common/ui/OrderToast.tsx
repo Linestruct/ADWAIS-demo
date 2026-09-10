@@ -21,7 +21,7 @@ export function OrderToast({ order, t, faviconUrl, displayValue }: OrderToastPro
 
   return (
     <div
-      className="relative flex w-[356px] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl bg-primary-container p-4 pr-11 m3-elevation-2 animate-in fade-in slide-in-from-bottom-4 duration-300"
+      className="relative flex w-[356px] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl bg-primary-container p-4 m3-elevation-2 animate-in fade-in slide-in-from-bottom-4 duration-300"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface shadow-sm">
@@ -57,7 +57,7 @@ export function OrderToast({ order, t, faviconUrl, displayValue }: OrderToastPro
         type="button"
         onClick={() => toast.dismiss(t)}
         aria-label="Close notification"
-        className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md p-1 opacity-60 transition-opacity hover:bg-surface/5 hover:opacity-100"
+        className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-md p-1 opacity-60 transition-opacity hover:bg-surface/5 hover:opacity-100"
       >
         <X size={12} strokeWidth={1.5} aria-hidden="true" />
       </button>

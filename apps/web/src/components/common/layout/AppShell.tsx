@@ -17,6 +17,8 @@ import { useOrderNotifier } from '../../../hooks/useOrderNotifier';
 import { useOrgSelectionWatcher } from '../../../hooks/useOrgSelectionWatcher';
 import { MobileFooterActionsSlotContext } from '../ui/MobileFooterActionsContext';
 import { RightSidebarSlotContext } from '../ui/RightSidebarSlotContext';
+import { isDemoMode } from '../../../utils/oidcConfig';
+import { AboutDemoModal } from './AboutDemoModal';
 
 type AppShellProps = {
   pathname: string;
@@ -61,6 +63,7 @@ export function AppShell({
   const [mobileFooterActionsIndicator, setMobileFooterActionsIndicator] = useState<HTMLSpanElement | null>(null);
   const [mobileFooterQuickAction, setMobileFooterQuickAction] = useState<HTMLDivElement | null>(null);
   const [rightSidebarContainer, setRightSidebarContainer] = useState<HTMLElement | null>(null);
+  const [isAboutDemoOpen, setIsAboutDemoOpen] = useState(false);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -96,6 +99,7 @@ export function AppShell({
             isBackendOnline={isBackendOnline}
             userLabel={userLabel}
             onToggleMobileMenu={onToggleMobileMenu}
+            onOpenAboutDemo={() => setIsAboutDemoOpen(true)}
             isProgressBarVisible={isProgressBarVisible}
           />
 
@@ -105,7 +109,10 @@ export function AppShell({
             financialTimeframe={financialTimeframe}
             fleetTimeframe={fleetTimeframe}
             onClose={onCloseMobileMenu}
+            onOpenAboutDemo={isDemoMode ? () => setIsAboutDemoOpen(true) : undefined}
           />
+
+          {isDemoMode && <AboutDemoModal isOpen={isAboutDemoOpen} onClose={() => setIsAboutDemoOpen(false)} />}
 
           {isMobileView && timeframeDomain && (
             <div className="mobile-float-pills">

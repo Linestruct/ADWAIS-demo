@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { ChevronDown, Settings } from 'lucide-react';
+import { ChevronDown, Info, Settings } from 'lucide-react';
 import type { Timeframe } from '../../../schemas';
 import { NotificationToggleWidget } from '../dashboard/NotificationToggleWidget';
 import { OrgPicker } from './OrgPicker';
@@ -16,16 +16,17 @@ type MobileNavigationMenuProps = {
   financialTimeframe: Timeframe;
   fleetTimeframe: Timeframe;
   onClose: () => void;
+  onOpenAboutDemo?: () => void;
 };
 
 const mobileLinkClass = (isActive: boolean, extra = '') =>
-  `flex min-h-12 w-full items-center rounded-full px-5 text-left text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${extra} ${
+  `flex min-h-12 min-w-max w-full items-center whitespace-nowrap rounded-full px-5 text-left text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary ${
     isActive
       ? 'bg-surface-container-highest text-on-primary-container'
       : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-  }`;
+  } ${extra}`;
 
-export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fleetTimeframe, onClose }: MobileNavigationMenuProps) {
+export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fleetTimeframe, onClose, onOpenAboutDemo }: MobileNavigationMenuProps) {
   const isSettingsRoute = pathname.startsWith('/settings');
   const [wasOnSettingsRoute, setWasOnSettingsRoute] = useState(isSettingsRoute);
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(isSettingsRoute);
@@ -46,7 +47,7 @@ export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fle
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 top-[60px] z-40 xl:hidden ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+      className={`fixed inset-x-0 bottom-0 top-[68px] z-40 xl:hidden ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
       id="mobile-menu"
       role="dialog"
       aria-modal={isOpen ? true : undefined}
@@ -67,10 +68,23 @@ export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fle
         className={`m3-elevation-3 relative ml-auto flex h-full w-[320px] max-w-[calc(100vw-24px)] flex-col overflow-hidden bg-surface-container text-on-surface transition-transform ${isOpen ? 'translate-x-0 duration-[400ms] ease-[cubic-bezier(0.05,0.7,0.1,1)]' : 'translate-x-full duration-200 ease-[cubic-bezier(0.3,0,0.8,0.15)]'}`}
       >
         <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto p-2">
-          <nav className="flex flex-col gap-1" aria-label="Main navigation links">
+          <nav className="flex min-w-max flex-col gap-1" aria-label="Main navigation links">
             <Link data-md3-ripple to="/financial" search={{ timeframe: financialTimeframe }} onClick={onClose} className={mobileLinkClass(pathname === '/financial')} aria-current={pathname === '/financial' ? 'page' : undefined}>Financial</Link>
             <Link data-md3-ripple to="/fleet-status" search={{ timeframe: fleetTimeframe }} onClick={onClose} className={mobileLinkClass(pathname.startsWith('/fleet-status'))} aria-current={pathname.startsWith('/fleet-status') ? 'page' : undefined}>Fleet Status</Link>
             <Link data-md3-ripple to="/intranet" onClick={onClose} className={mobileLinkClass(pathname === '/intranet')} aria-current={pathname === '/intranet' ? 'page' : undefined}>Intranet</Link>
+            {onOpenAboutDemo && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenAboutDemo();
+                  onClose();
+                }}
+                className={mobileLinkClass(false, 'gap-3 bg-secondary font-black !text-white hover:!bg-secondary/90 hover:!text-white')}
+              >
+                <Info size={19} aria-hidden="true" className="shrink-0" />
+                <span className="min-w-max">About this demo</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsSettingsExpanded(current => !current)}
@@ -78,8 +92,8 @@ export function MobileNavigationMenu({ isOpen, pathname, financialTimeframe, fle
               aria-expanded={isSettingsExpanded}
               aria-controls="mobile-settings-navigation"
             >
-              <span className="flex items-center gap-4"><Settings size={19} aria-hidden="true" />Settings</span>
-              <ChevronDown size={20} aria-hidden="true" className={`transition-transform ${isSettingsExpanded ? 'rotate-180' : ''}`} />
+              <span className="flex min-w-max shrink-0 items-center gap-4"><Settings size={19} aria-hidden="true" className="shrink-0" />Settings</span>
+              <ChevronDown size={20} aria-hidden="true" className={`shrink-0 transition-transform ${isSettingsExpanded ? 'rotate-180' : ''}`} />
             </button>
             {isSettingsExpanded && (
               <div id="mobile-settings-navigation" role="group" aria-label="Settings navigation links" className="ml-4 flex flex-col gap-1 border-l border-outline-variant pl-2">

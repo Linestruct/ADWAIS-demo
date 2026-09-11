@@ -30,8 +30,8 @@ export function RootProviders({children}: { children: ReactNode }) {
       {/*{import.meta.env.DEV && <ReactQueryDevtools buttonPosition="bottom-left" />}*/}
       <Toaster
         position="top-center"
-        offset={{ top: '5rem' }}
-        mobileOffset={{ top: '5rem' }}
+        offset={{ top: 'calc(var(--app-header-height, 5rem) + 0.5rem)' }}
+        mobileOffset={{ top: 'calc(var(--app-header-height, 5rem) + 0.5rem)' }}
         swipeDirections={['top', 'bottom', 'left', 'right']}
         closeButton
         theme="light"

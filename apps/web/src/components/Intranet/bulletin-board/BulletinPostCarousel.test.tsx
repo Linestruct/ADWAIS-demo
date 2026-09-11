@@ -61,4 +61,25 @@ describe('BulletinPostCarousel', () => {
 
     expect(viewport.style.gridTemplateRows).toMatch(/^repeat\(1,/);
   });
+
+  it('centers navigation controls on the card track instead of the full panel', () => {
+    render(
+      <BulletinPostCarousel>
+        <div data-bulletin-post-card>One</div>
+      </BulletinPostCarousel>,
+    );
+    const viewport = screen.getByLabelText('Bulletin board');
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 300 },
+      clientWidth: { configurable: true, value: 400 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+      scrollWidth: { configurable: true, value: 800 },
+    });
+
+    act(() => resizeCallback([], {} as ResizeObserver));
+
+    const nextButton = screen.getByRole('button', { name: 'Next bulletin posts' });
+    expect(nextButton).toHaveClass('absolute');
+    expect(nextButton).toHaveStyle({ top: '117px' });
+  });
 });

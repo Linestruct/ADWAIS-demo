@@ -38,7 +38,7 @@ export function OrgPicker({ className = 'shrink-0' }: OrgPickerProps) {
         disabled={isMutating > 0}
         variant="filled"
         size="lg"
-        className="min-h-11 min-w-[140px]"
+        className="min-h-11 min-w-[140px] !rounded-full"
       >
         {options.map(option => (
           <option key={option.value} value={option.value}>

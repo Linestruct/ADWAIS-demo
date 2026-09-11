@@ -134,7 +134,7 @@ export function PipelineRunsToolbar({ state }: { state: PipelineRunsTableState }
         value={state.status}
         onChange={event => state.setStatus(event.target.value as RunStatusFilter)}
         variant="filled"
-        size="sm"
+        size="md"
         fullWidth={false}
         className="min-w-32"
       >
@@ -149,7 +149,7 @@ export function PipelineRunsToolbar({ state }: { state: PipelineRunsTableState }
         value={state.kind}
         onChange={event => state.setKind(event.target.value)}
         variant="filled"
-        size="sm"
+        size="md"
         fullWidth={false}
         className="min-w-36"
       >

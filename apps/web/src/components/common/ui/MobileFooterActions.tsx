@@ -45,7 +45,7 @@ export function MobileFooterActions({
           disabled={activeCount === 0}
           aria-label={clearLabel}
           title={clearLabel}
-          className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-l-[8px] rounded-r-[28px] bg-error-container text-on-error-container outline-none transition-colors enabled:m3-elevation-2 enabled:hover:brightness-95 enabled:hover:m3-elevation-3 focus-visible:ring-2 focus-visible:ring-secondary disabled:cursor-not-allowed disabled:bg-on-surface/[0.20] disabled:text-on-surface/[0.38]"
+          className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-l-[8px] rounded-r-[28px] bg-secondary-container text-on-secondary-container outline-none transition-colors enabled:m3-elevation-2 enabled:hover:bg-secondary-container/80 enabled:hover:m3-elevation-3 focus-visible:ring-2 focus-visible:ring-secondary disabled:cursor-not-allowed disabled:bg-on-surface/[0.20] disabled:text-on-surface/[0.38]"
         >
           <ListRestart aria-hidden="true" size={20} strokeWidth={2.5} />
         </button>,

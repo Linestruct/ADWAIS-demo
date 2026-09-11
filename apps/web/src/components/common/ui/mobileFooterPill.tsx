@@ -71,11 +71,7 @@ export function MobileFooterPill({
               hasPageActions
                 ? 'rounded-l-[28px] rounded-r-[8px]'
                 : 'rounded-full'
-            } ${
-              isOpen
-                ? 'bg-primary text-on-primary'
-                : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface'
-            }`}
+            } bg-secondary text-on-secondary hover:bg-secondary/90`}
             aria-label={isOpen ? 'Close dashboard controls' : 'Open dashboard controls'}
             aria-describedby={hasPageActions ? 'mobile-filter-status' : undefined}
             aria-expanded={isOpen}

@@ -71,7 +71,7 @@ const variantClasses: Record<SelectVariant, string> = {
 const sizeClasses: Record<SelectSize, string> = {
   xs: 'h-6 px-2 text-[11px] leading-none',
   sm: 'h-9 px-3 text-sm',
-  md: 'h-10 px-3 text-sm',
+  md: 'h-11 px-3 text-sm',
   lg: 'h-12 px-4 text-base',
 };
 

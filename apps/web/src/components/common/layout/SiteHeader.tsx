@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import {Menu, Settings, X} from 'lucide-react';
-import { useState } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type {Timeframe} from '../../../schemas';
 import { isDemoMode } from '../../../utils/oidcConfig';
 import {KioskControls} from '../dashboard/KioskControls';
@@ -16,7 +16,6 @@ import {UserAccountLink} from './UserAccountLink';
 import {BrandLogoLink} from './BrandLogoLink';
 import {OrgPicker} from './OrgPicker';
 import {useMediaQuery} from '../../../hooks/useMediaQuery';
-import {AboutDemoModal} from './AboutDemoModal';
 
 type SiteHeaderProps = {
   financialTimeframe: Timeframe;
@@ -26,6 +25,7 @@ type SiteHeaderProps = {
   isBackendOnline: boolean;
   userLabel: string | null;
   onToggleMobileMenu: () => void;
+  onOpenAboutDemo: () => void;
   isProgressBarVisible: boolean;
 };
 
@@ -37,24 +37,44 @@ export function SiteHeader({
   isBackendOnline,
   userLabel,
   onToggleMobileMenu,
+  onOpenAboutDemo,
   isProgressBarVisible,
 }: SiteHeaderProps) {
   const isMobileView = useMediaQuery('(max-width: 1023px)');
-  const [isAboutDemoOpen, setIsAboutDemoOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updateHeaderHeight = () => {
+      document.documentElement.style.setProperty('--app-header-height', `${header.getBoundingClientRect().height}px`);
+    };
+
+    updateHeaderHeight();
+    const observer = new ResizeObserver(updateHeaderHeight);
+    observer.observe(header);
+
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty('--app-header-height');
+    };
+  }, []);
+
   const aboutDemoButton = isDemoMode ? (
     <Button
       type="button"
       variant="filled"
       color="secondary"
-      onClick={() => setIsAboutDemoOpen(true)}
-      className="hidden min-h-10 px-4 text-xs sm:inline-flex sm:text-sm"
+      onClick={onOpenAboutDemo}
+      className="hidden min-h-10 min-w-max shrink-0 whitespace-nowrap px-4 text-xs lg:inline-flex lg:text-sm"
     >
       About this demo
     </Button>
   ) : null;
 
   return (
-    <header className="relative z-10 shrink-0 bg-brand-bg-secondary px-6 py-3">
+    <header ref={headerRef} className="relative z-10 shrink-0 bg-brand-bg-secondary px-6 py-3">
       {isMobileView ? (
         <div className="flex w-full items-center justify-between" data-header="mobile-bar">
           <div className="flex min-w-0 items-center gap-2">
@@ -130,7 +150,6 @@ export function SiteHeader({
           </div>
         </div>
       )}
-      {isDemoMode && <AboutDemoModal isOpen={isAboutDemoOpen} onClose={() => setIsAboutDemoOpen(false)} />}
     </header>
   );
 }

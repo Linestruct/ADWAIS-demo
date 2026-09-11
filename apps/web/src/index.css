@@ -508,22 +508,20 @@
   opacity: 0;
 }
 
-/* Headless toasts render their own cards. Reset the global toast classes on
-   the Sonner wrapper so only the card component controls their appearance. */
+/* Headless toasts render their own cards. Reset the global toast styles on
+   the Sonner wrapper so it cannot draw a second border or shadow behind the card. */
 [data-sonner-toast].headless-toast-reset {
   display: block;
   width: auto;
   max-width: none;
   padding: 0;
-  border-radius: 0.75rem;
-  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
   font-family: Manrope, sans-serif;
   font-size: inherit;
   line-height: inherit;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 30%), 0 2px 6px 2px rgb(0 0 0 / 15%);
-}
-
-[data-sonner-toast].headless-toast-reset > * {
   box-shadow: none;
 }
 

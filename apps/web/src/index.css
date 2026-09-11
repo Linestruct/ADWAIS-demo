@@ -350,13 +350,20 @@
 
 /* ── Components ── */
 @layer components {
-  button:not([data-md3-ripple='off']),
-  [role='button']:not([data-md3-ripple='off']),
-  [data-md3-ripple]:not([data-md3-ripple='off']) {
+  button,
+  [role='button'],
+  [data-md3-ripple] {
     position: relative;
     isolation: isolate;
     overflow: hidden;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  [data-md3-ripple='off'] {
+    position: static;
+    isolation: auto;
+    overflow: visible;
+    -webkit-tap-highlight-color: auto;
   }
 
   .md3-ripple-span {

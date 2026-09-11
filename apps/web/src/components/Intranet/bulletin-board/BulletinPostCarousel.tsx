@@ -63,6 +63,7 @@ export function BulletinPostCarousel({ children }: BulletinPostCarouselProps) {
   };
 
   const bodyLineCount = cardHeight >= 220 ? 3 : cardHeight >= 196 ? 2 : 1;
+  const navigationTop = (rowCount * cardHeight + Math.max(0, rowCount - 1) * CARD_GAP) / 2;
   const gridStyle = {
     gridTemplateRows: `repeat(${rowCount}, ${cardHeight}px)`,
     gridAutoColumns: 'minmax(17rem, 22rem)',
@@ -70,11 +71,11 @@ export function BulletinPostCarousel({ children }: BulletinPostCarouselProps) {
   } as CSSProperties;
 
   return (
-    <div className="relative h-full min-h-0">
+    <div className="relative h-full min-h-0 min-w-0">
       <div
         ref={viewportRef}
         onScroll={updateOverflow}
-        className="grid h-full min-h-0 snap-x snap-mandatory grid-flow-col content-start items-start gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain p-4 pt-0 scroll-px-4 custom-scrollbar md:snap-proximity"
+        className="grid h-full min-h-0 min-w-0 snap-x snap-mandatory grid-flow-col content-start items-start gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain p-4 pt-0 scroll-px-4 custom-scrollbar md:snap-proximity"
         style={gridStyle}
         aria-label="Bulletin board"
       >
@@ -82,12 +83,12 @@ export function BulletinPostCarousel({ children }: BulletinPostCarouselProps) {
       </div>
 
       {canScrollBack && (
-        <button type="button" onClick={() => scroll(-1)} aria-label="Previous bulletin posts" className="absolute left-2 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-on-surface m3-elevation-2 hover:bg-surface-container md:flex">
+        <button type="button" onClick={() => scroll(-1)} aria-label="Previous bulletin posts" style={{ top: navigationTop }} className="absolute left-2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-on-surface m3-elevation-2 hover:bg-surface-container md:flex">
           <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         </button>
       )}
       {canScrollForward && (
-        <button type="button" onClick={() => scroll(1)} aria-label="Next bulletin posts" className="absolute right-2 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-on-surface m3-elevation-2 hover:bg-surface-container md:flex">
+        <button type="button" onClick={() => scroll(1)} aria-label="Next bulletin posts" style={{ top: navigationTop }} className="absolute right-2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-on-surface m3-elevation-2 hover:bg-surface-container md:flex">
           <ChevronRight className="h-5 w-5" aria-hidden="true" />
         </button>
       )}

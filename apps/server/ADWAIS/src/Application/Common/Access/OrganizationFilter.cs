@@ -6,15 +6,15 @@ namespace Adwais.Application.Common.Access;
 
 /// <summary>
 /// The restriction a scope implies for data access. Denied means the scope
-/// has no access at all. A null OrganizationId means no restriction
-/// (platform admin). A set TenantId pins access to one tenant.
+/// has no access at all. A null OrganizationId on a platform scope means no
+/// organization restriction. A set TenantId pins access to one tenant.
 /// </summary>
 public readonly record struct OrganizationFilter(bool Denied, Guid? OrganizationId, Guid? TenantId)
 {
     public static OrganizationFilter From(AccessScope? scope) => scope switch
     {
         null => new OrganizationFilter(true, null, null),
-        { IsPlatformAdmin: true } => new OrganizationFilter(false, null, null),
+        { IsPlatformAdmin: true, OrganizationId: null } => new OrganizationFilter(false, null, null),
         _ => new OrganizationFilter(false, scope.OrganizationId, scope.TenantId)
     };
 

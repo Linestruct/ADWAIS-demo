@@ -8,7 +8,7 @@ import { customClient } from '../apiClient';
 import { useDeleteApiKioskDevicesDeviceId, useGetApiKioskDevices } from '../api/generated/endpoints';
 import { useOrgSelection } from './useOrgSelection';
 import type { KioskDeviceDto } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 
 export interface RegisterKioskRequest {
   deviceId: string;
@@ -90,11 +90,11 @@ export function useDeleteKioskDeviceMutation() {
   return useDeleteApiKioskDevicesDeviceId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Kiosk display removed.');
+        showSuccessToast('Kiosk display removed.');
         queryClient.invalidateQueries({ queryKey: ['kiosk-devices'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to remove kiosk display', {
+        showErrorToast('Failed to remove kiosk display', {
           description: err.message || String(err),
           duration: Infinity,
         });

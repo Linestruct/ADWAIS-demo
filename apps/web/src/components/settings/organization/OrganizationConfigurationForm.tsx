@@ -104,7 +104,7 @@ export function OrganizationConfigurationForm({ orgName, config, updateConfig, p
               return (
                 <InlineEditField
                   key={key}
-                  label={setting.label || key}
+                  label={key.toLowerCase() === 'apikey' ? 'Monitoring Provider API Key' : setting.label || key}
                   value={value}
                   kind={isSecret ? 'password' : 'text'}
                   required={setting.required}

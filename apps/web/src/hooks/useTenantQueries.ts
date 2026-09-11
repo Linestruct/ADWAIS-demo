@@ -12,7 +12,7 @@ import {
   usePatchApiTenantsId 
 } from '../api/generated/endpoints';
 import type { CreateTenantRequestDto, TenantResponseDto, UpdateTenantRequestDto } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 import { useOrgSelection } from './useOrgSelection';
 
 export function useTenantsQuery() {
@@ -30,12 +30,12 @@ export function useCreateTenantMutation(onSuccessCallback?: () => void) {
   const mutation = usePostApiTenants<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Tenant created successfully.');
+        showSuccessToast('Tenant created successfully.');
         queryClient.invalidateQueries({ queryKey: ['tenants'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to create tenant', {
+        showErrorToast('Failed to create tenant', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -61,13 +61,13 @@ export function useDeleteTenantMutation() {
   const mutation = useDeleteApiTenantsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Tenant deleted successfully.');
+        showSuccessToast('Tenant deleted successfully.');
         queryClient.invalidateQueries({ queryKey: ['tenants'] });
         queryClient.invalidateQueries({ queryKey: ['monitors'] });
         queryClient.invalidateQueries({ queryKey: ['unassigned-monitors'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to delete tenant', {
+        showErrorToast('Failed to delete tenant', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -91,7 +91,7 @@ export function useUpdateTenantMutation() {
   const mutation = usePatchApiTenantsId<Error>({
     mutation: {
       onSuccess: (res) => {
-        toast.success('Tenant updated successfully.');
+        showSuccessToast('Tenant updated successfully.');
         const data = (res as unknown as { data: TenantResponseDto }).data;
         queryClient.setQueryData(['tenants'], (old: { data: TenantResponseDto[] } | undefined) => {
           if (!old || !Array.isArray(old.data)) return old;

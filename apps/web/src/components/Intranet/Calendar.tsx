@@ -17,7 +17,7 @@ import {
   useCalendarTokenQuery,
   useRegenerateCalendarTokenMutation
 } from '../../hooks/useCalendarQueries';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../common/ui/toastNotifications';
 import { isStaffRole, isAdminRole } from '../../utils/roles';
 import { EventType, RecurrenceType } from '@types';
 import type { CalendarEventDto } from '@types';
@@ -220,7 +220,7 @@ export function Calendar() {
 
   const handleCellClick = (date: Date) => {
     if (!isWriter) {
-      toast.error('You do not have permission to add calendar events.');
+      showErrorToast('You do not have permission to add calendar events.');
       return;
     }
     const localDateTimeStr = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -254,7 +254,7 @@ export function Calendar() {
     e.preventDefault();
     if (!selectedEvent?.id) return;
     if (selectedEvent.id.toString().startsWith('mock-')) {
-      toast.success('Mock event updated successfully.');
+      showSuccessToast('Mock event updated successfully.');
       setIsEditModalOpen(false);
       setSelectedEvent(null);
       resetEventForm();
@@ -282,7 +282,7 @@ export function Calendar() {
       try {
         editableEvent = (await getApiIntranetEventsId(event.id)).data;
       } catch {
-        toast.error('Failed to load the recurring series.');
+        showErrorToast('Failed to load the recurring series.');
         return;
       }
     }
@@ -304,7 +304,7 @@ export function Calendar() {
     if (!tokenData?.token) return;
     const feedUrl = `${window.location.origin}/api/intranet/calendar/feed.ics?token=${tokenData.token}`;
     navigator.clipboard.writeText(feedUrl);
-    toast.success('Subscription link copied to clipboard.');
+    showSuccessToast('Subscription link copied to clipboard.');
   };
 
   const getEventsForDay = (dayDate: Date) => {
@@ -417,7 +417,7 @@ export function Calendar() {
           isWriter={isWriter}
           onDelete={(id) => {
             if (id.toString().startsWith('mock-')) {
-              toast.success('Mock event deleted successfully.');
+              showSuccessToast('Mock event deleted successfully.');
               setSelectedEvent(null);
             } else {
               deleteEventMutation.mutate(id);

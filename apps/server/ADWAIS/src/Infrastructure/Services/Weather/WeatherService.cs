@@ -51,7 +51,7 @@ public class WeatherService(
         var config = orgId is { } organizationId
             ? await configService.GetConfigAsync(organizationId, ct)
             : null;
-        var location = scope.IsPlatformAdmin
+        var location = scope.IsPlatformAdmin && orgId is null
             ? PlatformDefaultLocation
             : config?.WeatherLocation;
         if (string.IsNullOrWhiteSpace(location))

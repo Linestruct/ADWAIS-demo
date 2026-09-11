@@ -10,7 +10,7 @@ import {
   useGetApiOrganizations,
 } from '../api/generated/endpoints';
 import type { AddUserMembershipRequestDto, OrganizationSummaryDto, UserMembershipResponseDto } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 
 export function useMembershipsQuery(userId: string) {
   return useGetApiUsersIdMemberships<UserMembershipResponseDto[], Error>(userId, {
@@ -38,11 +38,11 @@ export function useAddMembershipMutation(userId: string) {
   const mutation = usePostApiUsersIdMemberships<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Membership added.');
+        showSuccessToast('Membership added.');
         queryClient.invalidateQueries({ queryKey: ['user-memberships', userId] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to add membership', {
+        showErrorToast('Failed to add membership', {
           description: err.message || String(err),
           duration: Infinity,
         });
@@ -61,11 +61,11 @@ export function useRemoveMembershipMutation(userId: string) {
   const mutation = useDeleteApiUsersIdMembershipsMembershipId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Membership removed.');
+        showSuccessToast('Membership removed.');
         queryClient.invalidateQueries({ queryKey: ['user-memberships', userId] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to remove membership', {
+        showErrorToast('Failed to remove membership', {
           description: err.message || String(err),
           duration: Infinity,
         });

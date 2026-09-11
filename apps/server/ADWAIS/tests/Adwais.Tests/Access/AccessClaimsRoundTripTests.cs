@@ -49,6 +49,26 @@ public class AccessClaimsRoundTripTests
     }
 
     [Fact]
+    public void BuilderToResolver_SelectedPlatformOrganizationScope_RoundTrips()
+    {
+        var organizationId = Guid.NewGuid();
+        var scope = new AccessScope(organizationId, null, [UserRole.Admin])
+        {
+            IsPlatformAdmin = true
+        };
+
+        var identity = AccessClaimsBuilder.Build(Guid.NewGuid(), scope);
+        var resolved = CurrentAccessService.Resolve(new ClaimsPrincipal(identity));
+
+        Assert.NotNull(resolved);
+        Assert.Equal(organizationId, resolved.OrganizationId);
+        Assert.True(resolved.IsPlatformAdmin);
+        Assert.Equal(scope.Roles, resolved.Roles);
+        Assert.True(identity.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"));
+        Assert.True(identity.HasClaim(AccessClaimTypes.OrganizationId, organizationId.ToString()));
+    }
+
+    [Fact]
     public void BuilderToResolver_TenantScope_RoundTrips()
     {
         var organizationId = Guid.NewGuid();

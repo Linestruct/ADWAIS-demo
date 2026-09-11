@@ -81,6 +81,16 @@ describe('MembershipsPanel', () => {
     expect(screen.queryByRole('option', { name: /Platform \(no organization\)/ })).not.toBeInTheDocument();
   });
 
+  it('starts regular admins with organization roles', () => {
+    render(<MembershipsPanel userId="user-1" isAdmin isPlatformAdmin={false} />);
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Role' }));
+    expect(screen.getByRole('option', { name: 'Admin' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Viewer' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Employee' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Platform Admin' })).not.toBeInTheDocument();
+  });
+
   it('forces the platform admin role when adding a platform membership', async () => {
     render(<MembershipsPanel userId="user-1" isAdmin isPlatformAdmin />);
 

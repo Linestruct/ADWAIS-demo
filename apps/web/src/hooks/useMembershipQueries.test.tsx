@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { useRemoveMembershipMutation } from './useMembershipQueries';
 
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+const toast = vi.hoisted(() => ({ success: vi.fn(), custom: vi.fn(), dismiss: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 
 vi.mock('../api/generated/endpoints', async () => {
@@ -41,7 +41,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 describe('membership mutations', () => {
   beforeEach(() => {
     toast.success.mockClear();
-    toast.error.mockClear();
+    toast.custom.mockClear();
   });
 
   it('surfaces the refusal to remove the last platform-admin row as an error toast', async () => {
@@ -49,6 +49,6 @@ describe('membership mutations', () => {
 
     result.current.mutate('last-platform');
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    await waitFor(() => expect(toast.custom).toHaveBeenCalled());
   });
 });

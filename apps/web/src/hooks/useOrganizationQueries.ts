@@ -12,7 +12,7 @@ import {
   usePatchApiOrganizationsIdConfig,
 } from '../api/generated/endpoints';
 import type { OrganizationConfigDto, OrganizationSummaryDto, UpdateOrganizationConfigRequestDto } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 
 function invalidateOrganizationQueries(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ['organization-summaries'] });
@@ -34,12 +34,12 @@ export function useCreateOrganizationMutation(onSuccessCallback?: () => void) {
   return usePostApiOrganizations<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Organization created.');
+        showSuccessToast('Organization created.');
         invalidateOrganizationQueries(queryClient);
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to create organization', {
+        showErrorToast('Failed to create organization', {
           description: err.message || String(err),
           duration: Infinity,
         });
@@ -53,11 +53,11 @@ export function useRenameOrganizationMutation() {
   return usePatchApiOrganizationsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Organization renamed.');
+        showSuccessToast('Organization renamed.');
         invalidateOrganizationQueries(queryClient);
       },
       onError: (err: Error) => {
-        toast.error('Failed to rename organization', {
+        showErrorToast('Failed to rename organization', {
           description: err.message || String(err),
           duration: Infinity,
         });
@@ -71,11 +71,11 @@ export function useDeleteOrganizationMutation() {
   return useDeleteApiOrganizationsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Organization deleted.');
+        showSuccessToast('Organization deleted.');
         invalidateOrganizationQueries(queryClient);
       },
       onError: (err: Error) => {
-        toast.error('Failed to delete organization', {
+        showErrorToast('Failed to delete organization', {
           description: err.message || String(err),
           duration: Infinity,
         });
@@ -100,12 +100,12 @@ export function useUpdateOrganizationConfigMutation(orgId: string | null) {
   const mutation = usePatchApiOrganizationsIdConfig<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Organization configuration updated.');
+        showSuccessToast('Organization configuration updated.');
         queryClient.invalidateQueries({ queryKey: ['organization-config', orgId] });
         queryClient.invalidateQueries({ queryKey: ['job-recurring'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to update organization configuration', {
+        showErrorToast('Failed to update organization configuration', {
           description: err.message || String(err),
           duration: Infinity,
         });

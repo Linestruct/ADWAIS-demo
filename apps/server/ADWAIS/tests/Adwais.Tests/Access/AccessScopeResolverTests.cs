@@ -72,7 +72,7 @@ public class AccessScopeResolverTests
     }
 
     [Fact]
-    public void SelectEffective_AdminRequestingOrg_ReturnsOrgScopeWithAdminRole()
+    public void SelectEffective_PlatformAdminRequestingOrg_PreservesPlatformAuthorityAndOrgScope()
     {
         var orgId = Guid.NewGuid();
         var resolution = new MembershipResolution(true, []);
@@ -80,7 +80,7 @@ public class AccessScopeResolverTests
         var scope = AccessScopeResolver.SelectEffective(resolution, orgId, null);
 
         Assert.NotNull(scope);
-        Assert.False(scope.IsPlatformAdmin);
+        Assert.True(scope.IsPlatformAdmin);
         Assert.Equal(orgId, scope.OrganizationId);
         Assert.Null(scope.TenantId);
         Assert.Equal([UserRole.Admin], scope.Roles);

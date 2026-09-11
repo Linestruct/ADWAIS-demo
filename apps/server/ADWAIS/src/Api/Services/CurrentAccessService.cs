@@ -27,20 +27,30 @@ public sealed class CurrentAccessService(IHttpContextAccessor httpContextAccesso
             .Distinct()
             .ToList();
 
+        var organizationId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.OrganizationId));
+        var tenantId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.TenantId));
+
         if (principal.HasClaim(AccessClaimTypes.IsPlatformAdmin, "true"))
         {
-            // The platform claim is authoritative. The scope always carries
-            // the explicit platform role, regardless of any role claims.
-            return new AccessScope(null, null, [UserRole.PlatformAdmin]);
+            // Platform authority and the selected organization are independent.
+            // A selected platform view stays organization-limited for ordinary
+            // data queries while retaining access to platform-only endpoints.
+            if (organizationId is null)
+            {
+                return new AccessScope(null, null, [UserRole.PlatformAdmin]);
+            }
+
+            return new AccessScope(organizationId, tenantId, roles)
+            {
+                IsPlatformAdmin = true
+            };
         }
 
-        var organizationId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.OrganizationId));
         if (organizationId is null)
         {
             return null;
         }
 
-        var tenantId = TryParseGuid(principal.FindFirstValue(AccessClaimTypes.TenantId));
         return new AccessScope(organizationId, tenantId, roles);
     }
 

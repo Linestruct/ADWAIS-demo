@@ -24,7 +24,7 @@ import type {
   CreateCalendarSubscriptionDto,
   CalendarTokenDto
 } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 import { useOrgSelection } from './useOrgSelection';
 
 export function useCalendarEventsQuery(start?: string, end?: string) {
@@ -43,13 +43,13 @@ export function useCreateCalendarEventMutation(onSuccessCallback?: () => void) {
   const mutation = usePostApiIntranetEvents<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Calendar event created successfully.');
+        showSuccessToast('Calendar event created successfully.');
         queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
         queryClient.invalidateQueries({ queryKey: ['todays-events'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to create event', {
+        showErrorToast('Failed to create event', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -69,13 +69,13 @@ export function useUpdateCalendarEventMutation(onSuccessCallback?: () => void) {
   const mutation = usePatchApiIntranetEventsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Calendar event updated successfully.');
+        showSuccessToast('Calendar event updated successfully.');
         queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
         queryClient.invalidateQueries({ queryKey: ['todays-events'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to update event', {
+        showErrorToast('Failed to update event', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -95,13 +95,13 @@ export function useDeleteCalendarEventMutation(onSuccessCallback?: () => void) {
   const mutation = useDeleteApiIntranetEventsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Calendar event deleted successfully.');
+        showSuccessToast('Calendar event deleted successfully.');
         queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
         queryClient.invalidateQueries({ queryKey: ['todays-events'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to delete event', {
+        showErrorToast('Failed to delete event', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -131,11 +131,11 @@ export function useRegenerateCalendarTokenMutation() {
   return usePostApiIntranetCalendarTokenRegenerate<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Feed token regenerated.');
+        showSuccessToast('Feed token regenerated.');
         queryClient.invalidateQueries({ queryKey: ['calendar-token'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to regenerate token', {
+        showErrorToast('Failed to regenerate token', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -159,13 +159,13 @@ export function useCreateCalendarSubscriptionMutation(onSuccessCallback?: () => 
   const mutation = usePostApiIntranetCalendarSubscriptions<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Subscription added successfully.');
+        showSuccessToast('Subscription added successfully.');
         queryClient.invalidateQueries({ queryKey: ['calendar-subscriptions'] });
         queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to add subscription', {
+        showErrorToast('Failed to add subscription', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -185,13 +185,13 @@ export function useDeleteCalendarSubscriptionMutation(onSuccessCallback?: () => 
   const mutation = useDeleteApiIntranetCalendarSubscriptionsId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Subscription deleted.');
+        showSuccessToast('Subscription deleted.');
         queryClient.invalidateQueries({ queryKey: ['calendar-subscriptions'] });
         queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to delete subscription', {
+        showErrorToast('Failed to delete subscription', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -210,12 +210,12 @@ export function useSyncCalendarSubscriptionMutation() {
   const mutation = usePostApiIntranetCalendarSubscriptionsIdSync<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('Calendar synchronization triggered.');
+        showSuccessToast('Calendar synchronization triggered.');
         queryClient.invalidateQueries({ queryKey: ['calendar-subscriptions'] });
         queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to trigger sync', {
+        showErrorToast('Failed to trigger sync', {
           description: err.message || String(err),
           duration: Infinity
         });

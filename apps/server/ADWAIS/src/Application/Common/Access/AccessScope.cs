@@ -8,8 +8,9 @@ namespace Adwais.Application.Common.Access;
 
 /// <summary>
 /// The visibility a principal has, with the roles valid inside that scope.
-/// A null OrganizationId means the platform admin scope. A set TenantId means
-/// the principal is restricted to one tenant.
+/// A null OrganizationId means the scope is platform-wide. Platform authority
+/// may coexist with a selected organization so platform-only endpoints remain
+/// available while ordinary data queries stay organization-limited.
 /// </summary>
 public sealed record AccessScope(
     Guid? OrganizationId,
@@ -17,10 +18,9 @@ public sealed record AccessScope(
     IReadOnlyCollection<UserRole> Roles)
 {
     /// <summary>
-    /// A scope is platform-wide when it carries the explicit platform role.
-    /// Platform scopes always have a null organization; org scopes never
-    /// carry the platform role. The invariant is enforced on membership writes.
+    /// Whether the principal has platform administration authority. This can
+    /// remain true while OrganizationId identifies the selected organization.
     /// </summary>
-    public bool IsPlatformAdmin => Roles.Contains(UserRole.PlatformAdmin);
+    public bool IsPlatformAdmin { get; init; } = Roles.Contains(UserRole.PlatformAdmin);
     public bool IsTenantRestricted => TenantId is not null;
 }

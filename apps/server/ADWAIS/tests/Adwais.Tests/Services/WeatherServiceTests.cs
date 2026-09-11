@@ -48,6 +48,16 @@ public class WeatherServiceTests
         return mock.Object;
     }
 
+    private static ICurrentAccess SelectedPlatformAccess(Guid organizationId)
+    {
+        var mock = new Mock<ICurrentAccess>();
+        mock.Setup(access => access.Scope).Returns(new AccessScope(organizationId, null, [UserRole.Admin])
+        {
+            IsPlatformAdmin = true
+        });
+        return mock.Object;
+    }
+
     private static OrganizationConfigDto CreateConfig(string? weatherLocation) => new(
         WeatherLocation: weatherLocation,
         WeatherFetchIntervalMinutes: 15,
@@ -260,7 +270,7 @@ public class WeatherServiceTests
             });
 
         var httpClient = new HttpClient(handlerMock.Object);
-        var service = new WeatherService(httpClient, _configServiceMock.Object, _cacheMock.Object, OrgAccess(orgId));
+        var service = new WeatherService(httpClient, _configServiceMock.Object, _cacheMock.Object, SelectedPlatformAccess(orgId));
 
         // Act
         var result = await service.GetCurrentWeatherAsync();

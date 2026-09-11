@@ -170,7 +170,6 @@ export function FormField(props: FormFieldProps) {
       <FieldFrame {...frameProps}>
         <div 
           className={getWrapperClasses(true)}
-          data-md3-ripple={!props.disabled ? 'true' : undefined}
           onClick={handleWrapperClick}
         >
           <textarea
@@ -211,7 +210,6 @@ export function FormField(props: FormFieldProps) {
     <FieldFrame {...frameProps}>
       <div 
         className={getWrapperClasses(false)}
-        data-md3-ripple={!props.disabled ? 'true' : undefined}
         onClick={handleWrapperClick}
       >
         <input

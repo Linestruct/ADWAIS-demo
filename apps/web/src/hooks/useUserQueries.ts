@@ -12,7 +12,7 @@ import {
  } from '../api/generated/endpoints';
 import { useOrgSelection } from './useOrgSelection';
 import type { UserResponseDto, UserRole } from '@types';
-import { toast } from 'sonner';
+import { showErrorToast, showSuccessToast } from '../components/common/ui/toastNotifications';
 
 export function useUsersQuery() {
   const { selectedOrgId } = useOrgSelection();
@@ -29,12 +29,12 @@ export function useCreateUserMutation(onSuccessCallback?: () => void) {
   const mutation = usePostApiUsers<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('User created successfully.');
+        showSuccessToast('User created successfully.');
         queryClient.invalidateQueries({ queryKey: ['users'] });
         if (onSuccessCallback) onSuccessCallback();
       },
       onError: (err: Error) => {
-        toast.error('Failed to create user', {
+        showErrorToast('Failed to create user', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -63,11 +63,11 @@ export function useUpdateUserMutation() {
   const mutation = usePatchApiUsersId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('User updated successfully.');
+        showSuccessToast('User updated successfully.');
         queryClient.invalidateQueries({ queryKey: ['users'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to update user', {
+        showErrorToast('Failed to update user', {
           description: err.message || String(err),
           duration: Infinity
         });
@@ -105,11 +105,11 @@ export function useDeleteUserMutation() {
   const mutation = useDeleteApiUsersId<Error>({
     mutation: {
       onSuccess: () => {
-        toast.success('User deleted successfully.');
+        showSuccessToast('User deleted successfully.');
         queryClient.invalidateQueries({ queryKey: ['users'] });
       },
       onError: (err: Error) => {
-        toast.error('Failed to delete user', {
+        showErrorToast('Failed to delete user', {
           description: err.message || String(err),
           duration: Infinity
         });

@@ -25,6 +25,7 @@ export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUse
   const { user } = useCurrentUser();
   const { data: organizations } = useOrganizationsForPickerQuery();
   const showOrgSelect = user?.isPlatformAdmin === true;
+  const isPlatformAdminRole = newUser.role === 'PlatformAdmin';
 
   if (!isOpen) return null;
 
@@ -94,11 +95,19 @@ export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUse
             id="new-user-role"
             label="Role"
             value={newUser.role}
-            onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+            onChange={e => {
+              const role = e.target.value;
+              setNewUser(prev => ({
+                ...prev,
+                role,
+                organizationId: role === 'PlatformAdmin' ? '' : prev.organizationId,
+              }));
+            }}
           >
             <option value="Admin">Admin</option>
             <option value="Viewer">Viewer</option>
             <option value="Employee">Employee</option>
+            {showOrgSelect && <option value="PlatformAdmin">Platform Admin</option>}
           </FormField>
 
           {showOrgSelect && (
@@ -108,10 +117,13 @@ export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUse
               label="Organization"
               value={newUser.organizationId}
               onChange={e => setNewUser({ ...newUser, organizationId: e.target.value })}
-              required
+              disabled={isPlatformAdminRole}
+              required={!isPlatformAdminRole}
             >
-              <option value="">Select organization</option>
-              {(organizations || []).map((org) => (
+              <option value="">
+                {isPlatformAdminRole ? 'No organization (platform level)' : 'Select organization'}
+              </option>
+              {!isPlatformAdminRole && (organizations || []).map((org) => (
                 <option key={org.id} value={org.id ?? ''}>
                   {org.name}
                 </option>
@@ -127,7 +139,7 @@ export function ProvisionUserModal({ isOpen, onClose, createUser }: ProvisionUse
           </Button>
           <Button
             type="submit"
-            disabled={!newUser.email || (showOrgSelect && !newUser.organizationId) || createUser.isPending}
+            disabled={!newUser.email || (showOrgSelect && !isPlatformAdminRole && !newUser.organizationId) || createUser.isPending}
             variant="filled"
             color="secondary"
           >

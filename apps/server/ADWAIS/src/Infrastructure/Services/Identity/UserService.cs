@@ -95,7 +95,7 @@ public class UserService(IApplicationDbContext dbContext, ICurrentAccess current
         Guid? targetOrg;
         if (role == UserRole.PlatformAdmin)
         {
-            if (filter.OrganizationId is not null)
+            if (_currentAccess.Scope?.IsPlatformAdmin != true)
                 return Result.Fail<User>(ScopeDenied("create platform administrators"));
             if (organizationId.HasValue)
                 return Result.Fail<User>(Validation("organizationId", "Platform admins do not belong to an organization."));
